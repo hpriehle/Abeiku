@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  --color-black: #111111;
+  --color-cream: #F7F5F0;
+  --color-cream-dark: #EDE8DF;
+  --color-green: #2D4A3E;
+  --color-green-light: #3D6355;
+  --color-green-dark: #1E3329;
+  --color-gray: #6B6B6B;
+  --color-gray-light: #E5E3DE;
+
+  --font-heading: var(--font-cormorant);
+  --font-body: var(--font-inter);
+
+  --text-display: clamp(3rem, 5vw + 1rem, 6rem);
+  --text-h1: clamp(2.5rem, 4vw + 0.5rem, 4rem);
+  --text-h2: clamp(1.75rem, 3vw, 2.75rem);
+  --text-h3: clamp(1.25rem, 2vw, 1.75rem);
+  --text-h4: 1.25rem;
+  --text-body-lg: 1.125rem;
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-xs: 0.75rem;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-black);
+    font-family: var(--font-body), system-ui, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: var(--color-green);
+    color: white;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), Georgia, serif;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  img {
+    max-width: 100%;
+    display: block;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* FadeIn animation */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Lightbox fade */
+@keyframes lightbox-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lightbox-enter {
+  animation: lightbox-fade-in 0.3s ease-out;
+}
+
+/* Hero text animation */
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-title {
+  animation: hero-fade-up 1s ease-out 0.4s forwards;
+  opacity: 0;
+}
+
+.hero-tagline {
+  animation: hero-fade-up 0.8s ease-out 0.7s forwards;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero-title,
+  .hero-tagline {
+    animation: none;
+    opacity: 1;
+  }
+}
