@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getHotelBySlug } from "@/lib/db";
+import { getHotelBySlug, getBookingById } from "@/lib/db";
 import { supabase } from "@/lib/supabase/client";
 
 export async function GET(
@@ -14,13 +14,17 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Look up the booking to get the real guest phone for attribution
+    const booking = await getBookingById(hotel.id, bookingId);
+    const phone = booking?.phone ?? "click-tracked";
+
     // Record the click (fire-and-forget, don't block redirect)
     void supabase
       .from("templates_sent")
       .insert({
         hotel_id: hotel.id,
         booking_id: bookingId,
-        phone: "click-tracked",
+        phone,
         template_type: "google_review_click",
       });
 

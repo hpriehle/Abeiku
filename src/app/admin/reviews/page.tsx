@@ -2,6 +2,7 @@ import { getAllReviews, getReviewStats, getHotelById } from "@/lib/db";
 import { getSession } from "@/lib/admin/auth";
 import { redirect } from "next/navigation";
 import { ReviewsList } from "./ReviewsList";
+import { ReviewFunnel } from "./ReviewFunnel";
 
 export default async function ReviewsPage() {
   const session = await getSession();
@@ -46,6 +47,8 @@ export default async function ReviewsPage() {
           </div>
         )}
       </div>
+
+      <ReviewFunnel />
 
       <ReviewsList
         internalReviews={internalReviews}

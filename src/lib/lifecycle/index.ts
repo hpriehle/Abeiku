@@ -12,9 +12,42 @@ import {
   markWakeupSent,
   recordTemplateSent,
   recordTemplateSentByPhone,
+  insertReviewCountSnapshot,
+  needsPostCheckSnapshot,
 } from "@/lib/db";
 import { getHotelId, getHotel } from "@/lib/hotel-context";
 import { sendText, sendButtons, sendCtaUrlButton, sendLocation } from "@/lib/whatsapp/client";
+
+async function snapshotGoogleReviewCount(
+  hotelId: string,
+  googlePlaceId: string,
+  snapshotType: "pre_send" | "post_check",
+): Promise<void> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return;
+
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/places/${googlePlaceId}`,
+      {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "rating,userRatingCount",
+        },
+      },
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    await insertReviewCountSnapshot(
+      hotelId,
+      data.userRatingCount ?? 0,
+      data.rating ?? null,
+      snapshotType,
+    );
+  } catch (err) {
+    console.error("Review count snapshot error:", err);
+  }
+}
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00Z");
@@ -66,6 +99,14 @@ export async function runLifecycleChecks(): Promise<{
     photoInvites: 0,
     errors: [] as string[],
   };
+
+  // 0. Post-check snapshot: if a pre_send exists without a post_check, take one now
+  if (hotel.google_place_id) {
+    const needsPost = await needsPostCheckSnapshot(hotelId);
+    if (needsPost) {
+      await snapshotGoogleReviewCount(hotelId, hotel.google_place_id, "post_check");
+    }
+  }
 
   // 1. Check-in reminders (day before arrival)
   const checkinBookings = await getBookingsNeedingCheckinReminder(hotelId, tomorrow);
@@ -122,6 +163,12 @@ export async function runLifecycleChecks(): Promise<{
   // 3. Review requests (2 days after checkout)
   // Google review link sent FIRST to ALL guests (no gating), then internal rating
   const reviewBookings = await getBookingsNeedingReviewRequest(hotelId, twoDaysAgo);
+
+  // Pre-send snapshot: record Google review count before sending requests
+  if (hotel.google_place_id && reviewBookings.length > 0) {
+    await snapshotGoogleReviewCount(hotelId, hotel.google_place_id, "pre_send");
+  }
+
   for (const booking of reviewBookings) {
     try {
       // Message 1: Google review CTA (sent to ALL guests if google_place_id is configured)

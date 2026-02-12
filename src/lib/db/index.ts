@@ -1971,3 +1971,89 @@ export async function getChatStats(hotelId: string, period: string): Promise<Cha
     messagesPerDay,
   };
 }
+
+// --- Review count snapshots ---
+
+export async function insertReviewCountSnapshot(
+  hotelId: string,
+  reviewCount: number,
+  averageRating: number | null,
+  snapshotType: "pre_send" | "post_check",
+): Promise<void> {
+  const { error } = await supabase
+    .from("review_count_snapshots")
+    .insert({
+      hotel_id: hotelId,
+      review_count: reviewCount,
+      average_rating: averageRating,
+      snapshot_type: snapshotType,
+    });
+  if (error) console.error("Review snapshot insert error:", error.message);
+}
+
+export async function needsPostCheckSnapshot(hotelId: string): Promise<boolean> {
+  // Find the most recent pre_send snapshot
+  const { data: preSend } = await supabase
+    .from("review_count_snapshots")
+    .select("created_at")
+    .eq("hotel_id", hotelId)
+    .eq("snapshot_type", "pre_send")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!preSend) return false;
+
+  // Check if a post_check exists after that pre_send
+  const { data: postCheck } = await supabase
+    .from("review_count_snapshots")
+    .select("id")
+    .eq("hotel_id", hotelId)
+    .eq("snapshot_type", "post_check")
+    .gt("created_at", preSend.created_at)
+    .limit(1)
+    .maybeSingle();
+
+  return !postCheck;
+}
+
+export async function getLatestReviewDelta(hotelId: string): Promise<{
+  preSendCount: number;
+  postCheckCount: number;
+  delta: number;
+  preSendDate: string;
+  postCheckDate: string;
+} | null> {
+  // Get the most recent post_check
+  const { data: postCheck } = await supabase
+    .from("review_count_snapshots")
+    .select("review_count, created_at")
+    .eq("hotel_id", hotelId)
+    .eq("snapshot_type", "post_check")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!postCheck) return null;
+
+  // Get the pre_send that preceded it
+  const { data: preSend } = await supabase
+    .from("review_count_snapshots")
+    .select("review_count, created_at")
+    .eq("hotel_id", hotelId)
+    .eq("snapshot_type", "pre_send")
+    .lt("created_at", postCheck.created_at)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!preSend) return null;
+
+  return {
+    preSendCount: preSend.review_count,
+    postCheckCount: postCheck.review_count,
+    delta: postCheck.review_count - preSend.review_count,
+    preSendDate: preSend.created_at,
+    postCheckDate: postCheck.created_at,
+  };
+}
