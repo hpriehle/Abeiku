@@ -25,13 +25,8 @@ export default function WidgetLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${inter.variable}`}>
-      <head>
-        <base target="_blank" />
-      </head>
-      <body>
-        <CurrencyProvider>{children}</CurrencyProvider>
-      </body>
-    </html>
+    <div className={`${cormorant.variable} ${inter.variable}`}>
+      <CurrencyProvider>{children}</CurrencyProvider>
+    </div>
   );
 }

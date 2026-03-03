@@ -290,12 +290,14 @@ INSERT INTO hotels (
   name, slug, contact_phone, contact_email,
   location_lat, location_lng, location_city, location_country,
   check_in_time, check_out_time, currency,
+  whatsapp_display_phone,
   room_service_menu, local_recommendations,
   greeting_message
 ) VALUES (
   'Aracuya', 'aracuya', '+233551542355', 'aracuyagh@gmail.com',
   5.6037, -0.1870, 'Accra', 'Ghana',
   '14:00', '11:00', 'GHS',
+  '233551542355',
   '[
     {"category":"Breakfast (6am - 10am)","items":[
       {"name":"Continental Breakfast","price":35},

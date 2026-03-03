@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
-import { getBookingsForMonth, getHotelById } from "@/lib/db";
+import { getBookingsForMonth, getHotelById, getHotelRooms } from "@/lib/db";
 import { getBookedDates } from "@/lib/calendar";
 import { hotelStorage } from "@/lib/hotel-context";
 
@@ -23,9 +23,10 @@ export async function GET(request: NextRequest) {
   const lastDayDate = new Date(year, month, 0);
   const lastDay = `${year}-${String(month).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
 
-  // Fetch DB bookings and Google Calendar busy dates in parallel
-  const [bookings, calendarDates] = await Promise.all([
+  // Fetch DB bookings, rooms, and Google Calendar busy dates in parallel
+  const [bookings, rooms, calendarDates] = await Promise.all([
     getBookingsForMonth(session.hotelId, year, month),
+    getHotelRooms(session.hotelId),
     hotelStorage.run({ hotelId: hotel.id, hotel }, () =>
       getBookedDates(firstDay, lastDay)
     ).catch(() => [] as string[]), // gracefully handle if calendar not connected
@@ -60,5 +61,14 @@ export async function GET(request: NextRequest) {
     rooms_count: b.rooms_count,
   }));
 
-  return NextResponse.json({ bookings: slim, blockedDates });
+  const slimRooms = rooms.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    room_type: r.room_type,
+    group_id: r.group_id,
+    total_rooms: r.total_rooms,
+  }));
+
+  return NextResponse.json({ bookings: slim, blockedDates, rooms: slimRooms });
 }

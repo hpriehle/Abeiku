@@ -13,7 +13,7 @@ type Currency = "USD" | "GHS";
 interface CurrencyContextValue {
   currency: Currency;
   toggleCurrency: () => void;
-  formatPrice: (usdAmount: number) => string;
+  formatPrice: (amount: number) => string;
 }
 
 const FALLBACK_RATE = 15.5;
@@ -21,13 +21,21 @@ const CACHE_KEY = "abeiku_ghs_rate";
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 const CurrencyContext = createContext<CurrencyContextValue>({
-  currency: "USD",
+  currency: "GHS",
   toggleCurrency: () => {},
-  formatPrice: (usd) => `$${usd}`,
+  formatPrice: (amount) => `GH₵${amount}`,
 });
 
-export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrency] = useState<Currency>("USD");
+interface CurrencyProviderProps {
+  baseCurrency?: Currency;
+  children: React.ReactNode;
+}
+
+export function CurrencyProvider({
+  baseCurrency = "USD",
+  children,
+}: CurrencyProviderProps) {
+  const [currency, setCurrency] = useState<Currency>(baseCurrency);
   const [rate, setRate] = useState(FALLBACK_RATE);
 
   useEffect(() => {
@@ -62,14 +70,24 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const formatPrice = useCallback(
-    (usdAmount: number) => {
-      if (currency === "USD") {
-        return `$${usdAmount}`;
+    (amount: number) => {
+      if (currency === baseCurrency) {
+        // Display in the hotel's native currency — no conversion
+        return baseCurrency === "GHS"
+          ? `GH₵${amount.toLocaleString()}`
+          : `$${amount.toLocaleString()}`;
       }
-      const converted = Math.round(usdAmount * rate);
-      return `GH₵${converted}`;
+      // Convert to the other currency
+      if (currency === "USD") {
+        // Base is GHS, display USD → divide by rate
+        const converted = Math.round(amount / rate);
+        return `$${converted.toLocaleString()}`;
+      }
+      // Base is USD, display GHS → multiply by rate
+      const converted = Math.round(amount * rate);
+      return `GH₵${converted.toLocaleString()}`;
     },
-    [currency, rate]
+    [currency, baseCurrency, rate]
   );
 
   return (

@@ -12,6 +12,7 @@ interface CalendarProps {
   onClose: () => void;
   hotelSlug: string;
   roomSlug?: string;
+  initialSelectingCheckOut?: boolean;
 }
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -44,13 +45,14 @@ export function Calendar({
   onClose,
   hotelSlug,
   roomSlug,
+  initialSelectingCheckOut = false,
 }: CalendarProps) {
   const today = useMemo(() => toDateStr(new Date()), []);
 
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth());
   const [bookedDates, setBookedDates] = useState<Set<string>>(new Set());
-  const [selectingCheckOut, setSelectingCheckOut] = useState(false);
+  const [selectingCheckOut, setSelectingCheckOut] = useState(initialSelectingCheckOut);
 
   const isDark = variant === "dark";
 

@@ -14,7 +14,7 @@
   var iframe = document.createElement("iframe");
   iframe.src = src;
   iframe.style.cssText =
-    "width:100%;border:none;overflow:hidden;display:block;min-height:200px;";
+    "width:100%;max-width:500px;border:none;overflow:hidden;display:block;min-height:200px;";
   iframe.setAttribute("scrolling", "no");
   iframe.setAttribute("title", "Booking Widget");
   iframe.setAttribute("loading", "lazy");

@@ -5,10 +5,12 @@ import {
   getConversationCount,
   getReferralStats,
   getHotelById,
+  getHotelRooms,
 } from "@/lib/db";
 import { getSession } from "@/lib/admin/auth";
 import { redirect } from "next/navigation";
 import { BookingCalendar } from "./BookingCalendar";
+import { RoomAvailabilityGrid } from "./RoomAvailabilityGrid";
 import { getBookedDates } from "@/lib/calendar";
 import { hotelStorage } from "@/lib/hotel-context";
 
@@ -42,9 +44,10 @@ export default async function DashboardPage() {
   const lastDayDate = new Date(currentYear, currentMonth, 0);
   const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
 
-  const [bookings, calendarBookings, calendarDates, reviews, conversations, referrals] = await Promise.all([
+  const [bookings, calendarBookings, rooms, calendarDates, reviews, conversations, referrals] = await Promise.all([
     getBookingStats(hotelId),
     getBookingsForMonth(hotelId, currentYear, currentMonth),
+    getHotelRooms(hotelId),
     hotel
       ? hotelStorage.run({ hotelId: hotel.id, hotel }, () => getBookedDates(firstDay, lastDay)).catch(() => [] as string[])
       : ([] as string[]),
@@ -127,6 +130,32 @@ export default async function DashboardPage() {
             <p className="text-gray-400 text-sm">No reviews yet.</p>
           )}
         </div>
+      </div>
+
+      {/* Room Availability Grid */}
+      <div className="mt-6">
+        <RoomAvailabilityGrid
+          initialBookings={calendarBookings.map((b) => ({
+            id: b.id,
+            guest_name: b.guest_name,
+            room_slug: b.room_slug,
+            check_in: b.check_in,
+            check_out: b.check_out,
+            booking_status: b.booking_status,
+            rooms_count: b.rooms_count,
+          }))}
+          initialRooms={rooms.map((r) => ({
+            id: r.id,
+            slug: r.slug,
+            name: r.name,
+            room_type: r.room_type,
+            group_id: r.group_id,
+            total_rooms: r.total_rooms,
+          }))}
+          initialBlockedDates={blockedDates}
+          initialYear={currentYear}
+          initialMonth={currentMonth}
+        />
       </div>
 
       {/* Calendar */}

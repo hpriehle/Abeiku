@@ -54,7 +54,7 @@ export function mapHotelToWidgetHotel(hotel: Hotel): WidgetHotel {
   return {
     name: hotel.name,
     slug: hotel.slug,
-    whatsappPhone: hotel.whatsapp_display_phone,
+    whatsappPhone: hotel.whatsapp_display_phone ?? hotel.momo_phone ?? hotel.contact_phone,
     currency: hotel.currency,
   };
 }
