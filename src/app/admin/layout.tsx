@@ -33,6 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <NavLink href="/admin/bookings" label="Bookings" icon="📅" />
           <NavLink href="/admin/payments" label="Payments" icon="💰" />
           <NavLink href="/admin/rooms" label="Rooms" icon="🛏️" />
+          <NavLink href="/admin/influencers" label="Influencers" icon="🔗" />
           <NavLink href="/admin/reviews" label="Reviews" icon="⭐" />
           <NavLink href="/admin/settings" label="Settings" icon="⚙️" />
           <NavLink href="/admin/simulator" label="Simulator" icon="🧪" />
