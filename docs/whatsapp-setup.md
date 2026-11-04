@@ -18,19 +18,29 @@ Meta app: **Abeiku**, App ID `1416351276566026` (developers.facebook.com, curren
 - Coexistence numbers are limited to 20 messages/sec. Messages sent from the app stay free;
   API messages are billed at Cloud API rates.
 
+## Status (2026-11-04)
+
+- Facebook Login for Business product added; "Login with the JavaScript SDK" on.
+- **Blocker:** Harrison's Facebook account has been "Account restricted" since 2021-11-26
+  for not using two-factor authentication. That blocks every business-asset action, so linking the app
+  to a portfolio fails with "You have been temporarily blocked from performing this action".
+  2FA was turned on 2026-11-04; the restriction hadn't lifted an hour later. Check
+  Business Support Home → My accounts → Harrison Riehle before retrying.
+- His account is at Meta's limit for creating portfolios, so the app will use
+  **Automaddie** (ID 1116214052281089, already verified). Fallback: rename "I Hate Soliciting".
+
 ## Checklist
 
-### 1. Business portfolio (Harrison, in the browser)
-- [ ] business.facebook.com → Create Business → "Abeiku"
-- [ ] Security Centre → Start verification (legal name, address, document). Takes days.
-- [ ] Add a business email/phone and website (the deployed Abeiku URL, see step 3).
+### 1. Business portfolio
+- [x] Use Automaddie (verified) as the Tech Provider business
+- [ ] Wait for the 2FA account restriction to clear
 
 ### 2. Connect the app to the portfolio
-- [ ] App settings → Basic → Business portfolio = Abeiku
+- [ ] App settings → Basic → Business portfolio = Automaddie
 - [ ] App settings → Basic: App domain, Privacy Policy URL, Terms URL, category, icon
       (needed for Live mode and App Review)
 - [ ] Copy **App Secret** into `.env.local` / Beelink env as `WHATSAPP_APP_SECRET`.
-      `WHATSAPP_APP_ID` and `NEXT_PUBLIC_WHATSAPP_APP_ID` = `1416351276566026`
+      `WHATSAPP_APP_ID` and `NEXT_PUBLIC_WHATSAPP_APP_ID` = `1416351276566026` (set locally)
 
 ### 3. Public HTTPS host (Beelink + Cloudflare tunnel)
 - [ ] Deploy to `~/apps/abeiku` on riehle-01, with a Cloudflare tunnel hostname
@@ -45,7 +55,8 @@ Meta app: **Abeiku**, App ID `1416351276566026` (developers.facebook.com, curren
 - Every POST is checked against `X-Hub-Signature-256` with `WHATSAPP_APP_SECRET`.
 
 ### 5. Facebook Login for Business configuration
-- [ ] Add product "Facebook Login for Business" → Configurations → Create →
+- [x] Add product "Facebook Login for Business"; turn on Login with the JavaScript SDK
+- [ ] Configurations → Create (only after the portfolio link; the variation can't be changed later) →
       template "WhatsApp Embedded Signup". Permissions: `whatsapp_business_management`,
       `whatsapp_business_messaging`. Token: system-user (business integration) token.
 - [ ] Copy the Configuration ID into `WHATSAPP_CONFIG_ID` and `NEXT_PUBLIC_WHATSAPP_CONFIG_ID`
@@ -54,7 +65,7 @@ Meta app: **Abeiku**, App ID `1416351276566026` (developers.facebook.com, curren
 
 ### 6. Become a Tech Provider
 - [ ] App Dashboard → WhatsApp → Quickstart → follow "Become a Tech Provider"
-      (needs the verified business from step 1)
+      (Automaddie is already verified)
 - [ ] App Review: Advanced Access for `whatsapp_business_management` and
       `whatsapp_business_messaging`. Needs screencasts of Embedded Signup and of sending
       a template from the Abeiku dashboard.
