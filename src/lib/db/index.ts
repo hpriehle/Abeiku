@@ -35,6 +35,11 @@ export interface Hotel {
   whatsapp_waba_id: string | null;
   whatsapp_display_phone: string | null;
   whatsapp_verify_token: string | null;
+  /** Booking bot auto-replies to incoming WhatsApp messages. Off by default (see supabase-migration-whatsapp-templates.sql). */
+  whatsapp_bot_enabled?: boolean | null;
+  /** Number is shared with the WhatsApp Business app (coexistence). */
+  whatsapp_is_on_biz_app?: boolean | null;
+  whatsapp_business_id?: string | null;
   stripe_secret_key: string | null;
   stripe_webhook_secret: string | null;
   paystack_subaccount_code: string | null;

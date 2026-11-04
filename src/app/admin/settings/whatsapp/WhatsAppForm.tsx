@@ -8,6 +8,7 @@ const inputClass =
 export function WhatsAppForm({ connected }: { connected: boolean }) {
   const [token, setToken] = useState("");
   const [phoneId, setPhoneId] = useState("");
+  const [wabaId, setWabaId] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -22,6 +23,7 @@ export function WhatsAppForm({ connected }: { connected: boolean }) {
         body: JSON.stringify({
           whatsapp_access_token: token,
           whatsapp_phone_number_id: phoneId,
+          ...(wabaId ? { whatsapp_waba_id: wabaId } : {}),
         }),
       });
       if (!res.ok) throw new Error("Failed to save");
@@ -63,6 +65,17 @@ export function WhatsAppForm({ connected }: { connected: boolean }) {
             value={phoneId}
             onChange={(e) => setPhoneId(e.target.value)}
             placeholder={connected ? "Currently configured" : "e.g. 123456789012345"}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Business Account ID</label>
+          <input
+            type="text"
+            value={wabaId}
+            onChange={(e) => setWabaId(e.target.value)}
+            placeholder={connected ? "Currently configured" : "Needed for message templates"}
             className={inputClass}
           />
         </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GRAPH_BASE } from "@/lib/whatsapp/graph";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, updateHotel, getOAuthToken } from "@/lib/db";
 
@@ -34,7 +35,7 @@ const ALLOWED_FIELDS = [
   "location_city", "location_country", "check_in_time", "check_out_time",
   "wifi_password", "currency", "greeting_message", "name",
   "whatsapp_access_token", "whatsapp_phone_number_id", "whatsapp_verify_token",
-  "whatsapp_display_phone", "google_place_id",
+  "whatsapp_display_phone", "whatsapp_waba_id", "whatsapp_bot_enabled", "google_place_id",
 ];
 
 async function fetchWhatsAppDisplayPhone(
@@ -43,7 +44,7 @@ async function fetchWhatsAppDisplayPhone(
 ): Promise<string | null> {
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/${phoneNumberId}?fields=display_phone_number`,
+      `${GRAPH_BASE}/${phoneNumberId}?fields=display_phone_number`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     );
     if (!res.ok) return null;

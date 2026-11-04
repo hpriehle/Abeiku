@@ -4,7 +4,7 @@
  */
 import { getHotelById } from "@/lib/db";
 
-const GRAPH_API_VERSION = "v21.0";
+import { GRAPH_BASE } from "./graph";
 
 async function sendWhatsAppText(
   accessToken: string,
@@ -12,7 +12,7 @@ async function sendWhatsAppText(
   to: string,
   text: string
 ): Promise<void> {
-  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+  const url = `${GRAPH_BASE}/${phoneNumberId}/messages`;
   await fetch(url, {
     method: "POST",
     headers: {
