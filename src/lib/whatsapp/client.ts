@@ -3,8 +3,7 @@
 import { getHotel } from "@/lib/hotel-context";
 import { getSimulatorContext } from "./simulator-context";
 import { ButtonAction, ListSection } from "./types";
-
-const GRAPH_API_VERSION = "v21.0";
+import { GRAPH_BASE } from "./graph";
 
 function getConfig() {
   const hotel = getHotel();
@@ -30,7 +29,7 @@ async function sendRequest(phoneNumberId: string, token: string, body: object) {
     return { messages: [{ id: `sim_${Date.now()}_${Math.random().toString(36).slice(2)}` }] };
   }
 
-  const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+  const url = `${GRAPH_BASE}/${phoneNumberId}/messages`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -197,6 +196,64 @@ export async function sendLocation(
     type: "location",
     location: { latitude, longitude, name, address },
   });
+}
+
+export interface TemplateSendParams {
+  /** Approved template name, e.g. "booking_reminder" */
+  name: string;
+  /** Template language code, e.g. "en" or "en_US" */
+  language: string;
+  /** Values for {{1}}, {{2}}... in the body, in order */
+  bodyParams?: string[];
+  /** Value for {{1}} in a text header, if the template has one */
+  headerParam?: string;
+  /** Values for the {{1}} suffix of dynamic URL buttons, keyed by button index */
+  urlButtonParams?: Record<number, string>;
+}
+
+/** Build the `components` array for a template send. Exported for previews/tests. */
+export function buildTemplateComponents(p: TemplateSendParams) {
+  const components: object[] = [];
+  if (p.headerParam) {
+    components.push({ type: "header", parameters: [{ type: "text", text: p.headerParam }] });
+  }
+  if (p.bodyParams?.length) {
+    components.push({
+      type: "body",
+      parameters: p.bodyParams.map((text) => ({ type: "text", text })),
+    });
+  }
+  for (const [index, text] of Object.entries(p.urlButtonParams ?? {})) {
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index,
+      parameters: [{ type: "text", text }],
+    });
+  }
+  return components;
+}
+
+/**
+ * Send an approved message template. Templates are the only way to message
+ * someone who hasn't written to the hotel in the last 24 hours.
+ * Returns the WhatsApp message ID.
+ */
+export async function sendTemplate(to: string, params: TemplateSendParams): Promise<string | undefined> {
+  const { token, phoneNumberId } = getConfig();
+  const components = buildTemplateComponents(params);
+
+  const res = await sendRequest(phoneNumberId, token, {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: params.name,
+      language: { code: params.language },
+      ...(components.length ? { components } : {}),
+    },
+  });
+  return res?.messages?.[0]?.id;
 }
 
 /** Mark a message as read */

@@ -1,16 +1,21 @@
+import { randomInt } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { supabase } from "@/lib/supabase/client";
-
-const GRAPH_API_VERSION = "v21.0";
-const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+import { GRAPH_BASE, graphFetch } from "@/lib/whatsapp/graph";
 
 /**
  * POST /api/auth/whatsapp/callback
  *
- * Receives { code, phoneNumberId, wabaId } from the Embedded Signup frontend.
- * Exchanges the auth code for a long-lived token, subscribes the WABA to our app,
- * registers the phone number, and saves credentials to the hotels table.
+ * Receives { code, phoneNumberId, wabaId, businessId, isOnBizApp } from the
+ * Embedded Signup (v5) frontend, then:
+ *   1. exchanges the code for a business integration token
+ *   2. subscribes the WABA to our app so we receive its webhooks
+ *   3. registers the number for Cloud API, unless it's a WhatsApp Business app
+ *      number (coexistence), which is already registered
+ *   4. for coexistence numbers, starts the contacts + history sync, which Meta
+ *      requires within 24 hours of onboarding
+ *   5. saves credentials on the hotel
  */
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -18,7 +23,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { code, phoneNumberId, wabaId } = await request.json();
+  const { code, phoneNumberId, wabaId, businessId, isOnBizApp } = (await request.json()) as {
+    code?: string;
+    phoneNumberId?: string;
+    wabaId?: string;
+    businessId?: string;
+    isOnBizApp?: boolean;
+  };
 
   if (!code || !phoneNumberId || !wabaId) {
     return NextResponse.json(
@@ -29,110 +40,99 @@ export async function POST(request: NextRequest) {
 
   const appId = process.env.WHATSAPP_APP_ID;
   const appSecret = process.env.WHATSAPP_APP_SECRET;
-
   if (!appId || !appSecret) {
     console.error("Missing WHATSAPP_APP_ID or WHATSAPP_APP_SECRET");
-    return NextResponse.json(
-      { error: "WhatsApp not configured on this platform" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "WhatsApp not configured on this platform" }, { status: 500 });
   }
 
   try {
-    // Step 1: Exchange auth code for short-lived token
+    // Step 1: Exchange the code for a business integration system user token.
+    // These don't expire, so there's no long-lived exchange step.
     const tokenUrl = new URL(`${GRAPH_BASE}/oauth/access_token`);
     tokenUrl.searchParams.set("client_id", appId);
     tokenUrl.searchParams.set("client_secret", appSecret);
     tokenUrl.searchParams.set("code", code);
 
-    const tokenRes = await fetch(tokenUrl.toString());
+    const tokenRes = await fetch(tokenUrl);
     if (!tokenRes.ok) {
-      const err = await tokenRes.text();
-      console.error("Token exchange failed:", err);
+      console.error("Token exchange failed:", await tokenRes.text());
       return NextResponse.json({ error: "Token exchange failed" }, { status: 502 });
     }
-    const { access_token: shortLivedToken } = await tokenRes.json();
+    const { access_token: token } = (await tokenRes.json()) as { access_token: string };
 
-    // Step 2: Exchange short-lived token for long-lived token
-    const longTokenUrl = new URL(`${GRAPH_BASE}/oauth/access_token`);
-    longTokenUrl.searchParams.set("grant_type", "fb_exchange_token");
-    longTokenUrl.searchParams.set("client_id", appId);
-    longTokenUrl.searchParams.set("client_secret", appSecret);
-    longTokenUrl.searchParams.set("fb_exchange_token", shortLivedToken);
-
-    const longTokenRes = await fetch(longTokenUrl.toString());
-    if (!longTokenRes.ok) {
-      const err = await longTokenRes.text();
-      console.error("Long-lived token exchange failed:", err);
-      return NextResponse.json({ error: "Long-lived token exchange failed" }, { status: 502 });
-    }
-    const { access_token: longLivedToken } = await longTokenRes.json();
-
-    // Step 3: Subscribe WABA to our app (so we receive webhooks)
-    const subscribeRes = await fetch(`${GRAPH_BASE}/${wabaId}/subscribed_apps`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${longLivedToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!subscribeRes.ok) {
-      const err = await subscribeRes.text();
-      console.error("WABA subscription failed:", err);
-      // Non-fatal — continue anyway, can be done manually
+    // Step 2: Subscribe the WABA to our app (webhooks)
+    try {
+      await graphFetch(`${wabaId}/subscribed_apps`, token, { method: "POST" });
+    } catch (err) {
+      console.error("WABA subscription failed:", err); // Non-fatal; can be retried manually
     }
 
-    // Step 4: Register the phone number
-    const registerRes = await fetch(`${GRAPH_BASE}/${phoneNumberId}/register`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${longLivedToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        pin: "123456",
-      }),
-    });
-    if (!registerRes.ok) {
-      const err = await registerRes.text();
-      console.error("Phone registration failed:", err);
-      // Non-fatal — phone may already be registered
+    // Step 3: Register new Cloud API numbers. Coexistence numbers are already registered.
+    let registrationPin: string | null = null;
+    if (!isOnBizApp) {
+      registrationPin = String(randomInt(0, 1_000_000)).padStart(6, "0");
+      try {
+        await graphFetch(`${phoneNumberId}/register`, token, {
+          body: { messaging_product: "whatsapp", pin: registrationPin },
+        });
+      } catch (err) {
+        console.error("Phone registration failed:", err); // Non-fatal; may already be registered
+        registrationPin = null;
+      }
     }
 
-    // Step 4.5: Fetch the display phone number for wa.me redirects
+    // Step 4: Coexistence: kick off contacts and message history sync (each can only run once).
+    if (isOnBizApp) {
+      for (const syncType of ["smb_app_state_sync", "history"] as const) {
+        try {
+          const res = await graphFetch<{ request_id?: string }>(`${phoneNumberId}/smb_app_data`, token, {
+            body: { messaging_product: "whatsapp", sync_type: syncType },
+          });
+          console.log(`[whatsapp] ${syncType} sync started for ${phoneNumberId}: ${res.request_id}`);
+        } catch (err) {
+          console.error(`[whatsapp] ${syncType} sync failed for ${phoneNumberId}:`, err);
+        }
+      }
+    }
+
+    // Step 5: Display phone number for wa.me links
     let displayPhone: string | null = null;
     try {
-      const phoneRes = await fetch(
-        `${GRAPH_BASE}/${phoneNumberId}?fields=display_phone_number`,
-        { headers: { Authorization: `Bearer ${longLivedToken}` } },
-      );
-      if (phoneRes.ok) {
-        const phoneData = await phoneRes.json();
-        displayPhone = phoneData.display_phone_number || null;
-      }
+      const phone = await graphFetch<{ display_phone_number?: string }>(phoneNumberId, token, {
+        query: { fields: "display_phone_number" },
+      });
+      displayPhone = phone.display_phone_number || null;
     } catch {
-      // Non-fatal — display phone can be fetched later
+      // Non-fatal
     }
 
-    // Step 5: Save credentials to hotels table
-    const { error: dbError } = await supabase
-      .from("hotels")
-      .update({
-        whatsapp_access_token: longLivedToken,
-        whatsapp_phone_number_id: phoneNumberId,
-        whatsapp_waba_id: wabaId,
-        whatsapp_display_phone: displayPhone,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", session.hotelId);
+    // Step 6: Save to the hotel
+    const base = {
+      whatsapp_access_token: token,
+      whatsapp_phone_number_id: phoneNumberId,
+      whatsapp_waba_id: wabaId,
+      whatsapp_display_phone: displayPhone,
+      updated_at: new Date().toISOString(),
+    };
+    const extended = {
+      ...base,
+      whatsapp_is_on_biz_app: !!isOnBizApp,
+      whatsapp_business_id: businessId ?? null,
+      ...(registrationPin ? { whatsapp_registration_pin: registrationPin } : {}),
+    };
 
+    let { error: dbError } = await supabase.from("hotels").update(extended).eq("id", session.hotelId);
+    if (dbError?.code === "PGRST204") {
+      // Columns from supabase-migration-whatsapp-templates.sql not added yet; save the essentials.
+      console.warn("WhatsApp migration not applied; saving base credentials only:", dbError.message);
+      ({ error: dbError } = await supabase.from("hotels").update(base).eq("id", session.hotelId));
+    }
     if (dbError) {
       console.error("Failed to save WhatsApp credentials:", dbError);
       return NextResponse.json({ error: "Failed to save credentials" }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, coexistence: !!isOnBizApp });
   } catch (error) {
     console.error("WhatsApp Embedded Signup callback error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

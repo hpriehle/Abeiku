@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
+import { GRAPH_API_VERSION } from "@/lib/whatsapp/graph";
 
 declare global {
   interface Window {
@@ -21,9 +22,13 @@ declare global {
   }
 }
 
+// Embedded Signup v5 session info. waba_id is the v4 field, kept as a fallback.
 interface SessionInfo {
   phone_number_id?: string;
+  messaging_account_ids?: string[];
   waba_id?: string;
+  business_id?: string;
+  is_on_biz_app?: boolean;
 }
 
 export function EmbeddedSignup() {
@@ -50,9 +55,14 @@ export function EmbeddedSignup() {
         typeof event.data === "string" ? JSON.parse(event.data) : event.data;
 
       if (data.type === "WA_EMBEDDED_SIGNUP") {
-        // data.data contains { phone_number_id, waba_id }
-        if (data.data) {
-          sessionInfoRef.current = data.data;
+        if (data.event === "FINISH" || data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING") {
+          sessionInfoRef.current = {
+            ...data.data,
+            is_on_biz_app:
+              data.data?.is_on_biz_app ?? data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+          };
+        } else if (data.event === "ERROR") {
+          console.error("Embedded Signup error:", data.data);
         }
       }
     } catch {
@@ -71,7 +81,7 @@ export function EmbeddedSignup() {
       window.FB.init({
         appId,
         xfbml: false,
-        version: "v21.0",
+        version: GRAPH_API_VERSION,
       });
       setSdkReady(true);
     }
@@ -93,11 +103,14 @@ export function EmbeddedSignup() {
           return;
         }
 
-        // Wait briefly for the session info message to arrive
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // The session info postMessage can arrive just after the login callback
+        for (let i = 0; i < 20 && !sessionInfoRef.current; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
 
         const sessionInfo = sessionInfoRef.current;
-        if (!sessionInfo?.phone_number_id || !sessionInfo?.waba_id) {
+        const wabaId = sessionInfo?.messaging_account_ids?.[0] ?? sessionInfo?.waba_id;
+        if (!sessionInfo?.phone_number_id || !wabaId) {
           setConnecting(false);
           setError(
             "Could not retrieve WhatsApp account details. Please try again."
@@ -112,7 +125,9 @@ export function EmbeddedSignup() {
             body: JSON.stringify({
               code,
               phoneNumberId: sessionInfo.phone_number_id,
-              wabaId: sessionInfo.waba_id,
+              wabaId,
+              businessId: sessionInfo.business_id,
+              isOnBizApp: !!sessionInfo.is_on_biz_app,
             }),
           });
 
@@ -133,11 +148,9 @@ export function EmbeddedSignup() {
         config_id: configId,
         response_type: "code",
         override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: "",
-          sessionInfoVersion: "3",
-        },
+        // v5: WhatsApp Business app onboarding (coexistence) is on by default,
+        // so a hotel can keep using its existing WhatsApp Business app number.
+        extras: { version: "v5" },
       }
     );
   }
@@ -164,8 +177,10 @@ export function EmbeddedSignup() {
         Connect WhatsApp
       </h3>
       <p className="text-sm text-gray-500 mb-4">
-        Sign in with Facebook to connect your WhatsApp Business account. You can
-        create a new account or use an existing one.
+        Sign in with Facebook to connect your WhatsApp Business number. If you
+        already use the WhatsApp Business app, choose to connect your existing
+        number: you can keep chatting from the app while Abeiku sends templates.
+        Keep the app open on your phone while it syncs.
       </p>
 
       <button

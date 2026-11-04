@@ -5,6 +5,7 @@ import { getSession } from "@/lib/admin/auth";
 import { getHotelById } from "@/lib/db";
 import { WhatsAppForm } from "./WhatsAppForm";
 import { EmbeddedSignup } from "./EmbeddedSignup";
+import { BotToggle } from "./BotToggle";
 
 export default async function WhatsAppSettingsPage() {
   const session = await getSession();
@@ -55,6 +56,7 @@ export default async function WhatsAppSettingsPage() {
             </div>
           </div>
 
+          <BotToggle enabled={!!hotel.whatsapp_booking_bot_enabled} isOnBizApp={!!hotel.whatsapp_is_on_biz_app} />
           <WhatsAppForm connected={connected} />
         </div>
       ) : (

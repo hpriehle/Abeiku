@@ -14,13 +14,23 @@ export function isBookingBotEnabled(hotel: Pick<Hotel, "whatsapp_booking_bot_ena
   return hotel?.whatsapp_booking_bot_enabled === true;
 }
 
-/** Text shown in the inbox for any kind of incoming message. */
+/** Text shown in the inbox for any kind of incoming (or echoed) message. */
 export function inboundPreview(message: WhatsAppMessage): string {
+  // Webhook payloads vary by type; read the optional parts loosely.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const m = message as any;
   return (
-    message.text?.body ??
-    message.interactive?.button_reply?.title ??
-    message.interactive?.list_reply?.title ??
-    `[${message.type}]`
+    m.text?.body ??
+    m.interactive?.button_reply?.title ??
+    m.interactive?.list_reply?.title ??
+    m.button?.text ??
+    m.image?.caption ??
+    m.video?.caption ??
+    m.document?.caption ??
+    m.document?.filename ??
+    (m.reaction ? `Reacted ${m.reaction.emoji ?? ""}`.trim() : undefined) ??
+    (m.type === "template" ? (m.template?.name ? `[template ${m.template.name}]` : "[template]") : undefined) ??
+    `[${m.type}]`
   );
 }
 
@@ -96,4 +106,32 @@ export async function processInbound(
   }
   await storeInboundOnly(deps, hotel.id, message, senderPhone, senderName);
   return "stored";
+}
+
+/**
+ * Coexistence: a message staff sent from the WhatsApp Business app on their
+ * phone (smb_message_echoes). Stored as an outbound admin message so the
+ * inbox shows both sides of the conversation.
+ */
+export async function storeEcho(
+  deps: Pick<InboundDeps, "getConversation" | "upsertConversation" | "recordMessage">,
+  hotelId: string,
+  echo: WhatsAppMessage & { to: string },
+): Promise<boolean> {
+  const conversation =
+    (await deps.getConversation(hotelId, echo.to)) ?? (await deps.upsertConversation(hotelId, echo.to, { step: "idle" }));
+  return deps.recordMessage({
+    hotelId,
+    conversationId: conversation.id,
+    phone: echo.to,
+    direction: "outbound",
+    messageType: echo.type,
+    body: inboundPreview(echo),
+    rawPayload: echo as unknown as object,
+    waMessageId: echo.id,
+    senderType: "admin",
+    senderName: "WhatsApp Business app",
+    guestState: conversation.guest_state,
+    step: conversation.step,
+  });
 }
