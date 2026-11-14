@@ -27,6 +27,20 @@ ALTER TABLE influencers
   ALTER COLUMN commission_value DROP DEFAULT,
   ALTER COLUMN commission_currency DROP DEFAULT;
 
+-- Contact fields. Email is optional (still globally unique when present: UNIQUE
+-- allows many NULLs); a partner needs an email or a WhatsApp number.
+ALTER TABLE influencers
+  ADD COLUMN whatsapp TEXT CHECK (whatsapp ~ '^\+[1-9][0-9]{6,14}$'),  -- E.164
+  ADD COLUMN town TEXT,
+  ADD COLUMN ghl_contact_id TEXT,
+  ALTER COLUMN email DROP NOT NULL;
+ALTER TABLE influencers
+  ADD CONSTRAINT influencers_email_or_whatsapp CHECK (email IS NOT NULL OR whatsapp IS NOT NULL);
+-- One partner per WhatsApp number per hotel (bulk API upserts on it).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_influencers_hotel_whatsapp
+  ON influencers(hotel_id, whatsapp) WHERE whatsapp IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_influencers_whatsapp ON influencers(whatsapp) WHERE whatsapp IS NOT NULL;
+
 -- Ref code rules: letters/digits/hyphen, case-insensitive unique per hotel.
 ALTER TABLE influencers
   ADD CONSTRAINT influencers_slug_format CHECK (slug ~ '^[a-z0-9-]{2,40}$');

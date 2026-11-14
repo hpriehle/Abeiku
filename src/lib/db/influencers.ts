@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 import type { CommissionKind, PartnerCurrency, PartnerType } from "@/lib/partner/commission";
+import type { PartnerAdminStore } from "@/lib/partner/bulk";
 import type {
   BookingEvent,
   BookingPatch,
@@ -14,7 +15,10 @@ export interface Influencer {
   hotel_id: string;
   slug: string;
   name: string;
-  email: string;
+  email: string | null;
+  whatsapp: string | null;
+  town: string | null;
+  ghl_contact_id: string | null;
   password_hash: string | null;
   invite_token: string | null;
   invite_expires_at: string | null;
@@ -61,7 +65,9 @@ export async function createInfluencer(input: {
   hotel_id: string;
   slug: string;
   name: string;
-  email: string;
+  email: string | null;
+  whatsapp?: string | null;
+  town?: string | null;
   invite_token: string;
   invite_expires_at: string;
   redirect_url?: string;
@@ -78,7 +84,9 @@ export async function createInfluencer(input: {
       hotel_id: input.hotel_id,
       slug: input.slug.toLowerCase(),
       name: input.name,
-      email: input.email.toLowerCase(),
+      email: input.email ? input.email.toLowerCase() : null,
+      whatsapp: input.whatsapp ?? null,
+      town: input.town ?? null,
       invite_token: input.invite_token,
       invite_expires_at: input.invite_expires_at,
       redirect_url: input.redirect_url ?? "/",
@@ -121,6 +129,24 @@ export async function getInfluencerByEmail(email: string): Promise<Influencer | 
     .from("influencers")
     .select("*")
     .eq("email", email.toLowerCase())
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Partners with this WhatsApp number (unique per hotel, so possibly one per hotel). */
+export async function getInfluencersByWhatsapp(whatsapp: string): Promise<Influencer[]> {
+  const { data, error } = await supabase.from("influencers").select("*").eq("whatsapp", whatsapp);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getInfluencerByWhatsapp(hotelId: string, whatsapp: string): Promise<Influencer | null> {
+  const { data, error } = await supabase
+    .from("influencers")
+    .select("*")
+    .eq("hotel_id", hotelId)
+    .eq("whatsapp", whatsapp)
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -369,5 +395,40 @@ export const supabaseBookingReportStore: BookingReportStore = {
       .update({ ...patch, updated_at: new Date().toISOString() })
       .eq("id", id);
     if (error) throw error;
+  },
+};
+
+/** Supabase-backed store for the admin partner API (bulk upsert + list). */
+export const supabasePartnerAdminStore: PartnerAdminStore = {
+  findHotelId: supabaseBookingReportStore.findHotelId,
+
+  async listPartners(hotelId) {
+    return listInfluencersForHotel(hotelId);
+  },
+
+  async findByEmail(email) {
+    const { data, error } = await supabase
+      .from("influencers")
+      .select("id, hotel_id")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async insertPartner(row) {
+    const { data, error } = await supabase.from("influencers").insert(row).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updatePartner(id, patch) {
+    const { data, error } = await supabase.from("influencers").update(patch).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async listBookings(hotelId) {
+    return listBookingsForHotel(hotelId);
   },
 };

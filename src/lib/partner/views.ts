@@ -71,7 +71,9 @@ export function bookingView(
 export interface PartnerView {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
+  whatsapp: string | null;
+  town: string | null;
   code: string;
   link: string;
   partner_type: Influencer["partner_type"];
@@ -102,6 +104,8 @@ export function buildAdminView(partners: Influencer[], bookings: ReferralBooking
       id: p.id,
       name: p.name,
       email: p.email,
+      whatsapp: p.whatsapp,
+      town: p.town,
       code: p.slug,
       link: partnerLink(p.slug),
       partner_type: p.partner_type,

@@ -7,7 +7,9 @@ import {
   listBookingsForHotel,
   getInfluencerBySlug,
   getInfluencerByEmail,
+  getInfluencerByWhatsapp,
 } from "@/lib/db/influencers";
+import { codeFromName, dedupeCode, normalizeEmail, normalizeWhatsapp } from "@/lib/partner/codes";
 import {
   PARTNER_TYPES,
   currencyForCountry,
@@ -36,21 +38,35 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const code = normalizeRefCode(String(body.code ?? ""));
     const name = String(body.name ?? "").trim();
-    const email = String(body.email ?? "").trim().toLowerCase();
+    const rawEmail = String(body.email ?? "").trim();
+    const rawWhatsapp = String(body.whatsapp ?? "").trim();
+    const town = String(body.town ?? "").trim() || null;
     const partner_type = String(body.partner_type ?? "") as PartnerType;
     const country = String(body.country ?? "").trim();
     const commission_kind = String(body.commission_kind ?? "") as CommissionKind;
     const commission_value = Number(body.commission_value);
+    const email = rawEmail ? normalizeEmail(rawEmail) : null;
+    const whatsapp = rawWhatsapp ? normalizeWhatsapp(rawWhatsapp) : null;
 
-    if (!code || !name || !email || !country) {
-      return NextResponse.json({ error: "name, email, country and code are required" }, { status: 400 });
+    if (!name || !country) {
+      return NextResponse.json({ error: "name and country are required" }, { status: 400 });
+    }
+    if (!rawEmail && !rawWhatsapp) {
+      return NextResponse.json({ error: "Email or WhatsApp number is required" }, { status: 400 });
+    }
+    if (rawEmail && !email) return NextResponse.json({ error: "Email is not valid" }, { status: 400 });
+    if (rawWhatsapp && !whatsapp) {
+      return NextResponse.json(
+        { error: "WhatsApp must be an international number, e.g. +233241234567" },
+        { status: 400 }
+      );
     }
     if (!PARTNER_TYPES.includes(partner_type)) {
       return NextResponse.json({ error: "type must be agency, local or influencer" }, { status: 400 });
     }
-    if (!isValidRefCode(code)) {
+    const givenCode = normalizeRefCode(String(body.code ?? ""));
+    if (givenCode && !isValidRefCode(givenCode)) {
       return NextResponse.json(
         { error: "Code must be 2-40 chars, letters/numbers/hyphens only" },
         { status: 400 }
@@ -66,12 +82,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Percent must be 100 or less" }, { status: 400 });
     }
 
-    const [codeClash, emailClash] = await Promise.all([
-      getInfluencerBySlug(session.hotelId, code),
-      getInfluencerByEmail(email),
+    const [codeClash, emailClash, whatsappClash] = await Promise.all([
+      givenCode ? getInfluencerBySlug(session.hotelId, givenCode) : null,
+      email ? getInfluencerByEmail(email) : null,
+      whatsapp ? getInfluencerByWhatsapp(session.hotelId, whatsapp) : null,
     ]);
     if (codeClash) return NextResponse.json({ error: "Code already in use" }, { status: 409 });
     if (emailClash) return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+    if (whatsappClash) {
+      return NextResponse.json({ error: "WhatsApp number already registered" }, { status: 409 });
+    }
+
+    // No code given: Abeiku issues one from the name (carmen-travels, carmen-travels-2, ...).
+    const code =
+      givenCode ||
+      dedupeCode(
+        codeFromName(name),
+        (await listInfluencersForHotel(session.hotelId)).map((p) => p.slug)
+      );
 
     const currency = currencyForCountry(country);
     const invite_token = randomBytes(32).toString("hex");
@@ -82,6 +110,8 @@ export async function POST(request: NextRequest) {
       slug: code,
       name,
       email,
+      whatsapp,
+      town,
       invite_token,
       invite_expires_at,
       partner_type,
@@ -95,7 +125,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        partner: { id: partner.id, code: partner.slug, name: partner.name, email: partner.email, currency },
+        partner: { id: partner.id, code: partner.slug, name: partner.name, email: partner.email, whatsapp: partner.whatsapp, currency },
         setup_url: setupUrl(invite_token),
         setup_expires_at: invite_expires_at,
       },

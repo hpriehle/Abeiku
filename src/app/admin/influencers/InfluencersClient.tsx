@@ -8,6 +8,7 @@ import {
   type PartnerType,
 } from "@/lib/partner/commission";
 import type { BookingView, PartnerView } from "@/lib/partner/views";
+import { codeFromName } from "@/lib/partner/codes";
 import { formatDate, formatMoney, ruleLabel, STATUS_STYLES } from "@/components/partner/format";
 
 interface AdminData {
@@ -109,7 +110,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
                   <td className="px-4 py-3">
                     <div className="text-gray-900">{p.name}</div>
                     <div className="text-xs text-gray-500">
-                      {TYPE_LABEL[p.partner_type]} · {p.country} · {p.email}
+                      {[TYPE_LABEL[p.partner_type], p.town, p.country, p.whatsapp, p.email].filter(Boolean).join(" · ")}
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-700">
@@ -229,6 +230,8 @@ function SetupLinkNotice({ name, url, onClose }: { name: string; url: string; on
 function CreatePartnerForm({ onCreated }: { onCreated: (name: string, url: string) => Promise<void> }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [town, setTown] = useState("");
   const [type, setType] = useState<PartnerType>("agency");
   const [inGhana, setInGhana] = useState(true);
   const [countryName, setCountryName] = useState("");
@@ -254,6 +257,10 @@ function CreatePartnerForm({ onCreated }: { onCreated: (name: string, url: strin
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!email.trim() && !whatsapp.trim()) {
+      setError("Give an email or a WhatsApp number");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/admin/influencers", {
@@ -262,6 +269,8 @@ function CreatePartnerForm({ onCreated }: { onCreated: (name: string, url: strin
         body: JSON.stringify({
           name,
           email,
+          whatsapp,
+          town,
           partner_type: type,
           country,
           code,
@@ -274,7 +283,7 @@ function CreatePartnerForm({ onCreated }: { onCreated: (name: string, url: strin
         setError(data.error || "Failed to create");
         return;
       }
-      await onCreated(name, data.setup_url);
+      await onCreated(`${name} (code ${data.partner.code})`, data.setup_url);
     } catch {
       setError("Something went wrong");
     } finally {
@@ -288,8 +297,20 @@ function CreatePartnerForm({ onCreated }: { onCreated: (name: string, url: strin
         <Field label="Name">
           <input value={name} onChange={(e) => setName(e.target.value)} required className={INPUT} />
         </Field>
-        <Field label="Email (used to log in)">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className={INPUT} />
+        <Field label="WhatsApp (with country code)">
+          <input
+            type="tel"
+            value={whatsapp}
+            onChange={(e) => setWhatsapp(e.target.value)}
+            placeholder="+233241234567"
+            className={INPUT}
+          />
+        </Field>
+        <Field label="Email (optional if WhatsApp is given)">
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} />
+        </Field>
+        <Field label="Town">
+          <input value={town} onChange={(e) => setTown(e.target.value)} placeholder="e.g. Cape Coast" className={INPUT} />
         </Field>
         <Field label="Type">
           <select
@@ -333,17 +354,17 @@ function CreatePartnerForm({ onCreated }: { onCreated: (name: string, url: strin
             )}
           </div>
         </Field>
-        <Field label="Ref code">
+        <Field label="Ref code (optional)">
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
-            required
             pattern="[a-z0-9\-]{2,40}"
-            placeholder="e.g. kofi-tours"
+            placeholder={name.trim() ? codeFromName(name) : "made from the name"}
             className={`${INPUT} font-mono`}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Link: <code>aracuya.com/?ref={code || "…"}</code>
+            Link: <code>aracuya.com/?ref={code || (name.trim() ? codeFromName(name) : "…")}</code>
+            {!code && " (a -2, -3 is added if taken)"}
           </p>
         </Field>
         <Field label="Commission">
