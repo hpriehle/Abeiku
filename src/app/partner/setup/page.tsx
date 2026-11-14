@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function PartnerSetupPage() {
+  // useSearchParams needs a Suspense boundary for the static build.
+  return (
+    <Suspense fallback={null}>
+      <PartnerSetupForm />
+    </Suspense>
+  );
+}
+
+function PartnerSetupForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [password, setPassword] = useState("");
@@ -17,7 +26,7 @@ export default function PartnerSetupPage() {
     setError("");
 
     if (!token) {
-      setError("Missing invite token. Check your email for the correct link.");
+      setError("Missing setup token. Use the full setup link you were sent.");
       return;
     }
     if (password.length < 8) {
