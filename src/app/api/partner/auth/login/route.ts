@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHotelById } from "@/lib/db";
-import { getInfluencerByEmail, markInfluencerLogin } from "@/lib/db/influencers";
+import {
+  getInfluencerByEmail,
+  getInfluencersByWhatsapp,
+  markInfluencerLogin,
+  type Influencer,
+} from "@/lib/db/influencers";
+import { normalizeWhatsapp } from "@/lib/partner/codes";
 import {
   verifyPassword,
   createPartnerSessionToken,
@@ -9,19 +15,31 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    // "email" may also hold a WhatsApp number: partners without email log in with it.
+    const login = String(body.login ?? body.email ?? "").trim();
+    const password = body.password;
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+    if (!login || !password) {
+      return NextResponse.json({ error: "Email or WhatsApp number and password required" }, { status: 400 });
     }
 
-    const influencer = await getInfluencerByEmail(email);
-    if (!influencer || !influencer.password_hash) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    let influencer: Influencer | null = null;
+    if (login.includes("@")) {
+      const found = await getInfluencerByEmail(login);
+      if (found?.password_hash && (await verifyPassword(password, found.password_hash))) influencer = found;
+    } else {
+      const whatsapp = normalizeWhatsapp(login);
+      // A number is unique per hotel, so it can match one partner per hotel: take the one
+      // whose password matches.
+      for (const found of whatsapp ? await getInfluencersByWhatsapp(whatsapp) : []) {
+        if (found.password_hash && (await verifyPassword(password, found.password_hash))) {
+          influencer = found;
+          break;
+        }
+      }
     }
-
-    const valid = await verifyPassword(password, influencer.password_hash);
-    if (!valid) {
+    if (!influencer) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
@@ -34,7 +52,7 @@ export async function POST(request: NextRequest) {
       influencerId: influencer.id,
       hotelId: influencer.hotel_id,
       hotelSlug: hotel.slug,
-      email: influencer.email,
+      email: influencer.email ?? influencer.whatsapp ?? "",
       name: influencer.name,
     });
 

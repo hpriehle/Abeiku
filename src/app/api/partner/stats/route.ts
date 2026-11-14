@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPartnerSession } from "@/lib/partner/auth";
-import {
-  getInfluencerById,
-  getTotalClicks,
-  getClicksByDay,
-  getRecentClicks,
-} from "@/lib/db/influencers";
-
-const ARACUYA_URL = process.env.ARACUYA_URL ?? "https://aracuya.com";
+import { getInfluencerById, listBookingsForInfluencer } from "@/lib/db/influencers";
+import { todayInGhana, totalsFor } from "@/lib/partner/commission";
+import { bookingView, partnerLink } from "@/lib/partner/views";
 
 export async function GET() {
   const session = await getPartnerSession();
@@ -15,26 +10,36 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const influencer = await getInfluencerById(session.influencerId);
-  if (!influencer) {
+  const partner = await getInfluencerById(session.influencerId);
+  if (!partner) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const [total_clicks, clicks_by_day, recent_clicks] = await Promise.all([
-    getTotalClicks(influencer.id),
-    getClicksByDay(influencer.id, 30),
-    getRecentClicks(influencer.id, 20),
-  ]);
-
-  const link_url = `${ARACUYA_URL}/${influencer.slug}`;
+  const rows = await listBookingsForInfluencer(partner.id);
+  const today = todayInGhana();
 
   return NextResponse.json({
-    name: influencer.name,
-    email: influencer.email,
-    slug: influencer.slug,
-    link_url,
-    total_clicks,
-    clicks_by_day,
-    recent_clicks,
+    name: partner.name,
+    email: partner.email,
+    code: partner.slug,
+    link_url: partnerLink(partner.slug),
+    currency: partner.currency,
+    commission_kind: partner.commission_kind,
+    commission_value: Number(partner.commission_value),
+    totals: totalsFor(rows.map((r) => ({ ...r, commission_amount: Number(r.commission_amount) })), today),
+    // Partners see dates, nights, status and their commission; not guest amounts.
+    bookings: rows.map((r) => {
+      const v = bookingView(r, null, today);
+      return {
+        id: v.id,
+        booking_ref: v.booking_ref,
+        check_in: v.check_in,
+        check_out: v.check_out,
+        nights: v.nights,
+        status: v.status,
+        commission: v.commission,
+        payout_paid_at: v.payout_paid_at,
+      };
+    }),
   });
 }

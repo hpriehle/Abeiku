@@ -53,14 +53,15 @@ export default function PartnerLoginPage() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email
+            Email or WhatsApp number
           </label>
           <input
             id="email"
-            type="email"
+            type="text"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder="you@example.com or +233…"
             required
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent mb-4"
           />

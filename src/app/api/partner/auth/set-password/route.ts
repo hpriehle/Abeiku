@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       influencerId: influencer.id,
       hotelId: influencer.hotel_id,
       hotelSlug: hotel.slug,
-      email: influencer.email,
+      email: influencer.email ?? influencer.whatsapp ?? "",
       name: influencer.name,
     });
 
