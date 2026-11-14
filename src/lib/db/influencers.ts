@@ -1,4 +1,13 @@
 import { supabase } from "@/lib/supabase/client";
+import type { CommissionKind, PartnerCurrency, PartnerType } from "@/lib/partner/commission";
+import type {
+  BookingEvent,
+  BookingPatch,
+  BookingReportStore,
+  NewBookingRow,
+  PartnerRule,
+  ReferralBookingRow,
+} from "@/lib/partner/booking-report";
 
 export interface Influencer {
   id: string;
@@ -12,6 +21,12 @@ export interface Influencer {
   redirect_url: string;
   created_at: string;
   last_login_at: string | null;
+  partner_type: PartnerType;
+  country: string;
+  currency: PartnerCurrency;
+  commission_kind: CommissionKind;
+  commission_value: number;
+  commission_currency: PartnerCurrency;
 }
 
 export interface InfluencerClick {
@@ -50,6 +65,12 @@ export async function createInfluencer(input: {
   invite_token: string;
   invite_expires_at: string;
   redirect_url?: string;
+  partner_type: PartnerType;
+  country: string;
+  currency: PartnerCurrency;
+  commission_kind: CommissionKind;
+  commission_value: number;
+  commission_currency: PartnerCurrency;
 }): Promise<Influencer> {
   const { data, error } = await supabase
     .from("influencers")
@@ -61,6 +82,12 @@ export async function createInfluencer(input: {
       invite_token: input.invite_token,
       invite_expires_at: input.invite_expires_at,
       redirect_url: input.redirect_url ?? "/",
+      partner_type: input.partner_type,
+      country: input.country,
+      currency: input.currency,
+      commission_kind: input.commission_kind,
+      commission_value: input.commission_value,
+      commission_currency: input.commission_currency,
     })
     .select()
     .single();
@@ -124,6 +151,19 @@ export async function setInfluencerPassword(id: string, password_hash: string): 
     .from("influencers")
     .update({ password_hash, invite_token: null, invite_expires_at: null })
     .eq("id", id);
+  if (error) throw error;
+}
+
+export async function setInfluencerInvite(
+  id: string,
+  invite_token: string,
+  invite_expires_at: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("influencers")
+    .update({ invite_token, invite_expires_at })
+    .eq("id", id)
+    .is("password_hash", null);
   if (error) throw error;
 }
 
@@ -217,3 +257,117 @@ export async function getClickCountsByInfluencer(hotelId: string): Promise<Map<s
   }
   return counts;
 }
+
+// ── Referral bookings ───────────────────────────────────────────────────
+
+export async function listBookingsForInfluencer(influencerId: string): Promise<ReferralBookingRow[]> {
+  const { data, error } = await supabase
+    .from("referral_bookings")
+    .select("*")
+    .eq("influencer_id", influencerId)
+    .order("check_in", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listBookingsForHotel(hotelId: string): Promise<ReferralBookingRow[]> {
+  const { data, error } = await supabase
+    .from("referral_bookings")
+    .select("*")
+    .eq("hotel_id", hotelId)
+    .order("check_in", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getBookingById(id: string): Promise<ReferralBookingRow | null> {
+  const { data, error } = await supabase
+    .from("referral_bookings")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function setBookingPayout(
+  id: string,
+  payout: { paid: true; paid_at: string; note: string | null } | { paid: false }
+): Promise<void> {
+  const patch = payout.paid
+    ? { payout_status: "paid", payout_paid_at: payout.paid_at, payout_note: payout.note }
+    : { payout_status: "unpaid", payout_paid_at: null, payout_note: null };
+  const { error } = await supabase
+    .from("referral_bookings")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/** Supabase-backed store for the booking report handler. */
+export const supabaseBookingReportStore: BookingReportStore = {
+  async findHotelId(slug) {
+    const { data, error } = await supabase
+      .from("hotels")
+      .select("id")
+      .eq("slug", slug)
+      .eq("active", true)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.id ?? null;
+  },
+
+  async findPartnerByRefCode(hotelId, refCode): Promise<PartnerRule | null> {
+    const { data, error } = await supabase
+      .from("influencers")
+      .select("id, commission_kind, commission_value, commission_currency")
+      .eq("hotel_id", hotelId)
+      .eq("slug", refCode.toLowerCase())
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async recordEvent(hotelId, bookingRef, event: BookingEvent, payload) {
+    const { error } = await supabase
+      .from("referral_booking_events")
+      .insert({ hotel_id: hotelId, booking_ref: bookingRef, event, payload });
+    if (!error) return true;
+    if (error.code === "23505") return false; // unique violation: already recorded
+    throw error;
+  },
+
+  async forgetEvent(hotelId, bookingRef, event) {
+    const { error } = await supabase
+      .from("referral_booking_events")
+      .delete()
+      .eq("hotel_id", hotelId)
+      .eq("booking_ref", bookingRef)
+      .eq("event", event);
+    if (error) throw error;
+  },
+
+  async getBooking(hotelId, bookingRef) {
+    const { data, error } = await supabase
+      .from("referral_bookings")
+      .select("*")
+      .eq("hotel_id", hotelId)
+      .eq("booking_ref", bookingRef)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
+  async insertBooking(row: NewBookingRow) {
+    const { error } = await supabase.from("referral_bookings").insert(row);
+    if (error) throw error;
+  },
+
+  async updateBooking(id, patch: BookingPatch) {
+    const { error } = await supabase
+      .from("referral_bookings")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) throw error;
+  },
+};
