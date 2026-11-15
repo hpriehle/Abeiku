@@ -1,19 +1,8 @@
 import { CalendarDays, type LucideIcon, MessageSquare, Star, Wallet } from "lucide-react";
-import {
-  getBookingStats,
-  getBookingsForMonth,
-  getReviewStats,
-  getConversationCount,
-  getReferralStats,
-  getHotelById,
-  getHotelRooms,
-} from "@/lib/db";
+import { getBookingStats, getReviewStats, getConversationCount, getReferralStats, getHotelById } from "@/lib/db";
 import { getSession } from "@/lib/admin/auth";
 import { redirect } from "next/navigation";
-import { BookingCalendar } from "./BookingCalendar";
-import { RoomAvailabilityGrid } from "./RoomAvailabilityGrid";
-import { getBookedDates } from "@/lib/calendar";
-import { hotelStorage } from "@/lib/hotel-context";
+import { CalendarBoard } from "../calendar/CalendarBoard";
 
 function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: LucideIcon }) {
   return (
@@ -38,40 +27,12 @@ export default async function DashboardPage() {
   const hotel = await getHotelById(hotelId);
   const currency = hotel?.currency || "GHS";
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
-  const lastDayDate = new Date(currentYear, currentMonth, 0);
-  const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
-
-  const [bookings, calendarBookings, rooms, calendarDates, reviews, conversations, referrals] = await Promise.all([
+  const [bookings, reviews, conversations, referrals] = await Promise.all([
     getBookingStats(hotelId),
-    getBookingsForMonth(hotelId, currentYear, currentMonth),
-    getHotelRooms(hotelId),
-    hotel
-      ? hotelStorage.run({ hotelId: hotel.id, hotel }, () => getBookedDates(firstDay, lastDay)).catch(() => [] as string[])
-      : ([] as string[]),
     getReviewStats(hotelId),
     getConversationCount(hotelId),
     getReferralStats(hotelId),
   ]);
-
-  // Deduplicate: dates covered by DB bookings are not "external blocks"
-  const dbBookedDates = new Set<string>();
-  for (const b of calendarBookings) {
-    const start = new Date(b.check_in + "T00:00:00");
-    const end = new Date(b.check_out + "T00:00:00");
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      const y = cursor.getFullYear();
-      const m = String(cursor.getMonth() + 1).padStart(2, "0");
-      const d = String(cursor.getDate()).padStart(2, "0");
-      dbBookedDates.add(`${y}-${m}-${d}`);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  }
-  const blockedDates = calendarDates.filter((d) => !dbBookedDates.has(d));
 
   return (
     <div className="admin-page">
@@ -104,6 +65,11 @@ export default async function DashboardPage() {
         />
       </div>
 
+      {/* C1: every booking from every source, the main block of the dashboard. */}
+      <div className="mb-8">
+        <CalendarBoard onDashboard />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Booking Status Breakdown */}
         <div className="admin-card">
@@ -133,49 +99,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Room Availability Grid */}
-      <div className="mt-6">
-        <RoomAvailabilityGrid
-          initialBookings={calendarBookings.map((b) => ({
-            id: b.id,
-            guest_name: b.guest_name,
-            room_slug: b.room_slug,
-            check_in: b.check_in,
-            check_out: b.check_out,
-            booking_status: b.booking_status,
-            rooms_count: b.rooms_count,
-          }))}
-          initialRooms={rooms.map((r) => ({
-            id: r.id,
-            slug: r.slug,
-            name: r.name,
-            room_type: r.room_type,
-            group_id: r.group_id,
-            total_rooms: r.total_rooms,
-          }))}
-          initialBlockedDates={blockedDates}
-          initialYear={currentYear}
-          initialMonth={currentMonth}
-        />
-      </div>
-
-      {/* Calendar */}
-      <div className="mt-6">
-        <BookingCalendar
-          initialBookings={calendarBookings.map((b) => ({
-            id: b.id,
-            guest_name: b.guest_name,
-            room_slug: b.room_slug,
-            check_in: b.check_in,
-            check_out: b.check_out,
-            booking_status: b.booking_status,
-            rooms_count: b.rooms_count,
-          }))}
-          initialBlockedDates={blockedDates}
-          initialYear={currentYear}
-          initialMonth={currentMonth}
-        />
-      </div>
     </div>
   );
 }

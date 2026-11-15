@@ -7,6 +7,7 @@ import {
   BedDouble,
   Building2,
   CalendarDays,
+  CalendarRange,
   ChevronsLeft,
   ChevronsRight,
   FlaskConical,
@@ -27,6 +28,7 @@ type NavLink = { href: string; label: string; icon: LucideIcon };
 const LINKS: NavLink[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/communication", label: "Communication", icon: MessageSquare },
+  { href: "/admin/calendar", label: "Calendar", icon: CalendarRange },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/payments", label: "Payments", icon: Wallet },
   { href: "/admin/rooms", label: "Rooms", icon: BedDouble },

@@ -28,7 +28,12 @@ export async function GET(request: NextRequest) {
     const [rows, rooms] = await Promise.all([getCalendarBookings(hotel.id, from, to), getHotelRooms(hotel.id)]);
     const totalRooms =
       HOTEL_LISTINGS[hotel.slug]?.totalRooms ?? Math.max(1, rooms.reduce((s, r) => s + (Number(r.total_rooms) || 1), 0));
-    return NextResponse.json({ bookings: rows.map(toCalendarRow), totalRooms, currency: hotel.currency || "GHS" });
+    return NextResponse.json({
+      bookings: rows.map(toCalendarRow),
+      totalRooms,
+      currency: hotel.currency || "GHS",
+      rooms: rooms.map((r) => ({ slug: r.slug, name: r.name })),
+    });
   } catch (err) {
     console.error("[admin/calendar] load failed:", err instanceof Error ? err.message : "unknown");
     return NextResponse.json({ error: "We couldn't load the calendar. Please try again." }, { status: 500 });
