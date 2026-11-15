@@ -1,0 +1,127 @@
+[
+  {
+    "name": "room-edit-keeps-tiers",
+    "ok": true,
+    "detail": {
+      "priceBefore": "1200",
+      "sentTiers": [
+        {
+          "label": "Entire House",
+          "price": 1201,
+          "rooms": 1
+        }
+      ]
+    },
+    "requests": []
+  },
+  {
+    "name": "room-empty-price",
+    "ok": true,
+    "detail": {
+      "alert": "Enter a price per night greater than 0."
+    },
+    "requests": []
+  },
+  {
+    "name": "room-delete-fails",
+    "ok": true,
+    "detail": {
+      "alert": "We couldn't delete this room. It is still there. Please try again.",
+      "rowsBefore": 4,
+      "rowsAfter": 4
+    },
+    "requests": [
+      "DELETE /api/admin/rooms/11742a7b-cfd4-4b0d-b6f7-017fbb285b21"
+    ]
+  },
+  {
+    "name": "room-reorder-fails",
+    "ok": true,
+    "detail": {
+      "alert": "We couldn't save the new room order. The previous order is back.",
+      "orderRestored": true
+    },
+    "requests": [
+      "PUT /api/admin/rooms/reorder"
+    ]
+  },
+  {
+    "name": "booking-action-fails",
+    "ok": true,
+    "detail": {
+      "clicked": "Check In",
+      "alert": "We couldn't check the guest in. Nothing was changed. Please try again.",
+      "modalOpen": true
+    },
+    "requests": [
+      "PUT /api/admin/bookings/bf82240b-6a9d-4f12-aa6e-dc9d6ebbf9a6"
+    ]
+  },
+  {
+    "name": "template-toggle-fails",
+    "ok": true,
+    "detail": {
+      "alert": "We couldn't turn Check-in Reminder off. Please try again.",
+      "unchanged": true
+    },
+    "requests": [
+      "PUT /api/admin/templates"
+    ]
+  },
+  {
+    "name": "template-save",
+    "ok": true,
+    "detail": {
+      "status": "Check-in Reminder saved."
+    },
+    "requests": []
+  },
+  {
+    "name": "notification-toggle-fails",
+    "ok": true,
+    "detail": {
+      "alert": "We couldn't turn email off for \"New Booking\". The setting was not changed.",
+      "reverted": true
+    },
+    "requests": [
+      "PATCH /api/admin/notifications"
+    ]
+  },
+  {
+    "name": "settings-save-fails",
+    "ok": true,
+    "detail": {
+      "alert": "We couldn't save your hotel details. Your changes are still in the form; please try again."
+    },
+    "requests": [
+      "PATCH /api/admin/hotel"
+    ]
+  },
+  {
+    "name": "simulator-bot-off",
+    "ok": true,
+    "detail": {
+      "status": "The WhatsApp booking bot is off for this hotel.Guest messages go to your Inbox a"
+    },
+    "requests": []
+  },
+  {
+    "name": "widget-room-book",
+    "ok": true,
+    "detail": {
+      "href": "https://aracuya.com/reserve",
+      "whatsappLinks": 0
+    },
+    "requests": []
+  },
+  {
+    "name": "booking-action-fails-375",
+    "ok": true,
+    "detail": {
+      "alert": "We couldn't check the guest in. Nothing was changed. Please try again."
+    },
+    "requests": [
+      "PUT /api/admin/bookings/bf82240b-6a9d-4f12-aa6e-dc9d6ebbf9a6"
+    ]
+  }
+]
