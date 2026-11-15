@@ -20,7 +20,8 @@ Run in the Supabase SQL editor, in this order (neither has been run yet):
 | --- | --- | --- |
 | `ABEIKU_REFERRAL_SECRET` | Abeiku (Netlify) and aracuya.com | Shared secret for the report API. If unset, the API rejects every call (401). |
 | `ABEIKU_ADMIN_API_SECRET` | Abeiku (Netlify) and the caller (aracuya desk) | Secret for the admin partner API (`/api/admin/partners*`). If unset, those endpoints reject every call (401). Use a different value from `ABEIKU_REFERRAL_SECRET`. |
-| `ARACUYA_URL` | Abeiku, optional | Base for partner links, default `https://aracuya.com`. |
+| `ARACUYA_URL` | Abeiku, optional | Base for Aracuya's partner links, default `https://aracuya.com`. |
+| `PARTNER_SITE_URLS` | Abeiku, optional | JSON map of hotel slug to the site partner links point to, e.g. `{"other-hotel":"https://other-hotel.com"}`. A hotel that is not listed (other than Aracuya) gets no partner link. |
 
 ## API: report a booking
 

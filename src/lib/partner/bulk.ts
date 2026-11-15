@@ -20,7 +20,7 @@ import {
   type Totals,
 } from "./commission";
 import { codeFromName, dedupeCode, normalizeEmail, normalizeWhatsapp } from "./codes";
-import { INVITE_TTL_MS, partnerLink, setupUrl } from "./views";
+import { INVITE_TTL_MS, partnerLink, partnerSiteUrl, setupUrl } from "./views";
 
 export const MAX_BULK_ITEMS = 200;
 
@@ -177,6 +177,7 @@ export interface BulkResult {
 
 interface Ctx {
   hotelId: string;
+  siteUrl: string | null;
   partners: PartnerRecord[];
   store: PartnerAdminStore;
   now: Date;
@@ -251,7 +252,7 @@ async function upsertOne(item: BulkItem, ctx: Ctx): Promise<BulkResult> {
       invite_expires_at: invite.patch.invite_expires_at ?? null,
     });
     ctx.partners.push(created);
-    return { name: created.name, code: created.slug, ref_link: partnerLink(created.slug), setup_link: invite.link, status: "created" };
+    return { name: created.name, code: created.slug, ref_link: partnerLink(created.slug, ctx.siteUrl), setup_link: invite.link, status: "created" };
   }
 
   // Update. The ref code never changes here: links may already be out.
@@ -289,7 +290,7 @@ async function upsertOne(item: BulkItem, ctx: Ctx): Promise<BulkResult> {
   };
   const updated = await ctx.store.updatePartner(existing.id, patch);
   ctx.partners[ctx.partners.indexOf(existing)] = updated;
-  return { name: updated.name, code: updated.slug, ref_link: partnerLink(updated.slug), setup_link: invite.link, status: "updated" };
+  return { name: updated.name, code: updated.slug, ref_link: partnerLink(updated.slug, ctx.siteUrl), setup_link: invite.link, status: "updated" };
 }
 
 function dbErrorMessage(err: unknown): string {
@@ -326,6 +327,7 @@ export async function handleBulkUpsert(input: {
 
   const ctx: Ctx = {
     hotelId,
+    siteUrl: partnerSiteUrl(body.hotel_slug.trim()),
     partners: await input.store.listPartners(hotelId),
     store: input.store,
     now: input.now ?? new Date(),
@@ -361,7 +363,7 @@ export interface PartnerListItem {
   id: string;
   name: string;
   code: string;
-  ref_link: string;
+  ref_link: string | null;
   /** Only while the partner has not set a password and the link is still valid. */
   setup_link: string | null;
   setup_expires_at: string | null;
@@ -393,6 +395,7 @@ export async function handleListPartners(input: {
   const hotelId = await input.store.findHotelId(slug);
   if (!hotelId) return { status: 404, body: { error: "Unknown hotel" } };
 
+  const siteUrl = partnerSiteUrl(slug);
   const now = input.now ?? new Date();
   const today = todayInGhana(now);
   const [partners, bookings] = await Promise.all([
@@ -413,7 +416,7 @@ export async function handleListPartners(input: {
       id: p.id,
       name: p.name,
       code: p.slug,
-      ref_link: partnerLink(p.slug),
+      ref_link: partnerLink(p.slug, siteUrl),
       setup_link: linkValid ? setupUrl(p.invite_token!) : null,
       setup_expires_at: linkValid ? p.invite_expires_at : null,
       set_up: Boolean(p.password_hash),

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/admin/auth";
 import { listInfluencersForHotel, listBookingsForHotel } from "@/lib/db/influencers";
-import { buildAdminView } from "@/lib/partner/views";
+import { adminSiteUrl, buildAdminView } from "@/lib/partner/views";
 import { InfluencersClient } from "./InfluencersClient";
 
 export default async function AdminPartnersPage() {
@@ -13,5 +13,5 @@ export default async function AdminPartnersPage() {
     listBookingsForHotel(session.hotelId),
   ]);
 
-  return <InfluencersClient initial={buildAdminView(partners, bookings)} />;
+  return <InfluencersClient initial={buildAdminView(partners, bookings, await adminSiteUrl(session.hotelId))} />;
 }

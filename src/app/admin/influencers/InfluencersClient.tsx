@@ -115,13 +115,15 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-700">
                     {p.code}
-                    <button
-                      onClick={() => navigator.clipboard.writeText(p.link)}
-                      className="ml-2 text-xs text-[#2D4A3E] underline"
-                      title={p.link}
-                    >
-                      copy link
-                    </button>
+                    {p.link && (
+                      <button
+                        onClick={() => navigator.clipboard.writeText(p.link!)}
+                        className="ml-2 text-xs text-[#2D4A3E] underline"
+                        title={p.link}
+                      >
+                        copy link
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-700">
                     {ruleLabel(p.commission_kind, p.commission_value, p.currency)}

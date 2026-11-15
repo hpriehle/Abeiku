@@ -6,7 +6,7 @@ import { formatDate, formatMoney, ruleLabel, STATUS_STYLES } from "@/components/
 interface Stats {
   name: string;
   code: string;
-  link_url: string;
+  link_url: string | null;
   currency: "GHS" | "USD";
   commission_kind: "percent" | "per_night";
   commission_value: number;
@@ -46,7 +46,7 @@ export default function PartnerDashboardPage() {
   }, []);
 
   async function handleCopy() {
-    if (!stats) return;
+    if (!stats?.link_url) return;
     await navigator.clipboard.writeText(stats.link_url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
