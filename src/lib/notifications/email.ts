@@ -8,19 +8,27 @@ function getResend() {
   return _resend;
 }
 
-const FROM_EMAIL = process.env.NOTIFICATION_FROM_EMAIL || "notifications@mail.abeiku.com";
+/** Resend's verified domain is abeiku.com (its DNS records live on send.abeiku.com). */
+export const DEFAULT_FROM_EMAIL = "notifications@abeiku.com";
+
+export function fromEmail(env: NodeJS.ProcessEnv = process.env): string {
+  return env.NOTIFICATION_FROM_EMAIL?.trim() || DEFAULT_FROM_EMAIL;
+}
 
 export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  /** Plain-text version (shown by mail apps that prefer it). */
+  text?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await getResend().emails.send({
-      from: `Abeiku <${FROM_EMAIL}>`,
+      from: `Abeiku <${fromEmail()}>`,
       to: params.to,
       subject: params.subject,
       html: wrapInTemplate(params.html),
+      ...(params.text ? { text: params.text } : {}),
     });
 
     if (error) {

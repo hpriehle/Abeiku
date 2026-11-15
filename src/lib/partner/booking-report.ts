@@ -244,6 +244,8 @@ export async function handleBookingReport(input: {
   store: BookingReportStore;
   /** The hotel `bookings` table: every reported booking is kept there, partner or not. */
   hotelBookings?: HotelBookingsStore;
+  /** Called with the hotel bookings row the report wrote (booking alerts). Errors are logged, never returned. */
+  onHotelBooking?: (hotelId: string, rowId: string) => Promise<unknown>;
 }): Promise<HandlerResult> {
   if (!isAuthorized(input.authHeader, input.secret)) {
     return { status: 401, body: { error: "Unauthorized" } };
@@ -262,7 +264,12 @@ export async function handleBookingReport(input: {
 
   try {
     if (input.hotelBookings) {
-      await recordWebBooking(input.hotelBookings, { hotelId, hotelSlug: input.hotelSlug, report: r });
+      const rowId = await recordWebBooking(input.hotelBookings, { hotelId, hotelSlug: input.hotelSlug, report: r });
+      if (rowId && input.onHotelBooking) {
+        await input.onHotelBooking(hotelId, rowId).catch((err) =>
+          console.error("[booking-report] booking alert failed", (err as Error)?.message ?? err)
+        );
+      }
     }
 
     const existing = await store.getBooking(hotelId, r.booking_ref);

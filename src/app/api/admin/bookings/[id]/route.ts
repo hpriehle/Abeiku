@@ -13,6 +13,7 @@ import { hotelStorage } from "@/lib/hotel-context";
 import { notifyGuest } from "@/lib/whatsapp/guest-notify";
 import type { Booking } from "@/lib/whatsapp/types";
 import { sourceOf } from "@/lib/bookings/calendar-view";
+import { alertBookingIds } from "@/lib/alerts";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   confirmed: ["checked_in", "cancelled"],
@@ -88,6 +89,7 @@ export async function PUT(
       if (action === "cancelled") {
         // Cancel this booking
         await cancelBooking(session.hotelId, booking, hotel);
+        const cancelledIds = [booking.id];
 
         // Cancel grouped bookings if requested
         if (cancel_group && booking.booking_group_id) {
@@ -95,9 +97,13 @@ export async function PUT(
           for (const b of grouped) {
             if (b.id !== booking.id) {
               await cancelBooking(session.hotelId, b, hotel);
+              cancelledIds.push(b.id);
             }
           }
         }
+
+        // Cancellation email to the hotel's alert address (never throws; skipped before the C2 SQL).
+        await alertBookingIds(session.hotelId, cancelledIds);
       } else {
         // Check-in or check-out
         await updateBooking(session.hotelId, id, {

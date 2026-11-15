@@ -9,6 +9,8 @@ export interface Hotel {
   slug: string;
   contact_phone: string | null;
   contact_email: string | null;
+  /** Booking alerts go here (docs/c2-alerts/booking-alerts.sql); undefined before that migration. */
+  alert_email?: string | null;
   location_lat: number | null;
   location_lng: number | null;
   location_city: string | null;

@@ -1,18 +1,24 @@
 // GET /api/cron/lifecycle — Trigger lifecycle messages (check-in reminders, checkout, reviews)
-// Call this from a cron job (Vercel Cron, external scheduler, or node-cron) once daily.
+// These are WhatsApp messages TO GUESTS. Scheduled daily by netlify/functions/lifecycle.mts,
+// but OFF unless LIFECYCLE_CRON_ENABLED=true (both the function and this route check it).
+// Auth: Authorization: Bearer $CRON_SECRET (refused when CRON_SECRET is not set).
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAllActiveHotels, getHotelById } from "@/lib/db";
+import { isAuthorized } from "@/lib/partner/booking-report";
+import { getAllActiveHotels } from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
 import { runLifecycleChecks } from "@/lib/lifecycle";
 
-export async function GET(request: NextRequest) {
-  // Simple auth: check for a secret token to prevent unauthorized triggering
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
+function lifecycleEnabled(): boolean {
+  return process.env.LIFECYCLE_CRON_ENABLED === "true";
+}
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request.headers.get("authorization"), process.env.CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!lifecycleEnabled()) {
+    return NextResponse.json({ success: true, skipped: "disabled (set LIFECYCLE_CRON_ENABLED=true to send guest messages)" });
   }
 
   try {

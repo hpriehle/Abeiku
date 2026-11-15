@@ -23,21 +23,21 @@ function priceOf(r: BookingReport): { total_price: number; currency: string } | 
   return null;
 }
 
-/** Record a website booking event in the hotel bookings table. */
+/** Record a website booking event in the hotel bookings table. Returns the row's id (null if there is none). */
 export async function recordWebBooking(
   store: HotelBookingsStore,
   input: { hotelId: string; hotelSlug: string; report: BookingReport }
-): Promise<void> {
+): Promise<string | null> {
   const { hotelId, report: r } = input;
 
   if (r.event !== "paid") {
     // cancelled / refunded: mark the row if we have it (a row needs dates, so none is created).
     const existing = await store.find(hotelId, WEB_SOURCE, r.booking_ref);
-    if (!existing) return;
+    if (!existing) return null;
     const patch: HotelBookingPatch = { booking_status: "cancelled" };
     if (r.event === "refunded") patch.payment_status = "refunded";
     await store.update(existing.id, patch);
-    return;
+    return existing.id;
   }
 
   const listing = listingFor(input.hotelSlug);
@@ -58,7 +58,7 @@ export async function recordWebBooking(
     paid_at: r.paid_at ?? undefined,
   };
 
-  await upsertHotelBooking(
+  const saved = await upsertHotelBooking(
     store,
     {
       hotel_id: hotelId,
@@ -90,4 +90,5 @@ export async function recordWebBooking(
       payment_status: existing.payment_status === "refunded" ? "refunded" : "paid",
     })
   );
+  return saved.id;
 }

@@ -13,6 +13,8 @@ vi.mock("@/lib/db", () => ({
   updateBooking: (...a: unknown[]) => updateBooking(...(a as [])),
 }));
 vi.mock("@/lib/calendar", () => ({ deleteBookingEvent: async () => {}, updateBookingEvent: async () => {} }));
+const alertBookingIds = vi.fn(async () => ({}));
+vi.mock("@/lib/alerts", () => ({ alertBookingIds: (...a: unknown[]) => alertBookingIds(...(a as [])) }));
 vi.mock("@/lib/whatsapp/guest-notify", () => ({ notifyGuest: (...a: unknown[]) => notifyGuest(...(a as [])) }));
 
 const { PUT } = await import("./route");
@@ -32,6 +34,7 @@ describe("PUT /api/admin/bookings/[id] on imported bookings (C1)", () => {
   beforeEach(() => {
     updateBooking.mockClear();
     notifyGuest.mockClear();
+    alertBookingIds.mockClear();
   });
 
   for (const source of ["aracuya_web", "google_calendar", "airbnb", "vrbo", "booking_com"]) {
@@ -42,8 +45,16 @@ describe("PUT /api/admin/bookings/[id] on imported bookings (C1)", () => {
       expect((await res.json()).error).toMatch(/Change it in/);
       expect(updateBooking).not.toHaveBeenCalled();
       expect(notifyGuest).not.toHaveBeenCalled();
+      expect(alertBookingIds).not.toHaveBeenCalled();
     });
   }
+
+  it("sends the hotel a cancellation alert when a WhatsApp booking is cancelled (C2)", async () => {
+    booking = { id: "b1", source: "whatsapp", booking_status: "confirmed", payment_status: "unpaid", phone: "+233200000000", payment_provider: null };
+    const res = await put({ action: "cancelled" });
+    expect(res.status).toBe(200);
+    expect(alertBookingIds).toHaveBeenCalledWith("h1", ["b1"]);
+  });
 
   it("still lets a WhatsApp booking be changed", async () => {
     booking = { id: "b1", source: null, booking_status: "confirmed", phone: "+233200000000", payment_provider: null };

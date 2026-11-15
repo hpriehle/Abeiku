@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { handleBookingReport, type BookingReportStore, type ReferralBookingRow } from "@/lib/partner/booking-report";
 import { memoryHotelBookings } from "./memory-store.test-helper";
 
@@ -169,5 +169,49 @@ describe("website booking ingest", () => {
     await call({ event: "refunded", booking_ref: "ARC-1A2B3C4D" });
     await call({ ...body, paid_at: "2027-03-01T12:00:01.000Z", event: "paid" }); // duplicate event → no-op
     expect(hb.all()[0]).toMatchObject({ booking_status: "cancelled", payment_status: "refunded" });
+  });
+});
+
+describe("booking alerts hook (C2)", () => {
+  it("calls onHotelBooking with the row for a new report and for its cancellation, not for a repeat", async () => {
+    const seen: [string, string][] = [];
+    const callWith = (b: unknown) =>
+      handleBookingReport({
+        authHeader: `Bearer ${SECRET}`,
+        secret: SECRET,
+        hotelSlug: "aracuya",
+        body: b,
+        store: ref.store,
+        hotelBookings: hb.store,
+        onHotelBooking: async (h, id) => {
+          seen.push([h, id]);
+        },
+      });
+    await callWith(body);
+    await callWith(body); // same event again: duplicate, no alert
+    await callWith({ ...body, event: "cancelled" });
+    const rowId = hb.all()[0].id;
+    expect(seen).toEqual([
+      ["hotel-1", rowId],
+      ["hotel-1", rowId],
+    ]);
+  });
+
+  it("an alert failure never fails the report", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await handleBookingReport({
+      authHeader: `Bearer ${SECRET}`,
+      secret: SECRET,
+      hotelSlug: "aracuya",
+      body,
+      store: ref.store,
+      hotelBookings: hb.store,
+      onHotelBooking: async () => {
+        throw new Error("resend down");
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(hb.all()).toHaveLength(1);
+    err.mockRestore();
   });
 });

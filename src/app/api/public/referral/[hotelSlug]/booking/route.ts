@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleBookingReport } from "@/lib/partner/booking-report";
 import { supabaseBookingReportStore } from "@/lib/db/influencers";
 import { supabaseHotelBookingsStore } from "@/lib/db/hotel-bookings";
+import { alertBookingIds } from "@/lib/alerts";
 
 // Server-to-server: the hotel site reports paid / refunded / cancelled bookings.
 // Every booking is kept in the hotel bookings table; those with a partner ref code
@@ -28,6 +29,8 @@ export async function POST(
       body: body === undefined ? null : body,
       store: supabaseBookingReportStore,
       hotelBookings: supabaseHotelBookingsStore,
+      // New-booking / cancellation email to the hotel (never the guest).
+      onHotelBooking: (hotelId, rowId) => alertBookingIds(hotelId, [rowId]),
     });
     return NextResponse.json(result.body, { status: result.status });
   } catch (err) {
