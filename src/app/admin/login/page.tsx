@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
           >
             Hotel Admin
           </h1>
-          <p className="text-gray-400 text-sm mt-2">Sign in to your dashboard</p>
+          <p className="text-gray-300 text-sm mt-2">Sign in to your dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="admin@hotel.com"
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent mb-4"
+            className="w-full px-4 py-3 border border-[#868e9c] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent mb-4"
           />
 
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
@@ -72,7 +72,7 @@ export default function AdminLoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+            className="w-full px-4 py-3 border border-[#868e9c] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
           />
 
           {error && (
@@ -82,7 +82,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-4 py-3 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+            className="admin-btn-primary w-full mt-4 py-3"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>

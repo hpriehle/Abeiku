@@ -74,11 +74,11 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
   return (
     <div className="space-y-6">
       {/* Toggle grid */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="admin-card">
         <h3 className="text-sm font-semibold text-gray-900 mb-4">Event Notifications</h3>
         <div className="space-y-1">
           {/* Header */}
-          <div className="grid grid-cols-[1fr_72px_72px] gap-4 text-xs font-medium text-gray-400 uppercase tracking-wider px-1 pb-2">
+          <div className="grid grid-cols-[1fr_72px_72px] gap-4 text-xs font-medium text-gray-500 uppercase tracking-wider px-1 pb-2">
             <span>Event</span>
             <span className="text-center">Email</span>
             <span className="text-center">WhatsApp</span>
@@ -105,10 +105,13 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
                   <button
                     type="button"
                     onClick={() => togglePref(ec.event, "email")}
+                    role="switch"
+                    aria-checked={!!p.email}
+                    aria-label={`${ec.label} by email`}
                     disabled={!hasEmail}
                     className={`w-10 h-6 rounded-full transition-colors relative ${
-                      p.email ? "bg-[#2D4A3E]" : "bg-gray-200"
-                    } ${!hasEmail ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                      p.email ? "bg-[#2D4A3E]" : "bg-[#868e9c]"
+                    } ${!hasEmail ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     <span
                       className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
@@ -123,10 +126,13 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
                   <button
                     type="button"
                     onClick={() => togglePref(ec.event, "whatsapp")}
+                    role="switch"
+                    aria-checked={!!p.whatsapp}
+                    aria-label={`${ec.label} by WhatsApp`}
                     disabled={!hasWhatsApp}
                     className={`w-10 h-6 rounded-full transition-colors relative ${
-                      p.whatsapp ? "bg-[#2D4A3E]" : "bg-gray-200"
-                    } ${!hasWhatsApp ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                      p.whatsapp ? "bg-[#2D4A3E]" : "bg-[#868e9c]"
+                    } ${!hasWhatsApp ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     <span
                       className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
@@ -143,7 +149,7 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
 
       {/* Recent notifications log */}
       {recentLog.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Recent Notifications</h3>
           <div className="space-y-2">
             {recentLog.map((log) => (
@@ -161,7 +167,7 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
                 <span className="text-gray-900 flex-1 truncate">
                   {log.subject || log.body_preview}
                 </span>
-                <span className="text-gray-400 text-xs flex-shrink-0">
+                <span className="text-gray-500 text-xs flex-shrink-0">
                   {new Date(log.created_at).toLocaleDateString()}
                 </span>
               </div>

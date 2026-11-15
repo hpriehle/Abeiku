@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 const inputClass =
-  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent";
+  "admin-input";
 
 type Step =
   | "idle"
@@ -174,7 +174,7 @@ export function PaystackSubaccountWizard({
   return (
     <div className="space-y-6">
       {/* Card Payment Setup */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="admin-card">
         <h3 className="text-lg font-semibold text-gray-900 mb-1">Card Payment Setup</h3>
         <p className="text-sm text-gray-500 mb-4">
           Connect your bank account to receive card payment payouts from guest bookings.
@@ -200,8 +200,9 @@ export function PaystackSubaccountWizard({
         {(step === "idle" || step === "bank_selected" || step === "verifying_account") && banks.length > 0 && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Bank</label>
+              <label htmlFor="paystackfo-select-bank" className="admin-label">Select Bank</label>
               <input
+                id="paystackfo-select-bank"
                 type="text"
                 value={bankSearch}
                 onChange={(e) => setBankSearch(e.target.value)}
@@ -209,6 +210,7 @@ export function PaystackSubaccountWizard({
                 className={`${inputClass} mb-2`}
               />
               <select
+                aria-label="Bank"
                 value={selectedBank}
                 onChange={(e) => {
                   setSelectedBank(e.target.value);
@@ -229,8 +231,9 @@ export function PaystackSubaccountWizard({
 
             {selectedBank && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                <label htmlFor="paystackfo-account-number" className="admin-label">Account Number</label>
                 <input
+                  id="paystackfo-account-number"
                   type="text"
                   inputMode="numeric"
                   value={accountNumber}
@@ -249,7 +252,7 @@ export function PaystackSubaccountWizard({
               <button
                 onClick={handleVerifyAccount}
                 disabled={step === "verifying_account"}
-                className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+                className="admin-btn-primary"
               >
                 {step === "verifying_account" ? "Verifying..." : "Verify Account"}
               </button>
@@ -276,14 +279,14 @@ export function PaystackSubaccountWizard({
               <button
                 onClick={handleCreateSubaccount}
                 disabled={step === "creating"}
-                className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+                className="admin-btn-primary"
               >
                 {step === "creating" ? "Setting up..." : "Confirm & Connect"}
               </button>
               <button
                 onClick={handleReset}
                 disabled={step === "creating"}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="admin-btn-secondary"
               >
                 Change Account
               </button>
@@ -295,11 +298,11 @@ export function PaystackSubaccountWizard({
         {step === "connected" && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-4 py-3">
-              <span className="text-green-600 text-lg">&#10003;</span>
+              <span className="text-green-700 text-lg">&#10003;</span>
               <div>
                 <p className="text-sm font-medium text-green-800">Card payments connected</p>
                 {subaccountCode && (
-                  <p className="text-xs text-green-600">Subaccount: {subaccountCode}</p>
+                  <p className="text-xs text-green-700">Subaccount: {subaccountCode}</p>
                 )}
               </div>
             </div>
@@ -308,7 +311,7 @@ export function PaystackSubaccountWizard({
             </p>
             <button
               onClick={handleReset}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              className="admin-btn-secondary"
             >
               Change Bank Account
             </button>
@@ -318,7 +321,7 @@ export function PaystackSubaccountWizard({
 
       {/* Payout Preference — only show when connected */}
       {step === "connected" && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Payout Preference</h3>
           <p className="text-sm text-gray-500 mb-4">
             Choose how you want to receive your booking payouts.
@@ -374,12 +377,13 @@ export function PaystackSubaccountWizard({
 
           {selectedPayout === "momo" && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">MoMo Phone Number</label>
+              <label htmlFor="paystackfo-momo-phone-number" className="admin-label">MoMo Phone Number</label>
               <div className="flex gap-2">
                 <span className="inline-flex items-center px-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-500">
                   +233
                 </span>
                 <input
+                  id="paystackfo-momo-phone-number"
                   type="tel"
                   value={payoutMomoPhone}
                   onChange={(e) => {
@@ -403,7 +407,7 @@ export function PaystackSubaccountWizard({
           <button
             onClick={handleSavePayoutPreference}
             disabled={payoutSaving || (selectedPayout === "momo" && !momoPhoneValid)}
-            className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+            className="admin-btn-primary"
           >
             {payoutSaving ? "Saving..." : "Save Preference"}
           </button>

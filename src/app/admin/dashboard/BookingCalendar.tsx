@@ -152,9 +152,9 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative">
+    <div className="admin-card relative">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
         <h3 className="text-lg font-semibold text-gray-900">Upcoming Stays</h3>
         <div className="flex items-center gap-3">
           <button
@@ -166,22 +166,22 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
           <div className="flex items-center gap-1">
             <button
               onClick={goToPrev}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
               aria-label="Previous month"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span className="text-sm font-medium text-gray-900 w-36 text-center">
+            <span className="text-sm font-medium text-gray-900 w-32 sm:w-36 text-center">
               {MONTH_NAMES[month - 1]} {year}
             </span>
             <button
               onClick={goToNext}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
               aria-label="Next month"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -190,13 +190,13 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mb-4 pb-3 border-b border-gray-100">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 pb-3 border-b border-gray-100">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-400">→</span>
+          <span className="text-[10px] text-gray-500">→</span>
           <span className="text-xs text-gray-500">Check-in</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-400">←</span>
+          <span className="text-[10px] text-gray-500">←</span>
           <span className="text-xs text-gray-500">Check-out</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -219,7 +219,7 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
       {/* Day-of-week header */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_NAMES.map((d) => (
-          <div key={d} className="text-center text-xs font-medium text-gray-400 uppercase tracking-wider py-2">
+          <div key={d} className="text-center text-xs font-medium text-gray-500 uppercase tracking-wider py-2">
             {d}
           </div>
         ))}
@@ -252,7 +252,7 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
                     text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full
                     ${isToday ? "bg-[#2D4A3E] text-white" : ""}
                     ${!isToday && cell.isCurrentMonth ? "text-gray-700" : ""}
-                    ${!isToday && !cell.isCurrentMonth ? "text-gray-300" : ""}
+                    ${!isToday && !cell.isCurrentMonth ? "text-gray-500" : ""}
                   `}
                 >
                   {cell.day}
@@ -285,7 +285,7 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
                   );
                 })}
                 {overflow > 0 && (
-                  <div className="text-[10px] text-gray-400 px-1.5">+{overflow} more</div>
+                  <div className="text-[10px] text-gray-500 px-1.5">+{overflow} more</div>
                 )}
                 {/* Blocked indicator (only if no bookings already shown) */}
                 {isBlocked && dayBookings.length === 0 && (
@@ -307,7 +307,7 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
             className="fixed z-30 bg-white rounded-lg shadow-lg border border-gray-200 p-3 w-64"
             style={{ left: `${tooltip.x}px`, top: `${tooltip.y}px`, transform: "translateX(-50%)" }}
           >
-            <p className="text-xs font-medium text-gray-400 mb-2">
+            <p className="text-xs font-medium text-gray-500 mb-2">
               {new Date(tooltip.dateStr + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
             <div className="space-y-2">

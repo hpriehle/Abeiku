@@ -34,7 +34,7 @@ export default function WaitlistForm() {
         value={email}
         onChange={e => setEmail(e.target.value)}
         placeholder="you@hotel.com"
-        className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]/40 focus:border-[#25D366] transition-shadow"
+        className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-gray-900 placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]/40 focus:border-[#25D366] transition-shadow"
       />
       <button
         type="submit"

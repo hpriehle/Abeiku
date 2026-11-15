@@ -1,3 +1,4 @@
+import { Bot, type LucideIcon, MessageSquare, TrendingUp, Users } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/admin/auth";
@@ -59,25 +60,25 @@ export default async function ReportPage({
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          icon="💬"
+          icon={MessageSquare}
           label="Total Messages"
           value={stats.totalMessages.toLocaleString()}
           sub={`${stats.inboundMessages} inbound, ${stats.outboundMessages} outbound`}
         />
         <StatCard
-          icon="👥"
+          icon={Users}
           label="Active Conversations"
           value={stats.activeConversations.toLocaleString()}
           sub={`in last ${period}`}
         />
         <StatCard
-          icon="🤖"
+          icon={Bot}
           label="AI Success Rate"
           value={`${stats.aiSuccessRate}%`}
           sub={`${stats.aiTotal} messages parsed`}
         />
         <StatCard
-          icon="📈"
+          icon={TrendingUp}
           label="Conversion Rate"
           value={`${stats.conversionRate}%`}
           sub={`${stats.bookedCount} bookings from ${stats.leadsCount} leads`}
@@ -86,11 +87,11 @@ export default async function ReportPage({
 
       {/* Funnel + AI metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Conversion Funnel</h3>
           <FunnelChart funnel={stats.funnel} />
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">AI Effectiveness</h3>
           <AIMetrics
             intents={stats.aiIntents}
@@ -103,7 +104,7 @@ export default async function ReportPage({
 
       {/* Messages over time */}
       {stats.messagesPerDay.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Messages Over Time</h3>
           <div className="space-y-2">
             {stats.messagesPerDay.map((day) => {
@@ -136,7 +137,7 @@ export default async function ReportPage({
               );
             })}
           </div>
-          <div className="flex gap-4 mt-3 text-xs text-gray-400">
+          <div className="flex gap-4 mt-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <span className="w-3 h-3 rounded-sm bg-blue-400 inline-block" /> Inbound
             </span>
@@ -149,8 +150,8 @@ export default async function ReportPage({
 
       {/* Empty state */}
       {stats.totalMessages === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-          <p className="text-gray-400 text-sm">
+        <div className="admin-card py-12 text-center">
+          <p className="text-gray-500 text-sm">
             No chat data yet. Messages will appear here once guests start chatting via WhatsApp.
           </p>
         </div>
@@ -160,24 +161,24 @@ export default async function ReportPage({
 }
 
 function StatCard({
-  icon,
+  icon: Icon,
   label,
   value,
   sub,
 }: {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   value: string;
   sub: string;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="admin-card">
       <div className="flex items-center gap-3 mb-2">
-        <span className="text-2xl">{icon}</span>
+        <Icon className="size-6 text-[#2D4A3E] shrink-0" aria-hidden="true" />
         <span className="text-sm font-medium text-gray-500">{label}</span>
       </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-400 mt-1">{sub}</p>
+      <p className="text-xs text-gray-500 mt-1">{sub}</p>
     </div>
   );
 }

@@ -118,7 +118,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
     <>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Rooms</h2>
+          <h1 className="admin-h1">Rooms</h1>
           <p className="text-sm text-gray-500 mt-1">
             {rooms.length} room{rooms.length !== 1 ? "s" : ""} &middot;{" "}
             {physicalRooms} bookable unit{physicalRooms !== 1 ? "s" : ""}
@@ -126,24 +126,24 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
         </div>
         <button
           onClick={handleAdd}
-          className="px-4 py-2.5 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+          className="admin-btn-primary"
         >
           + Add Room
         </button>
       </div>
 
       {rooms.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <div className="admin-card py-12 text-center">
           <p className="text-gray-500 text-sm">No rooms configured yet.</p>
           <button
             onClick={handleAdd}
-            className="mt-4 px-4 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+            className="admin-btn-primary mt-4"
           >
             Add Your First Room
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -176,7 +176,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                         <button
                           onClick={() => handleMove(originalIndex, "up")}
                           disabled={originalIndex === 0}
-                          className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
                           title="Move up"
                         >
                           &#x25B2;
@@ -184,7 +184,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                         <button
                           onClick={() => handleMove(originalIndex, "down")}
                           disabled={originalIndex === rooms.length - 1}
-                          className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
                           title="Move down"
                         >
                           &#x25BC;
@@ -194,7 +194,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                     <td className="px-6 py-4">
                       <div className={`${indent ? "pl-6" : ""}`}>
                         <div className="text-sm font-medium text-gray-900">
-                          {indent && <span className="text-gray-300 mr-1">&#x2514;</span>}
+                          {indent && <span className="text-gray-500 mr-1" aria-hidden="true">&#x2514;</span>}
                           {room.name}
                         </div>
                         {room.tagline && <div className="text-xs text-gray-500">{room.tagline}</div>}
@@ -242,7 +242,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                         ) : (
                           <button
                             onClick={() => setDeleteConfirm(room.id)}
-                            className="text-sm text-red-500 hover:underline font-medium"
+                            className="text-sm text-red-600 hover:underline font-medium"
                           >
                             Delete
                           </button>

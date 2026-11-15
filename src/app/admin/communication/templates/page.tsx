@@ -1,3 +1,4 @@
+import { MessageSquare } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, getMessageTemplates, getTemplateSentCounts } from "@/lib/db";
@@ -18,10 +19,10 @@ export default async function TemplatesPage() {
   return (
     <>
       {/* WhatsApp Status */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div className="admin-card mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">💬</span>
+            <MessageSquare className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
             <div>
               <h3 className="text-sm font-semibold text-gray-900">WhatsApp Cloud API</h3>
               <p className="text-xs text-gray-500">
@@ -35,7 +36,7 @@ export default async function TemplatesPage() {
             <span
               className={`inline-block w-2.5 h-2.5 rounded-full ${waConnected ? "bg-green-500" : "bg-yellow-400"}`}
             />
-            <span className={`text-sm font-medium ${waConnected ? "text-green-600" : "text-yellow-600"}`}>
+            <span className={`text-sm font-medium ${waConnected ? "text-green-700" : "text-amber-700"}`}>
               {waConnected ? "Connected" : "Not configured"}
             </span>
           </div>

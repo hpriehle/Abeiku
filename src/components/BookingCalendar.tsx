@@ -130,7 +130,7 @@ export default function BookingCalendar({
       {/* Day labels */}
       <div className="grid grid-cols-7 mb-2">
         {DAYS.map((d) => (
-          <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">
+          <div key={d} className="text-center text-xs font-medium text-gray-500 py-1">
             {d}
           </div>
         ))}
@@ -176,7 +176,7 @@ export default function BookingCalendar({
                 onClick={() => onDateSelect(date)}
                 className={`w-9 h-9 rounded-full text-sm font-medium transition-colors
                   ${circleClass}
-                  ${isPast ? "text-gray-300 cursor-default" : ""}
+                  ${isPast ? "text-gray-500 line-through cursor-default" : ""}
                   ${!isPast && !isCheckIn && !isCheckOut && !isToday ? "text-gray-800 hover:bg-gray-100 active:bg-gray-200" : ""}
                 `}
               >

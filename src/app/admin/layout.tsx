@@ -12,6 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div
+      data-admin-shell
       className="fixed inset-0 z-50 flex flex-col md:flex-row bg-gray-50"
       style={{ fontFamily: "var(--font-body), system-ui, sans-serif" }}
     >

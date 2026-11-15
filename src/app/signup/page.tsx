@@ -60,7 +60,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white tracking-tight">Create Your Hotel</h1>
-          <p className="text-gray-400 text-sm mt-2">Set up your WhatsApp booking assistant</p>
+          <p className="text-gray-300 text-sm mt-2">Set up your WhatsApp booking assistant</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8 space-y-4">
@@ -72,7 +72,7 @@ export default function SignupPage() {
               onChange={(e) => update("hotelName", e.target.value)}
               placeholder="My Boutique Hotel"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
             />
           </div>
 
@@ -84,7 +84,7 @@ export default function SignupPage() {
               onChange={(e) => update("email", e.target.value)}
               placeholder="admin@hotel.com"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
             />
           </div>
 
@@ -97,7 +97,7 @@ export default function SignupPage() {
               placeholder="Min 8 characters"
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
             />
           </div>
 
@@ -110,7 +110,7 @@ export default function SignupPage() {
               placeholder="Repeat password"
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
             />
           </div>
 
@@ -122,7 +122,7 @@ export default function SignupPage() {
                 value={form.locationCity}
                 onChange={(e) => update("locationCity", e.target.value)}
                 placeholder="Accra"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
               />
             </div>
             <div>
@@ -132,7 +132,7 @@ export default function SignupPage() {
                 value={form.locationCountry}
                 onChange={(e) => update("locationCountry", e.target.value)}
                 placeholder="Ghana"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
               />
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function SignupPage() {
                 value={form.contactPhone}
                 onChange={(e) => update("contactPhone", e.target.value)}
                 placeholder="+233..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
               />
             </div>
             <div>
@@ -179,7 +179,7 @@ export default function SignupPage() {
             {loading ? "Creating..." : "Create Hotel"}
           </button>
 
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs text-gray-500">
             Already have an account?{" "}
             <a href="/admin/login" className="text-[#2D4A3E] hover:underline">Sign in</a>
           </p>

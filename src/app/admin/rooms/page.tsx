@@ -13,7 +13,7 @@ export default async function RoomsPage() {
   ]);
 
   return (
-    <div className="p-8">
+    <div className="admin-page">
       <RoomTable initialRooms={rooms} currency={hotel?.currency || "GHS"} />
     </div>
   );

@@ -83,8 +83,8 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <table className="w-full min-w-[600px]">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
               <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider px-6 py-3">Template</th>
@@ -110,8 +110,11 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
                   <td className="px-6 py-4">
                     <button
                       onClick={() => toggleActive(tmpl.type)}
+                      role="switch"
+                      aria-checked={isActive}
+                      aria-label={`${tmpl.label} active`}
                       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        isActive ? "bg-[#2D4A3E]" : "bg-gray-300"
+                        isActive ? "bg-[#2D4A3E]" : "bg-[#868e9c]"
                       }`}
                     >
                       <span
@@ -138,22 +141,23 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
 
       {/* Edit Modal */}
       {editingType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">
                 Edit: {TEMPLATE_TYPES.find((t) => t.type === editingType)?.label}
               </h3>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Message Body</label>
+                <label htmlFor="templateed-message-body" className="admin-label">Message Body</label>
                 <textarea
+                  id="templateed-message-body"
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
                   rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent resize-none"
+                  className="admin-input resize-none"
                 />
               </div>
 
@@ -177,26 +181,26 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
                   type="checkbox"
                   checked={editActive}
                   onChange={(e) => setEditActive(e.target.checked)}
-                  className="rounded border-gray-300 text-[#2D4A3E] focus:ring-[#2D4A3E]"
+                  className="rounded border-[#868e9c] text-[#2D4A3E] focus:ring-[#2D4A3E]"
                 />
                 Template active
               </label>
 
               {msg && (
-                <p className={`text-sm ${msg.includes("success") ? "text-green-600" : "text-red-600"}`}>{msg}</p>
+                <p className={`text-sm ${msg.includes("success") ? "text-green-700" : "text-red-600"}`}>{msg}</p>
               )}
 
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setEditingType(null)}
-                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                  className="admin-btn-secondary flex-1"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 py-2.5 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+                  className="admin-btn-primary flex-1"
                 >
                   {saving ? "Saving..." : "Save Template"}
                 </button>

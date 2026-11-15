@@ -72,7 +72,7 @@ export function ReviewFunnel() {
               </span>
             </div>
           </div>
-          <span className="text-xs text-gray-400 w-12 shrink-0" />
+          <span className="text-xs text-gray-500 w-12 shrink-0" />
         </div>
 
         {/* Link Clicked */}
@@ -92,7 +92,7 @@ export function ReviewFunnel() {
               )}
             </div>
           </div>
-          <span className="text-xs text-gray-400 w-12 shrink-0">
+          <span className="text-xs text-gray-500 w-12 shrink-0">
             {data.clickRate}%
           </span>
         </div>
@@ -110,7 +110,7 @@ export function ReviewFunnel() {
               after sending review requests
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-1 ml-9">
+          <p className="text-xs text-gray-500 mt-1 ml-9">
             Google count: {data.latestDelta.preSendCount} → {data.latestDelta.postCheckCount}
           </p>
         </div>
@@ -118,7 +118,7 @@ export function ReviewFunnel() {
 
       {data.latestDelta && data.latestDelta.delta === 0 && (
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             No new Google reviews detected since last batch of requests
             (count: {data.latestDelta.postCheckCount})
           </p>

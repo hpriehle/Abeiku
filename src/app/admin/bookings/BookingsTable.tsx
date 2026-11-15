@@ -55,7 +55,7 @@ function StatusBadge({ status }: { status: string }) {
 function PaymentBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     paid: "bg-green-100 text-green-700",
-    unpaid: "bg-yellow-100 text-yellow-700",
+    unpaid: "bg-yellow-100 text-amber-800",
     pending: "bg-orange-100 text-orange-700",
     refunded: "bg-purple-100 text-purple-700",
   };
@@ -72,17 +72,57 @@ export function BookingsTable({ bookings, rooms, currency }: Props) {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Phone: one card per booking */}
+      <ul className="md:hidden space-y-3">
+        {bookings.map((booking) => {
+          const room = rooms.find((r) => r.slug === booking.room_slug);
+          return (
+            <li key={booking.id}>
+              <button
+                type="button"
+                onClick={() => setSelectedBookingId(booking.id)}
+                className="w-full text-left bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-[#2D4A3E]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900 truncate">{booking.guest_name}</div>
+                    <div className="text-xs text-gray-600">{booking.phone}</div>
+                  </div>
+                  <div className="font-medium text-gray-900 whitespace-nowrap">{currency} {booking.total_price}</div>
+                </div>
+                <div className="mt-2 text-sm text-gray-700">
+                  {room?.name ?? booking.room_slug}
+                  {booking.booking_group_id && (
+                    <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700">grouped</span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {formatDate(booking.check_in)} — {formatDate(booking.check_out)}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <PaymentBadge status={booking.payment_status} />
+                  <StatusBadge status={booking.booking_status} />
+                </div>
+              </button>
+            </li>
+          );
+        })}
+        {bookings.length === 0 && (
+          <li className="admin-card py-12 text-center text-gray-600">No bookings found.</li>
+        )}
+      </ul>
+
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Guest</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Room</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Dates</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Price</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Payment</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Status</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Guest</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Room</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Dates</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Price</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Payment</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -98,13 +138,19 @@ export function BookingsTable({ bookings, rooms, currency }: Props) {
                     className="hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{booking.guest_name}</div>
-                      <div className="text-xs text-gray-400">{booking.phone}</div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedBookingId(booking.id); }}
+                        className="font-medium text-gray-900 text-left hover:underline focus-visible:outline-2 focus-visible:outline-[#2D4A3E] rounded"
+                      >
+                        {booking.guest_name}
+                      </button>
+                      <div className="text-xs text-gray-500">{booking.phone}</div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {roomLabel}
                       {isGrouped && (
-                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-600">
+                        <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700">
                           grouped
                         </span>
                       )}
@@ -120,7 +166,7 @@ export function BookingsTable({ bookings, rooms, currency }: Props) {
               })}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
                     No bookings found.
                   </td>
                 </tr>

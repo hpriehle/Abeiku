@@ -236,7 +236,7 @@ function DatePickerInner() {
               {nights} night{nights > 1 ? "s" : ""}
             </span>
           ) : (
-            <span className="text-gray-400">
+            <span className="text-gray-500">
               {activeField === "checkin" ? "Pick check-in" : "Pick check-out"}
             </span>
           )}

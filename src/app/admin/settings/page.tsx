@@ -1,3 +1,4 @@
+import { CreditCard } from "lucide-react";
 import { redirect } from "next/navigation";
 import { hotelView } from "@/lib/admin/hotel-view";
 import Link from "next/link";
@@ -50,10 +51,14 @@ function GoogleBusinessLogo({ className }: { className?: string }) {
 function InfoTooltip({ text }: { text: string }) {
   return (
     <span className="relative group/tip">
-      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 text-[9px] font-medium text-gray-400 cursor-help">
+      <span
+        tabIndex={0}
+        aria-label={text}
+        className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#868e9c] text-[9px] font-medium text-gray-600 cursor-help"
+      >
         i
       </span>
-      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity z-10">
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-md w-max max-w-[14rem] whitespace-normal hidden pointer-events-none group-hover/tip:block group-focus-within/tip:block z-10" aria-hidden="true">
         {text}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
       </span>
@@ -81,10 +86,10 @@ function ServiceTile({
   const content = (
     <div
       className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col items-center text-center ${
-        !comingSoon ? "hover:border-gray-200 hover:shadow-md transition-all group" : "opacity-70"
+        !comingSoon ? "hover:border-gray-300 hover:shadow-md transition-all group" : "bg-gray-50"
       }`}
     >
-      <div className="w-10 h-10 flex items-center justify-center mb-2">
+      <div className={`w-10 h-10 flex items-center justify-center mb-2 ${comingSoon ? "opacity-60 grayscale" : ""}`}>
         {logo}
       </div>
       <div className="flex items-center gap-1 mb-3">
@@ -92,7 +97,7 @@ function ServiceTile({
         <InfoTooltip text={tooltip} />
       </div>
       {comingSoon ? (
-        <span className="px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-[10px] font-medium">
+        <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-medium">
           Coming soon
         </span>
       ) : (
@@ -107,7 +112,7 @@ function ServiceTile({
           }`}
         />
         <span className={`text-[10px] font-medium ${
-          comingSoon ? "text-gray-400" : connected ? "text-green-600" : "text-yellow-600"
+          comingSoon ? "text-gray-500" : connected ? "text-green-700" : "text-amber-700"
         }`}>
           {comingSoon ? "Unavailable" : statusLabel}
         </span>
@@ -140,13 +145,13 @@ export default async function SettingsPage() {
   const googleReviewsConnected = !!hotel.google_place_id;
 
   return (
-    <div className="p-8">
+    <div className="admin-page">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+        <h1 className="admin-h1">Settings</h1>
         {/* TODO: Remove this dev button before production */}
         <a
           href="/admin/onboarding"
-          className="px-4 py-2 border border-dashed border-orange-300 text-orange-600 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
+          className="px-4 py-2 border border-dashed border-orange-300 text-orange-700 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
         >
           Dev: Run Onboarding
         </a>
@@ -188,7 +193,7 @@ export default async function SettingsPage() {
               href="/admin/settings/momo"
             />
             <ServiceTile
-              logo={<span className="text-2xl">💳</span>}
+              logo={<CreditCard className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
               name="Card Payments"
               tooltip="Accept card payments from guests with automatic payouts"
               connected={paystackConnected}

@@ -68,7 +68,7 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
   if (messages.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm text-gray-400">No messages yet</p>
+        <p className="text-sm text-gray-500">No messages yet</p>
       </div>
     );
   }
@@ -90,7 +90,7 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
           <div key={msg.id}>
             {showDate && (
               <div className="flex justify-center my-3">
-                <span className="text-[10px] text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
+                <span className="text-[10px] text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
                   {formatDate(msg.created_at)}
                 </span>
               </div>
@@ -136,7 +136,7 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
                   )}
 
                 {/* Timestamp */}
-                <p className={`text-[10px] mt-1 ${isInbound ? "text-gray-400" : "text-gray-400"}`}>
+                <p className={`text-[10px] mt-1 ${isInbound ? "text-gray-600" : "text-gray-600"}`}>
                   {formatTime(msg.created_at)}
                 </p>
               </div>

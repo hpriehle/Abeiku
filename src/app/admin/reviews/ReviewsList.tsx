@@ -147,7 +147,7 @@ export function ReviewsList({
           <button
             onClick={fetchGoogle}
             disabled={googleLoading}
-            className="px-3 py-1.5 border border-gray-300 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="admin-btn-secondary px-3 py-1.5 text-xs"
           >
             {googleLoading ? "Refreshing..." : "Refresh"}
           </button>
@@ -171,21 +171,21 @@ export function ReviewsList({
         )}
 
         {merged.length === 0 && !googleLoading && (
-          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
-            <p className="text-gray-400">No reviews yet.</p>
+          <div className="admin-card py-12 text-center">
+            <p className="text-gray-500">No reviews yet.</p>
           </div>
         )}
 
         {googleLoading && merged.length === 0 && (
-          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
-            <p className="text-gray-400">Loading reviews...</p>
+          <div className="admin-card py-12 text-center">
+            <p className="text-gray-500">Loading reviews...</p>
           </div>
         )}
       </div>
 
       {/* Disclaimer */}
       {googleData && googleData.reviews.length > 0 && (
-        <p className="text-xs text-gray-400 mt-4 text-center">
+        <p className="text-xs text-gray-500 mt-4 text-center">
           Showing {googleData.reviews.length} most relevant Google reviews out of{" "}
           {googleData.totalCount.toLocaleString()} total.
         </p>
@@ -198,7 +198,7 @@ export function ReviewsList({
 
 function GoogleCard({ review }: { review: GoogleReview }) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="admin-card">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           {review.authorPhotoUri ? (
@@ -216,7 +216,7 @@ function GoogleCard({ review }: { review: GoogleReview }) {
             <h3 className="font-semibold text-gray-900 text-sm">
               {review.authorName}
             </h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               {review.relativePublishTimeDescription}
             </p>
           </div>
@@ -230,7 +230,7 @@ function GoogleCard({ review }: { review: GoogleReview }) {
       {review.text ? (
         <p className="text-sm text-gray-600 leading-relaxed">{review.text}</p>
       ) : (
-        <p className="text-sm text-gray-400 italic">No written review.</p>
+        <p className="text-sm text-gray-500 italic">No written review.</p>
       )}
     </div>
   );
@@ -238,11 +238,11 @@ function GoogleCard({ review }: { review: GoogleReview }) {
 
 function WhatsAppCard({ review }: { review: InternalReview }) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="admin-card">
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="font-semibold text-gray-900 text-sm">{review.guest_name}</h3>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             {review.room_slug} · {formatDate(review.check_in)} — {formatDate(review.check_out)}
           </p>
         </div>
@@ -255,7 +255,7 @@ function WhatsAppCard({ review }: { review: InternalReview }) {
       {review.feedback ? (
         <p className="text-sm text-gray-600 leading-relaxed">{review.feedback}</p>
       ) : (
-        <p className="text-sm text-gray-400 italic">No written feedback.</p>
+        <p className="text-sm text-gray-500 italic">No written feedback.</p>
       )}
 
       {review.rating && review.rating <= 2 && (

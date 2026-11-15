@@ -18,12 +18,12 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function DisbursementBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="text-xs text-gray-400">N/A</span>;
+  if (!status) return <span className="text-xs text-gray-500">N/A</span>;
 
   const colors: Record<string, string> = {
-    completed: "text-green-600",
+    completed: "text-green-700",
     processing: "text-blue-600",
-    pending: "text-yellow-600",
+    pending: "text-amber-700",
     failed: "text-red-600",
   };
 
@@ -50,7 +50,7 @@ export function PaymentsTable({
 }) {
   if (payments.length === 0) {
     return (
-      <div className="p-8 text-center text-sm text-gray-400">
+      <div className="p-8 text-center text-sm text-gray-500">
         No payments yet. Payments will appear here once guests start booking.
       </div>
     );

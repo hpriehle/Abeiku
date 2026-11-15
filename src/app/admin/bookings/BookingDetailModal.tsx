@@ -144,7 +144,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
         <div className="bg-white rounded-xl p-8">
           <span className="text-sm text-gray-500">Loading...</span>
         </div>
@@ -162,15 +162,15 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
   const hasGroupSiblings = groupedBookings.length > 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Booking Details</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-5">
           {/* Guest info */}
           <div className="flex items-start justify-between">
             <div>
@@ -235,7 +235,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                     type="date"
                     value={newCheckIn}
                     onChange={(e) => setNewCheckIn(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    className="admin-input"
                   />
                 </div>
                 <div>
@@ -244,7 +244,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                     type="date"
                     value={newCheckOut}
                     onChange={(e) => setNewCheckOut(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    className="admin-input"
                   />
                 </div>
               </div>
@@ -252,13 +252,13 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 <button
                   onClick={changeDates}
                   disabled={!!actionLoading}
-                  className="px-4 py-2 bg-[#2D4A3E] text-white text-sm rounded-lg hover:bg-[#1E3329] disabled:opacity-50"
+                  className="admin-btn-primary"
                 >
                   {actionLoading === "dates" ? "Saving..." : "Save Dates"}
                 </button>
                 <button
                   onClick={() => setShowDateEdit(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50"
+                  className="admin-btn-secondary"
                 >
                   Cancel
                 </button>
@@ -292,7 +292,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 )}
                 <button
                   onClick={() => setConfirmCancel(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50"
+                  className="admin-btn-secondary"
                 >
                   Keep
                 </button>
@@ -308,14 +308,14 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 <button
                   onClick={() => doAction("checked_in")}
                   disabled={!!actionLoading}
-                  className="flex-1 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50"
                 >
                   {actionLoading === "checked_in" ? "..." : "Check In"}
                 </button>
                 {!showDateEdit && (
                   <button
                     onClick={() => setShowDateEdit(true)}
-                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    className="admin-btn-secondary flex-1"
                   >
                     Change Dates
                   </button>
@@ -343,7 +343,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 {!showDateEdit && (
                   <button
                     onClick={() => setShowDateEdit(true)}
-                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    className="admin-btn-secondary flex-1"
                   >
                     Change Dates
                   </button>
@@ -381,7 +381,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
             )}
 
             {/* Meta */}
-            <p className="text-xs text-gray-400 text-center pt-2">
+            <p className="text-xs text-gray-500 text-center pt-2">
               Booked {new Date(booking.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               {" "}at {new Date(booking.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
             </p>

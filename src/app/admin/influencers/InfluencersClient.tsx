@@ -11,7 +11,7 @@ import type { BookingView, PartnerView } from "@/lib/partner/views";
 import { codeFromName } from "@/lib/partner/codes";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
-import { BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, FONT_HEADING, NETWORK_ERROR, apiError } from "@/components/partner/ui";
+import { BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, NETWORK_ERROR, apiError } from "@/components/partner/ui";
 
 interface AdminData {
   site_url: string | null;
@@ -99,7 +99,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
     <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900" style={FONT_HEADING}>
+          <h1 className="admin-h1">
             Partners
           </h1>
           <p className="text-sm text-gray-700 mt-1 max-w-2xl">

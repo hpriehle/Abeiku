@@ -144,7 +144,7 @@ export function EmbeddedSignup() {
 
   if (!appId || !configId) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="admin-card">
         <p className="text-sm text-gray-500">
           WhatsApp connection is not available yet. Please contact support.
         </p>
@@ -153,7 +153,7 @@ export function EmbeddedSignup() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="admin-card">
       <Script
         src="https://connect.facebook.net/en_US/sdk.js"
         onLoad={handleSdkLoad}
@@ -171,7 +171,7 @@ export function EmbeddedSignup() {
       <button
         onClick={handleConnect}
         disabled={!sdkReady || connecting}
-        className="px-5 py-2.5 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+        className="admin-btn-primary"
       >
         {connecting
           ? "Connecting..."

@@ -1,17 +1,18 @@
+import { Building2, CreditCard, TrendingUp, Wallet, type LucideIcon } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/admin/auth";
 import { getPlatformStats, getAllHotelEarnings } from "@/lib/db";
 
-function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon: string }) {
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: LucideIcon }) {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+    <div className="admin-card">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500">{label}</p>
           <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
         </div>
-        <span className="text-2xl">{icon}</span>
+        <Icon className="size-6 text-[#2D4A3E] shrink-0" aria-hidden="true" />
       </div>
     </div>
   );
@@ -35,29 +36,29 @@ export default async function PlatformPage() {
     : "0";
 
   return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Platform Overview</h2>
+    <div className="admin-page">
+      <h1 className="admin-h1 mb-6">Platform Overview</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          icon="&#128176;"
+          icon={Wallet}
           label="Platform Earnings"
           value={`GHS ${stats.totalEarnings.toLocaleString()}`}
           sub="Total fees collected"
         />
         <StatCard
-          icon="&#128179;"
+          icon={CreditCard}
           label="Total Processed"
           value={`GHS ${stats.totalProcessed.toLocaleString()}`}
           sub="Across all hotels"
         />
         <StatCard
-          icon="&#127968;"
+          icon={Building2}
           label="Active Hotels"
           value={stats.activeHotels}
         />
         <StatCard
-          icon="&#128200;"
+          icon={TrendingUp}
           label="Avg Fee Rate"
           value={`${avgFee}%`}
           sub="Of total processed"
@@ -65,13 +66,13 @@ export default async function PlatformPage() {
       </div>
 
       {/* Per-hotel earnings */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-5 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900">Earnings by Hotel</h3>
         </div>
 
         {earnings.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">
+          <div className="p-8 text-center text-sm text-gray-500">
             No earnings recorded yet.
           </div>
         ) : (

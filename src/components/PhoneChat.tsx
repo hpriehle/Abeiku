@@ -171,7 +171,7 @@ export default function PhoneChat() {
         <div className="text-center font-semibold text-gray-800 mb-1 text-[11px]">February 2026</div>
         <div className="grid grid-cols-7 gap-0.5 text-center">
           {days.map(d => (
-            <div key={d} className="text-gray-400 font-medium py-0.5">{d}</div>
+            <div key={d} className="text-gray-500 font-medium py-0.5">{d}</div>
           ))}
           {Array.from({ length: firstDayOffset }).map((_, i) => (
             <div key={`e-${i}`} />
@@ -242,7 +242,7 @@ export default function PhoneChat() {
                   <div key={i} className="flex justify-start animate-fade-in">
                     <div className="bg-white rounded-lg rounded-tl-none px-2.5 py-1.5 max-w-[85%] shadow-sm">
                       <p className="text-[11.5px] text-gray-800 whitespace-pre-line leading-relaxed">{msg.text}</p>
-                      <span className="text-[9px] text-gray-400 float-right mt-0.5 ml-2">{time}</span>
+                      <span className="text-[9px] text-gray-500 float-right mt-0.5 ml-2">{time}</span>
                     </div>
                   </div>
                 )
@@ -253,7 +253,7 @@ export default function PhoneChat() {
                     <div className="bg-[#DCF8C6] rounded-lg rounded-tr-none px-2.5 py-1.5 max-w-[85%] shadow-sm">
                       <p className="text-[11.5px] text-gray-800">{msg.text}</p>
                       <div className="flex items-center justify-end gap-1 mt-0.5">
-                        <span className="text-[9px] text-gray-400">{time}</span>
+                        <span className="text-[9px] text-gray-500">{time}</span>
                         <svg className="w-3 h-3 text-[#53BDEB]" fill="currentColor" viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/></svg>
                       </div>
                     </div>
@@ -296,7 +296,7 @@ export default function PhoneChat() {
                         <p>💰 GH₵900 total</p>
                       </div>
                       <p className="text-[11px] text-gray-800 mt-1.5">How would you like to pay?</p>
-                      <span className="text-[9px] text-gray-400 float-right mt-0.5">{time}</span>
+                      <span className="text-[9px] text-gray-500 float-right mt-0.5">{time}</span>
                     </div>
                   </div>
                 )
@@ -321,7 +321,7 @@ export default function PhoneChat() {
           {/* Input bar */}
           <div className="bg-[#F0F0F0] px-2 py-1.5 flex items-center gap-1.5">
             <svg className="w-6 h-6 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
-            <div className="flex-1 bg-white rounded-full px-3 py-1.5 text-[11px] text-gray-400">
+            <div className="flex-1 bg-white rounded-full px-3 py-1.5 text-[11px] text-gray-500">
               Type a message
             </div>
             <svg className="w-6 h-6 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>

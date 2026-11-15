@@ -100,7 +100,7 @@ const styles = {
   } as React.CSSProperties,
   subtext: {
     fontSize: "0.875rem",
-    color: "#999",
+    color: "#6b7280",
     marginTop: "1rem",
   } as React.CSSProperties,
 };

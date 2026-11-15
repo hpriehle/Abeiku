@@ -31,14 +31,11 @@ export default async function ReviewsPage() {
   }));
 
   return (
-    <div className="p-8">
+    <div className="admin-page">
       <div className="flex items-center justify-between mb-6">
-        <h2
-          className="text-2xl font-bold text-gray-900"
-          style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-        >
+        <h1 className="admin-h1">
           Reviews
-        </h2>
+        </h1>
         {stats.totalReviews > 0 && (
           <div className="text-right">
             <p className="text-xs text-gray-500">

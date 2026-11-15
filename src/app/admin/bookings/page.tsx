@@ -31,14 +31,14 @@ export default async function BookingsPage({
   const roomMap = rooms.map((r) => ({ slug: r.slug, name: r.name }));
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Bookings</h2>
+    <div className="admin-page">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-6">
+        <h1 className="admin-h1">Bookings</h1>
         <p className="text-sm text-gray-500">{total} total</p>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {[
           { label: "All", value: undefined },
           { label: "Confirmed", value: "confirmed" },
@@ -64,7 +64,7 @@ export default async function BookingsPage({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
+        <div className="flex flex-wrap justify-center gap-2 mt-6">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link
               key={p}

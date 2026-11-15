@@ -1,3 +1,4 @@
+import { CalendarDays, type LucideIcon, MessageSquare, Star, Wallet } from "lucide-react";
 import {
   getBookingStats,
   getBookingsForMonth,
@@ -14,16 +15,16 @@ import { RoomAvailabilityGrid } from "./RoomAvailabilityGrid";
 import { getBookedDates } from "@/lib/calendar";
 import { hotelStorage } from "@/lib/hotel-context";
 
-function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon: string }) {
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: LucideIcon }) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="admin-card">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500">{label}</p>
           <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
         </div>
-        <span className="text-2xl">{icon}</span>
+        <Icon className="size-6 text-[#2D4A3E] shrink-0" aria-hidden="true" />
       </div>
     </div>
   );
@@ -73,30 +74,30 @@ export default async function DashboardPage() {
   const blockedDates = calendarDates.filter((d) => !dbBookedDates.has(d));
 
   return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
+    <div className="admin-page">
+      <h1 className="admin-h1 mb-6">Dashboard</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          icon="📅"
+          icon={CalendarDays}
           label="Total Bookings"
           value={bookings.total}
           sub={`${bookings.confirmed} upcoming · ${bookings.checked_in} in-house`}
         />
         <StatCard
-          icon="💰"
+          icon={Wallet}
           label="Revenue (Paid)"
           value={`${currency} ${bookings.paidRevenue.toLocaleString()}`}
           sub={`${currency} ${bookings.totalRevenue.toLocaleString()} total`}
         />
         <StatCard
-          icon="⭐"
+          icon={Star}
           label="Avg Rating"
           value={reviews.totalReviews > 0 ? reviews.averageRating.toFixed(1) : "—"}
           sub={`${reviews.totalReviews} reviews`}
         />
         <StatCard
-          icon="💬"
+          icon={MessageSquare}
           label="Conversations"
           value={conversations}
           sub={`${referrals.totalCodes} referral codes · ${referrals.totalUses} uses`}
@@ -105,7 +106,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Booking Status Breakdown */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="admin-card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Status</h3>
           <div className="space-y-3">
             <StatusBar label="Confirmed" count={bookings.confirmed} total={bookings.total} color="bg-blue-500" />
@@ -116,7 +117,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Rating Distribution */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="admin-card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Rating Distribution</h3>
           {reviews.totalReviews > 0 ? (
             <div className="space-y-3">
@@ -127,7 +128,7 @@ export default async function DashboardPage() {
               <RatingBar stars={1} count={reviews.oneStar} total={reviews.totalReviews} />
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No reviews yet.</p>
+            <p className="text-gray-500 text-sm">No reviews yet.</p>
           )}
         </div>
       </div>
