@@ -1,0 +1,706 @@
+[
+ {
+  "name": "login-375",
+  "url": "/admin/login",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "root-375",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "dashboard-375",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "nav-open-375",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "bookings-375",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "bookings-detail-375",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "rooms-375",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "rooms-form-375",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "inbox-375",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "inbox-thread-375",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "templates-375",
+  "url": "/admin/communication/templates",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "report-375",
+  "url": "/admin/communication/report",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "reviews-375",
+  "url": "/admin/reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "payments-375",
+  "url": "/admin/payments",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     "main :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "partners-375",
+  "url": "/admin/influencers",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-375",
+  "url": "/admin/settings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-whatsapp-375",
+  "url": "/admin/settings/whatsapp",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-google-375",
+  "url": "/admin/settings/google",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-google-reviews-375",
+  "url": "/admin/settings/google-reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-momo-375",
+  "url": "/admin/settings/momo",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-paystack-375",
+  "url": "/admin/settings/paystack",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": [
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames"
+  ]
+ },
+ {
+  "name": "settings-notifications-375",
+  "url": "/admin/settings/notifications",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "simulator-375",
+  "url": "/admin/simulator",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "onboarding-375",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "platform-375",
+  "url": "/admin/platform",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "login-1280",
+  "url": "/admin/login",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "root-1280",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "dashboard-1280",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "nav-open-1280",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "bookings-1280",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "bookings-detail-1280",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "rooms-1280",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "rooms-form-1280",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "inbox-1280",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "inbox-thread-1280",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "templates-1280",
+  "url": "/admin/communication/templates",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "report-1280",
+  "url": "/admin/communication/report",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "reviews-1280",
+  "url": "/admin/reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "payments-1280",
+  "url": "/admin/payments",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "partners-1280",
+  "url": "/admin/influencers",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-1280",
+  "url": "/admin/settings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-whatsapp-1280",
+  "url": "/admin/settings/whatsapp",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-google-1280",
+  "url": "/admin/settings/google",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-google-reviews-1280",
+  "url": "/admin/settings/google-reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-momo-1280",
+  "url": "/admin/settings/momo",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "settings-paystack-1280",
+  "url": "/admin/settings/paystack",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": [
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames",
+   "POST /__nextjs_original-stack-frames"
+  ]
+ },
+ {
+  "name": "settings-notifications-1280",
+  "url": "/admin/settings/notifications",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "simulator-1280",
+  "url": "/admin/simulator",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "onboarding-1280",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ },
+ {
+  "name": "platform-1280",
+  "url": "/admin/platform",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": [],
+  "blocked": []
+ }
+]
