@@ -96,8 +96,8 @@ export function Timeline({ start, today, stays, totalRooms, showCancelled, onOpe
             <div
               key={d}
               style={{ gridColumn: i + 2, gridRow: 1 }}
-              className={`border-b border-l border-gray-200 px-1 py-1.5 text-center text-xs ${weekend ? "bg-gray-50" : ""} ${
-                d === today ? "bg-[#2D4A3E] text-white" : "text-gray-700"
+              className={`border-b border-l border-gray-200 px-1 py-1.5 text-center text-xs ${
+                d === today ? "bg-[#2D4A3E] text-white" : weekend ? "bg-gray-50 text-gray-700" : "text-gray-700"
               }`}
             >
               <div className={d === today ? "font-semibold" : ""}>{fmtDay(d, { weekday: "short" })}</div>

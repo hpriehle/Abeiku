@@ -59,11 +59,12 @@ export function SourceLegend() {
 }
 
 /** "2 of 3 rooms booked" as small segments plus text (text is what screen readers get). */
-export function OccupancyMeter({ booked, total, compact = false }: { booked: number; total: number; compact?: boolean }) {
+/** `textFromSm`: hide the "2/3" text below the sm breakpoint (narrow month cells on a phone). */
+export function OccupancyMeter({ booked, total, compact = false, textFromSm = false }: { booked: number; total: number; compact?: boolean; textFromSm?: boolean }) {
   const over = booked > total;
   const label = over ? `${booked} of ${total} rooms booked, overbooked` : `${booked} of ${total} rooms booked`;
   return (
-    <div className="flex items-center gap-1.5" title={label}>
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1" title={label}>
       <div className="flex gap-0.5" aria-hidden="true">
         {Array.from({ length: total }, (_, i) => (
           <span
@@ -72,7 +73,7 @@ export function OccupancyMeter({ booked, total, compact = false }: { booked: num
           />
         ))}
       </div>
-      <span className={`text-[11px] leading-none tabular-nums ${over ? "font-semibold text-red-700" : "text-gray-700"}`}>
+      <span className={`text-[11px] leading-none tabular-nums ${textFromSm ? "hidden sm:inline" : ""} ${over ? "font-semibold text-red-700" : "text-gray-700"}`}>
         <span aria-hidden="true">
           {booked}/{total}
           {over ? "!" : ""}

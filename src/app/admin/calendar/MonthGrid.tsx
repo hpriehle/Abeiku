@@ -79,7 +79,7 @@ export function MonthGrid({ year, month, today, stays, totalRooms, showCancelled
                 {Number(date.slice(8))}
               </span>
               <span aria-hidden="true">
-                <OccupancyMeter booked={booked} total={totalRooms} compact />
+                <OccupancyMeter booked={booked} total={totalRooms} compact textFromSm />
               </span>
               <span aria-hidden="true" className="hidden w-full min-w-0 flex-col gap-0.5 sm:flex">
                 {nightStays.slice(0, 2).map((s) => (
