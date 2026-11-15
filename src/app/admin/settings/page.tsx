@@ -125,7 +125,25 @@ function ServiceTile({
   return <Link href={href}>{content}</Link>;
 }
 
-export default async function SettingsPage() {
+const CALENDAR_ERRORS: Record<string, string> = {
+  access_denied: "Google Calendar was not connected: access was not allowed.",
+  state_mismatch: "Google Calendar was not connected: the sign-in link had expired or was not started here. Please try again.",
+  token_exchange: "Google Calendar was not connected: Google did not accept the sign-in. Please try again.",
+  no_code: "Google Calendar was not connected. Please try again.",
+};
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ calendar?: string; reason?: string }>;
+}) {
+  const { calendar, reason } = await searchParams;
+  const calendarNotice =
+    calendar === "connected"
+      ? { ok: true, text: "Google Calendar connected." }
+      : calendar === "error"
+        ? { ok: false, text: CALENDAR_ERRORS[reason ?? ""] ?? "Google Calendar was not connected. Please try again." }
+        : null;
   const session = await getSession();
   if (!session) redirect("/admin/login");
 
@@ -156,6 +174,12 @@ export default async function SettingsPage() {
           Dev: Run Onboarding
         </a>
       </div>
+
+      {calendarNotice && (
+        <p role={calendarNotice.ok ? "status" : "alert"} className={`${calendarNotice.ok ? "admin-success" : "admin-error"} mb-6`}>
+          {calendarNotice.text}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Left column: Hotel Info + Notifications */}

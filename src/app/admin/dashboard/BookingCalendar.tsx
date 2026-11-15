@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { ErrorNotice } from "../useAdminAction";
 
 interface CalendarBooking {
   id: string;
@@ -55,20 +57,27 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
   const [bookings, setBookings] = useState<CalendarBooking[]>(initialBookings);
   const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set(initialBlockedDates));
   const [loading, setLoading] = useState(false);
+  const [monthError, setMonthError] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; bookings: CalendarBooking[]; blocked: boolean; dateStr: string } | null>(null);
 
   const fetchMonth = useCallback(async (y: number, m: number) => {
     setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/bookings/calendar?year=${y}&month=${m}`);
-      if (res.ok) {
-        const data = await res.json();
-        setBookings(data.bookings);
-        setBlockedDates(new Set(data.blockedDates ?? []));
-      }
-    } finally {
-      setLoading(false);
+    setMonthError(null);
+    const r = await apiRequest<{ bookings: CalendarBooking[]; blockedDates?: string[] }>(
+      `/api/admin/bookings/calendar?year=${y}&month=${m}`,
+      { fallbackError: "We couldn't load this month. Go back and forward to try again." }
+    );
+    if (r.ok) {
+      const data = r.data;
+      setBookings(data.bookings);
+      setBlockedDates(new Set(data.blockedDates ?? []));
+    } else {
+      // Don't leave last month's bookings under this month's heading.
+      setBookings([]);
+      setBlockedDates(new Set());
+      setMonthError(r.error);
     }
+    setLoading(false);
   }, []);
 
   function goToPrev() {
@@ -208,6 +217,8 @@ export function BookingCalendar({ initialBookings, initialBlockedDates, initialY
           <span className="text-xs text-gray-500">Blocked (external)</span>
         </div>
       </div>
+
+      <ErrorNotice message={monthError} onDismiss={() => setMonthError(null)} className="mt-3" />
 
       {/* Loading overlay */}
       {loading && (

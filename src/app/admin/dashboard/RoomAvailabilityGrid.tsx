@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { ErrorNotice } from "../useAdminAction";
 
 interface CalendarBooking {
   id: string;
@@ -65,6 +67,7 @@ export function RoomAvailabilityGrid({
   const [rooms, setRooms] = useState(initialRooms);
   const [blockedDates, setBlockedDates] = useState(new Set(initialBlockedDates));
   const [loading, setLoading] = useState(false);
+  const [monthError, setMonthError] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -138,17 +141,23 @@ export function RoomAvailabilityGrid({
 
   async function fetchMonth(y: number, m: number) {
     setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/bookings/calendar?year=${y}&month=${m}`);
-      if (res.ok) {
-        const data = await res.json();
-        setBookings(data.bookings);
-        setBlockedDates(new Set(data.blockedDates ?? []));
-        if (data.rooms) setRooms(data.rooms);
-      }
-    } finally {
-      setLoading(false);
+    setMonthError(null);
+    const r = await apiRequest<{ bookings: CalendarBooking[]; blockedDates?: string[]; rooms?: typeof rooms }>(
+      `/api/admin/bookings/calendar?year=${y}&month=${m}`,
+      { fallbackError: "We couldn't load this month. Go back and forward to try again." }
+    );
+    if (r.ok) {
+      const data = r.data;
+      setBookings(data.bookings);
+      setBlockedDates(new Set(data.blockedDates ?? []));
+      if (data.rooms) setRooms(data.rooms);
+    } else {
+      // Don't leave last month's bookings under this month's heading.
+      setBookings([]);
+      setBlockedDates(new Set());
+      setMonthError(r.error);
     }
+    setLoading(false);
   }
 
   function goToPrev() {
@@ -262,6 +271,8 @@ export function RoomAvailabilityGrid({
           <span className="text-xs text-gray-500">Blocked</span>
         </div>
       </div>
+
+      <ErrorNotice message={monthError} onDismiss={() => setMonthError(null)} className="mt-3" />
 
       {/* Loading overlay */}
       {loading && (
