@@ -7,6 +7,8 @@ import Link from "next/link";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, getOAuthToken, getNotificationPreferences, getNotificationLog } from "@/lib/db";
 import { SettingsForm } from "./SettingsForm";
+import { AlertEmailForm } from "./AlertEmailForm";
+import { alertEmailOf } from "@/lib/db/alert-email";
 import { NotificationSettings } from "./notifications/NotificationSettings";
 
 function WhatsAppLogo({ className }: { className?: string }) {
@@ -189,6 +191,7 @@ export default async function SettingsPage({
         {/* Left column: Hotel Info + Notifications */}
         <div className="space-y-6">
           <SettingsForm hotel={hotelView(hotel)} />
+          <AlertEmailForm {...alertEmailOf(hotel as unknown as Record<string, unknown>)} />
           <NotificationSettings hotel={hotelView(hotel)} preferences={preferences} recentLog={recentLog} />
         </div>
 

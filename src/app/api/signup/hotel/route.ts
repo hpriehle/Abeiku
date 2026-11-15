@@ -5,6 +5,7 @@ import { getHotelById, updateHotel } from "@/lib/db";
 import { tierForRooms } from "@/lib/billing/plans";
 import { parseHotelDetails } from "@/lib/billing/signup-input";
 import { errorResponse, requireSession } from "@/lib/billing/route-helpers";
+import { setHotelAlertEmail } from "@/lib/db/alert-email";
 
 export async function POST(request: NextRequest) {
   const session = await requireSession();
@@ -25,6 +26,11 @@ export async function POST(request: NextRequest) {
       room_count: rooms,
       billing_tier: tierForRooms(rooms),
     });
+    // Booking alerts go to the contact email by default (changeable in Settings).
+    // A missing alert_email column only logs; sign-up carries on.
+    await setHotelAlertEmail(hotel.id, contactEmail).catch((err) =>
+      console.error("[signup] alert email not set:", (err as Error)?.message ?? err),
+    );
     return NextResponse.json({ success: true, tier: tierForRooms(rooms) });
   } catch (err) {
     return errorResponse(err, "hotel details");
