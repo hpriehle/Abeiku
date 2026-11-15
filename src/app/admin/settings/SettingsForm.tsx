@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { Hotel } from "@/lib/db";
+import type { HotelView } from "@/lib/admin/hotel-view";
 
 interface SettingsFormProps {
-  hotel: Hotel;
+  hotel: HotelView;
 }
 
 const inputClass =

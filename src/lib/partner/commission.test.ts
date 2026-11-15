@@ -5,9 +5,23 @@ import {
   defaultRule,
   displayCommission,
   displayStatus,
+  formatMoney,
   isValidRefCode,
   totalsFor,
 } from "./commission";
+
+describe("formatMoney", () => {
+  it("formats with currency", () => {
+    expect(formatMoney(1050, "GHS")).toBe("GH₵ 1,050.00");
+    expect(formatMoney(8.925, "USD")).toBe("$8.93");
+    expect(formatMoney(0, "GHS")).toBe("GH₵ 0.00");
+  });
+  it("never prints NaN or null", () => {
+    expect(formatMoney(NaN, "GHS")).toBe("—");
+    expect(formatMoney(null, "USD")).toBe("—");
+    expect(formatMoney(undefined, "GHS")).toBe("—");
+  });
+});
 
 const booking = { nights: 3, room_total_usd: 600, total_ghs: 9000, ghs_per_usd: 15 };
 

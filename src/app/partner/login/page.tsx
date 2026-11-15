@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AuthShell, BUTTON_PRIMARY, ErrorMessage, INPUT, NETWORK_ERROR, apiError } from "@/components/partner/ui";
 
 export default function PartnerLoginPage() {
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,77 +20,75 @@ export default function PartnerLoginPage() {
       const res = await fetch("/api/partner/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: login, password }),
       });
 
       if (res.ok) {
-        router.push("/partner/dashboard");
+        router.replace("/partner/dashboard");
+        return; // keep the button in its "Signing in…" state while the dashboard loads
+      }
+      if (res.status === 401) {
+        setError("That email or WhatsApp number and password don't match. Check both and try again.");
+      } else if (res.status === 400) {
+        setError("Enter your email or WhatsApp number and your password.");
       } else {
-        const data = await res.json();
-        setError(data.error || "Invalid credentials");
+        setError(await apiError(res, "Something went wrong on our side. Please try again in a minute."));
       }
     } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      setError(NETWORK_ERROR);
     }
+    setLoading(false);
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1a2e]"
-      style={{ fontFamily: "var(--font-body), system-ui, sans-serif" }}
+    <AuthShell
+      title="Sign in"
+      subtitle="Track your referrals and commission"
+      footer={
+        <>
+          Forgot your password, or never set one?
+          <br />
+          <span className="text-white">Ask your hotel for a new setup link.</span>
+        </>
+      }
     >
-      <div className="w-full max-w-sm mx-4">
-        <div className="text-center mb-8">
-          <h1
-            className="text-3xl font-bold text-white tracking-tight"
-            style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-          >
-            Partner Portal
-          </h1>
-          <p className="text-gray-400 text-sm mt-2">Sign in to track your referrals</p>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
+          Email or WhatsApp number
+        </label>
+        <input
+          id="email"
+          type="text"
+          inputMode="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
+          placeholder="you@example.com or +233…"
+          required
+          className={`${INPUT} mb-4`}
+        />
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Email or WhatsApp number
-          </label>
-          <input
-            id="email"
-            type="text"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com or +233…"
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent mb-4"
-          />
+        <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-2">
+          Password
+        </label>
+        <input
+          id="password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className={INPUT}
+        />
 
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
-          />
+        <ErrorMessage>{error}</ErrorMessage>
 
-          {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-4 py-3 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
-      </div>
-    </div>
+        <button type="submit" disabled={loading} className={`${BUTTON_PRIMARY} w-full mt-5`}>
+          {loading ? "Signing in…" : "Sign in"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

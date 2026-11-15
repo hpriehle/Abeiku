@@ -18,7 +18,7 @@ import {
   type CommissionKind,
   type PartnerType,
 } from "@/lib/partner/commission";
-import { buildAdminView, INVITE_TTL_MS, setupUrl } from "@/lib/partner/views";
+import { adminSiteUrl, buildAdminView, INVITE_TTL_MS, setupUrl } from "@/lib/partner/views";
 
 export async function GET() {
   const session = await getSession();
@@ -28,7 +28,7 @@ export async function GET() {
     listInfluencersForHotel(session.hotelId),
     listBookingsForHotel(session.hotelId),
   ]);
-  return NextResponse.json(buildAdminView(partners, bookings));
+  return NextResponse.json(buildAdminView(partners, bookings, await adminSiteUrl(session.hotelId)));
 }
 
 // Creates a partner. Sends no email: returns the setup link for the admin to copy.

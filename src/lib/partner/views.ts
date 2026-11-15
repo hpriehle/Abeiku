@@ -10,20 +10,48 @@ import {
 } from "./commission";
 import type { ReferralBookingRow } from "./booking-report";
 import type { Influencer } from "@/lib/db/influencers";
-
-const ARACUYA_URL = (process.env.ARACUYA_URL ?? "https://aracuya.com").replace(/\/$/, "");
+import { getHotelById } from "@/lib/db";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://abeiku.com").replace(/\/$/, "");
 
 /** Setup links are copied into a reply by hand, so they live longer than a typical invite. */
 export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
+/** A reset link opens an existing account, so it expires sooner than a first invite. */
+export const RESET_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
 export function setupUrl(token: string): string {
   return `${APP_URL}/partner/setup?token=${token}`;
 }
 
-export function partnerLink(refCode: string): string {
-  return `${ARACUYA_URL}/?ref=${encodeURIComponent(refCode)}`;
+/**
+ * The public website a hotel's partner links point to, or null if the hotel has none set up.
+ * PARTNER_SITE_URLS maps hotel slug to site, e.g. {"aracuya":"https://aracuya.com"}.
+ * Aracuya defaults to ARACUYA_URL, else https://aracuya.com. Other hotels get no link until
+ * their site is listed (and reports bookings with the ref code), rather than a link to the
+ * wrong hotel.
+ */
+export function partnerSiteUrl(hotelSlug: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  let sites: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(env.PARTNER_SITE_URLS || "{}");
+    if (parsed && typeof parsed === "object") sites = parsed;
+  } catch {
+    console.error("PARTNER_SITE_URLS is not valid JSON; ignoring it");
+  }
+  const fromMap = sites[hotelSlug];
+  const url =
+    typeof fromMap === "string" && /^https?:\/\//.test(fromMap)
+      ? fromMap
+      : hotelSlug === "aracuya"
+        ? env.ARACUYA_URL || "https://aracuya.com"
+        : null;
+  return url ? url.replace(/\/+$/, "") : null;
+}
+
+/** Partner link for a ref code on the hotel's site; null when the hotel has no site set up. */
+export function partnerLink(refCode: string, siteUrl: string | null): string | null {
+  return siteUrl ? `${siteUrl}/?ref=${encodeURIComponent(refCode)}` : null;
 }
 
 export interface BookingView {
@@ -75,7 +103,8 @@ export interface PartnerView {
   whatsapp: string | null;
   town: string | null;
   code: string;
-  link: string;
+  /** Null when the hotel has no partner site set up (see partnerSiteUrl). */
+  link: string | null;
   partner_type: Influencer["partner_type"];
   country: string;
   currency: Influencer["currency"];
@@ -87,7 +116,7 @@ export interface PartnerView {
   totals: Totals;
 }
 
-export function buildAdminView(partners: Influencer[], bookings: ReferralBookingRow[]) {
+export function buildAdminView(partners: Influencer[], bookings: ReferralBookingRow[], siteUrl: string | null) {
   const today = todayInGhana();
   const names = new Map(partners.map((p) => [p.id, p.name]));
   const byPartner = new Map<string, ReferralBookingRow[]>();
@@ -107,7 +136,7 @@ export function buildAdminView(partners: Influencer[], bookings: ReferralBooking
       whatsapp: p.whatsapp,
       town: p.town,
       code: p.slug,
-      link: partnerLink(p.slug),
+      link: partnerLink(p.slug, siteUrl),
       partner_type: p.partner_type,
       country: p.country,
       currency: p.currency,
@@ -121,9 +150,16 @@ export function buildAdminView(partners: Influencer[], bookings: ReferralBooking
   });
 
   return {
+    site_url: siteUrl,
     partners: partnerViews,
     bookings: bookings.map((b) =>
       bookingView(b, b.influencer_id ? names.get(b.influencer_id) ?? null : null, today)
     ),
   };
+}
+
+/** Partner site of the admin's hotel (the admin session has the hotel id, not the slug). */
+export async function adminSiteUrl(hotelId: string): Promise<string | null> {
+  const hotel = await getHotelById(hotelId);
+  return hotel ? partnerSiteUrl(hotel.slug) : null;
 }

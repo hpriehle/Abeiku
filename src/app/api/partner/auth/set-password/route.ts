@@ -10,6 +10,7 @@ import {
   createPartnerSessionToken,
   getPartnerSessionCookieOptions,
 } from "@/lib/partner/auth";
+import { checkInvite, INVITE_MESSAGES } from "@/lib/partner/invite";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     if (!invite_token || !password) {
       return NextResponse.json(
-        { error: "invite_token and password required" },
+        { error: invite_token ? "Choose a password." : INVITE_MESSAGES.missing },
         { status: 400 }
       );
     }
@@ -30,12 +31,12 @@ export async function POST(request: NextRequest) {
     }
 
     const influencer = await getInfluencerByInviteToken(invite_token);
-    if (!influencer) {
-      return NextResponse.json({ error: "Invalid or used invite link" }, { status: 400 });
-    }
-
-    if (influencer.invite_expires_at && new Date(influencer.invite_expires_at) < new Date()) {
-      return NextResponse.json({ error: "Invite link has expired" }, { status: 400 });
+    const invite = checkInvite(invite_token, influencer);
+    if (!invite.valid || !influencer) {
+      return NextResponse.json(
+        { error: invite.valid ? "Invalid link" : invite.message, reason: invite.valid ? "invalid" : invite.reason },
+        { status: 400 }
+      );
     }
 
     const hash = await hashPassword(password);
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const hotel = await getHotelById(influencer.hotel_id);
     if (!hotel) {
-      return NextResponse.json({ error: "Hotel not found" }, { status: 500 });
+      return NextResponse.json({ error: "Your password is set, but signing in failed. Try logging in." }, { status: 500 });
     }
 
     const token = await createPartnerSessionToken({
@@ -60,6 +61,6 @@ export async function POST(request: NextRequest) {
     response.cookies.set(name, token, options);
     return response;
   } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 400 });
   }
 }

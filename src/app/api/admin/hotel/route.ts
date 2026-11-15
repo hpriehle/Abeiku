@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, updateHotel, getOAuthToken } from "@/lib/db";
+import { hotelView } from "@/lib/admin/hotel-view";
 
 export async function GET() {
   const session = await getSession();
@@ -12,13 +13,8 @@ export async function GET() {
   const oauthToken = await getOAuthToken(session.hotelId, "google");
 
   return NextResponse.json({
-    hotel: {
-      ...hotel,
-      // Mask sensitive fields
-      whatsapp_access_token: hotel.whatsapp_access_token ? "***configured***" : null,
-      stripe_secret_key: undefined,
-      stripe_webhook_secret: undefined,
-    },
+    // Only the fields the pages use: no tokens, keys or MoMo verification amount.
+    hotel: hotelView(hotel),
     integrations: {
       google_calendar: !!oauthToken,
       whatsapp: !!hotel.whatsapp_access_token,

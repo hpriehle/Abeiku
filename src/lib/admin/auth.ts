@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
-import { SignJWT, jwtVerify } from "jose";
+import { signSession, verifySession } from "@/lib/auth/session";
 import bcrypt from "bcryptjs";
 
 const COOKIE_NAME = "admin_session";
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret-change-me");
 
 export interface SessionPayload {
   userId: string;
@@ -22,20 +21,12 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export async function createSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT(payload as unknown as Record<string, unknown>)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+  return signSession("admin", payload);
 }
 
+/** Only accepts admin sessions (see src/lib/auth/session.ts). */
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as unknown as SessionPayload;
-  } catch {
-    return null;
-  }
+  return verifySession<SessionPayload>(token, "admin");
 }
 
 export async function getSession(): Promise<SessionPayload | null> {

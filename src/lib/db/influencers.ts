@@ -193,6 +193,22 @@ export async function setInfluencerInvite(
   if (error) throw error;
 }
 
+/**
+ * Password reset by hand: a fresh setup link for a partner who already has a password. The old
+ * password keeps working until the partner sets a new one with the link.
+ */
+export async function setInfluencerResetInvite(
+  id: string,
+  invite_token: string,
+  invite_expires_at: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("influencers")
+    .update({ invite_token, invite_expires_at })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function markInfluencerLogin(id: string): Promise<void> {
   const { error } = await supabase
     .from("influencers")

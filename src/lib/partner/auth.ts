@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
-import { SignJWT, jwtVerify } from "jose";
+import { signSession, verifySession } from "@/lib/auth/session";
 import bcrypt from "bcryptjs";
 
 const COOKIE_NAME = "partner_session";
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret-change-me");
 
 export interface PartnerSessionPayload {
   influencerId: string;
@@ -22,20 +21,12 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export async function createPartnerSessionToken(payload: PartnerSessionPayload): Promise<string> {
-  return new SignJWT(payload as unknown as Record<string, unknown>)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+  return signSession("partner", payload);
 }
 
+/** Only accepts partner sessions (see src/lib/auth/session.ts). */
 export async function verifyPartnerSessionToken(token: string): Promise<PartnerSessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as unknown as PartnerSessionPayload;
-  } catch {
-    return null;
-  }
+  return verifySession<PartnerSessionPayload>(token, "partner");
 }
 
 export async function getPartnerSession(): Promise<PartnerSessionPayload | null> {

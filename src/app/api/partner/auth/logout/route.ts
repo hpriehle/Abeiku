@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import { COOKIE_NAME } from "@/lib/partner/auth";
+import { logoutRedirect } from "@/lib/auth/logout";
 
-export async function POST() {
-  const response = NextResponse.json({ success: true });
-  response.cookies.set(COOKIE_NAME, "", { maxAge: 0, path: "/" });
-  return response;
+// The "Log out" button is a plain form POST: clear the cookie and land on the login page.
+export async function POST(request: Request) {
+  return logoutRedirect(request, COOKIE_NAME, "/partner/login");
 }

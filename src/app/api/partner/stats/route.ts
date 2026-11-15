@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getPartnerSession } from "@/lib/partner/auth";
 import { getInfluencerById, listBookingsForInfluencer } from "@/lib/db/influencers";
 import { todayInGhana, totalsFor } from "@/lib/partner/commission";
-import { bookingView, partnerLink } from "@/lib/partner/views";
+import { bookingView, partnerLink, partnerSiteUrl } from "@/lib/partner/views";
 
 export async function GET() {
   const session = await getPartnerSession();
@@ -22,7 +22,8 @@ export async function GET() {
     name: partner.name,
     email: partner.email,
     code: partner.slug,
-    link_url: partnerLink(partner.slug),
+    // Null when the hotel has no partner site yet; the dashboard says so instead of a wrong link.
+    link_url: partnerLink(partner.slug, partnerSiteUrl(session.hotelSlug)),
     currency: partner.currency,
     commission_kind: partner.commission_kind,
     commission_value: Number(partner.commission_value),

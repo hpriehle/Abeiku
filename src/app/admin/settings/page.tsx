@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { hotelView } from "@/lib/admin/hotel-view";
 import Link from "next/link";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, getOAuthToken, getNotificationPreferences, getNotificationLog } from "@/lib/db";
@@ -154,8 +155,8 @@ export default async function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Left column: Hotel Info + Notifications */}
         <div className="space-y-6">
-          <SettingsForm hotel={hotel} />
-          <NotificationSettings hotel={hotel} preferences={preferences} recentLog={recentLog} />
+          <SettingsForm hotel={hotelView(hotel)} />
+          <NotificationSettings hotel={hotelView(hotel)} preferences={preferences} recentLog={recentLog} />
         </div>
 
         {/* Right column: Connected Services */}

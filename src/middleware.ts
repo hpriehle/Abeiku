@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifySession } from "@/lib/auth/session";
 
 const COOKIE_NAME = "admin_session";
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret-change-me");
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -13,16 +12,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const sessionCookie = request.cookies.get(COOKIE_NAME);
-  if (!sessionCookie?.value) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
-  }
-
-  try {
-    await jwtVerify(sessionCookie.value, JWT_SECRET);
+  // Only an admin session opens /admin: a partner session signed with the same key does not.
+  if (sessionCookie?.value && (await verifySession(sessionCookie.value, "admin"))) {
     return NextResponse.next();
-  } catch {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
   }
+  return NextResponse.redirect(new URL("/admin/login", request.url));
 }
 
 export const config = {
