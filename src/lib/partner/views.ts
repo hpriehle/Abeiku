@@ -17,6 +17,9 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://abeiku.com").replac
 /** Setup links are copied into a reply by hand, so they live longer than a typical invite. */
 export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
+/** A reset link opens an existing account, so it expires sooner than a first invite. */
+export const RESET_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
 export function setupUrl(token: string): string {
   return `${APP_URL}/partner/setup?token=${token}`;
 }
