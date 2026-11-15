@@ -16,6 +16,7 @@ import {
   tooManyMessage,
   LOGIN_LIMIT,
 } from "@/lib/auth/rate-limit";
+import { billingView, sessionBillingClaim, type HotelBilling } from "@/lib/billing/access";
 
 // bcrypt hash of a random throwaway password: unknown emails still pay the
 // bcrypt cost, so response time doesn't reveal which emails exist.
@@ -53,16 +54,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Hotel not found" }, { status: 500 });
     }
 
+    // L2: a hotel that signed up but has no card (or whose plan ended) gets a session that only
+    // opens the sign-up steps. Hotels without billing columns or status (Aracuya) are never blocked.
+    const view = billingView(hotel as HotelBilling);
+    const blocked = sessionBillingClaim(view);
     const token = await createSessionToken({
       userId: user.id,
       hotelId: user.hotel_id,
       email: user.email,
       hotelName: hotel.name,
       role: user.role,
+      ...(blocked ? { billing: blocked } : {}),
     });
 
     const { name, options } = getSessionCookieOptions();
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true, ...(blocked ? { next: "/signup" } : {}) });
     response.cookies.set(name, token, options);
     return response;
   } catch {

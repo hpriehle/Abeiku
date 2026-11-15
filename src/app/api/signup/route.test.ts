@@ -1,0 +1,80 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
+import { MemoryAttemptStore } from "@/lib/auth/rate-limit";
+import { verifySession } from "@/lib/auth/session";
+
+let columnsError: { code: string; message: string } | null = null;
+vi.mock("@/lib/supabase/client", () => ({
+  supabase: { from: () => ({ select: () => ({ limit: async () => ({ error: columnsError }) }) }) },
+}));
+const createHotel = vi.fn(async (h: Record<string, unknown>) => ({ id: "h9", ...h }));
+const createAdminUser = vi.fn(async (u: Record<string, unknown>) => ({ id: "u9", role: "admin", ...u }));
+vi.mock("@/lib/db", () => ({
+  createHotel: (h: Record<string, unknown>) => createHotel(h),
+  createAdminUser: (u: Record<string, unknown>) => createAdminUser(u),
+  getAdminUserByEmail: async (e: string) => (e === "taken@inn.gh" ? { id: "x" } : null),
+  getHotelBySlug: async (s: string) => (s === "busua-inn" ? { id: "old" } : null),
+  seedDefaultNotificationPreferences: async () => {},
+}));
+vi.mock("@/lib/admin/auth", async (orig) => ({
+  ...(await orig<typeof import("@/lib/admin/auth")>()),
+  hashPassword: async () => "hash",
+}));
+let store = new MemoryAttemptStore();
+vi.mock("@/lib/auth/rate-limit", async (orig) => ({
+  ...(await orig<typeof import("@/lib/auth/rate-limit")>()),
+  getAttemptStore: async () => store,
+}));
+
+const { POST } = await import("./route");
+
+const good = { hotelName: "Busua Inn", email: "Owner@Inn.gh", password: "longenough" };
+function signup(body: object) {
+  return POST(new NextRequest("http://localhost/api/signup", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": "9.9.9.9" }, body: JSON.stringify(body) }));
+}
+
+describe("POST /api/signup (L2)", () => {
+  beforeEach(() => {
+    process.env.SIGNUP_OPEN = "true";
+    columnsError = null;
+    store = new MemoryAttemptStore();
+    createHotel.mockClear();
+    createAdminUser.mockClear();
+  });
+
+  it("closed unless SIGNUP_OPEN=true: 404, nothing created", async () => {
+    delete process.env.SIGNUP_OPEN;
+    expect((await signup(good)).status).toBe(404);
+    process.env.SIGNUP_OPEN = "1";
+    expect((await signup(good)).status).toBe(404);
+    expect(createHotel).not.toHaveBeenCalled();
+  });
+
+  it("billing SQL not run: 503, nothing created", async () => {
+    columnsError = { code: "42703", message: "column hotels.billing_status does not exist" };
+    expect((await signup(good)).status).toBe(503);
+    expect(createHotel).not.toHaveBeenCalled();
+  });
+
+  it("creates the hotel as pending_card and a session that is blocked until the card step", async () => {
+    const res = await signup(good);
+    expect(res.status).toBe(200);
+    expect(createHotel).toHaveBeenCalledWith(expect.objectContaining({ name: "Busua Inn", slug: "busua-inn-1", billing_status: "pending_card", contact_email: "owner@inn.gh" }));
+    const cookie = res.cookies.get("admin_session")?.value ?? "";
+    const session = await verifySession<{ billing?: string; hotelId: string }>(cookie, "admin");
+    expect(session).toMatchObject({ hotelId: "h9", billing: "blocked" });
+  });
+
+  it("existing email: 409", async () => {
+    expect((await signup({ ...good, email: "taken@inn.gh" })).status).toBe(409);
+  });
+
+  it("bad input: 400", async () => {
+    expect((await signup({ ...good, password: "short" })).status).toBe(400);
+  });
+
+  it("more than 5 sign-ups an hour from one address: 429", async () => {
+    for (let i = 0; i < 5; i++) expect((await signup({ ...good, email: `o${i}@inn.gh` })).status).toBe(200);
+    expect((await signup({ ...good, email: "o6@inn.gh" })).status).toBe(429);
+  });
+});

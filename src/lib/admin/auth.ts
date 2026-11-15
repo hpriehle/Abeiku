@@ -10,6 +10,8 @@ export interface SessionPayload {
   email: string;
   hotelName: string;
   role: string;
+  /** "blocked": signed up but billing not set up (or ended); only the sign-up steps are open. */
+  billing?: "blocked";
 }
 
 export async function hashPassword(password: string): Promise<string> {

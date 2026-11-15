@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BedDouble,
   Building2,
+  CreditCard,
   CalendarDays,
   CalendarRange,
   ChevronsLeft,
@@ -46,11 +47,23 @@ const COLLAPSE_KEY = "abeiku-admin-nav-collapsed";
  *   (backdrop, Escape and any link close it), so page content always gets the full width.
  * - Desktop (md+): a sidebar that can be collapsed to icons only (remembered in localStorage).
  */
-export function AdminNav({ hotelName, email, platformAdmin }: { hotelName: string; email: string; platformAdmin: boolean }) {
+export function AdminNav({
+  hotelName,
+  email,
+  platformAdmin,
+  showPlan = false,
+}: {
+  hotelName: string;
+  email: string;
+  platformAdmin: boolean;
+  /** L2: hotels on Abeiku billing get a "Plan" page (trial, card, cancel). */
+  showPlan?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const links = platformAdmin ? [...LINKS, { href: "/admin/platform", label: "Platform", icon: Building2 }] : LINKS;
+  const withPlan = showPlan ? [...LINKS, { href: "/admin/plan", label: "Plan", icon: CreditCard }] : LINKS;
+  const links = platformAdmin ? [...withPlan, { href: "/admin/platform", label: "Platform", icon: Building2 }] : withPlan;
 
   useEffect(() => {
     // Read the saved preference after mount (localStorage is not available during server render).

@@ -1,9 +1,11 @@
 import { supabase } from "@/lib/supabase/client";
 import { Booking, Conversation, ConversationContext, GuestState } from "@/lib/whatsapp/types";
+import type { HotelBilling } from "@/lib/billing/access";
 
 // --- Hotel types ---
 
-export interface Hotel {
+/** Billing fields (HotelBilling) are optional: docs/l2-signup/billing.sql adds them. */
+export interface Hotel extends HotelBilling {
   id: string;
   name: string;
   slug: string;
@@ -47,6 +49,8 @@ export interface Hotel {
   whatsapp_booking_bot_enabled?: boolean | null;
   /** F2: where the public widget's "Book" button goes (e.g. https://aracuya.com/reserve). Optional column. */
   booking_url?: string | null;
+  /** L2 sign-up: the owner's calendar links (stored only, not synced yet). Optional column. */
+  calendar_links?: { airbnb: string | null; booking: string | null; vrbo: string | null; google: string | null } | null;
   active: boolean;
   created_at: string;
   updated_at: string;

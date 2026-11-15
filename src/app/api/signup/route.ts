@@ -1,76 +1,93 @@
-// POST /api/signup — Create a new hotel + admin user
+// POST /api/signup: step 1 of self-serve sign-up. Creates the hotel and its admin login.
+//
+// L2: the hotel starts in billing_status "pending_card" and the session carries billing=blocked,
+// so the admin stays closed until a card is on file (see src/lib/billing). Closed (404) unless
+// SIGNUP_OPEN=true, and refuses (503) until docs/l2-signup/billing.sql has run, so no account can
+// ever be created without the billing step.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createHotel, createAdminUser, getAdminUserByEmail, getHotelBySlug, seedDefaultNotificationPreferences } from "@/lib/db";
 import { hashPassword } from "@/lib/admin/auth";
+import { supabase } from "@/lib/supabase/client";
+import { signupOpen } from "@/lib/billing";
+import { billingView } from "@/lib/billing/access";
+import { setAdminSession } from "@/lib/billing/session";
+import { isMissingColumnError } from "@/lib/billing/store";
+import { parseAccount, slugify } from "@/lib/billing/signup-input";
+import { checkLimit, clientIp, getAttemptStore, hashKey, recordFailure, tooManyMessage } from "@/lib/auth/rate-limit";
 
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+const SIGNUP_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 };
+
+async function billingColumnsReady(): Promise<boolean> {
+  const { error } = await supabase.from("hotels").select("billing_status, billing_exempt, room_count, calendar_links").limit(1);
+  if (!error) return true;
+  if (isMissingColumnError(error)) return false;
+  throw error;
 }
 
 export async function POST(request: NextRequest) {
+  if (!signupOpen()) {
+    return NextResponse.json({ error: "Sign-up is not open yet." }, { status: 404 });
+  }
   try {
-    const body = await request.json();
-    const { hotelName, email, password, contactPhone, locationCity, locationCountry, currency } = body;
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const parsed = parseAccount(body);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const { hotelName, email, password } = parsed.value;
 
-    if (!hotelName || !email || !password) {
-      return NextResponse.json({ error: "Hotel name, email, and password are required" }, { status: 400 });
+    // At most 5 new accounts per hour from one address.
+    const store = await getAttemptStore();
+    const keys = [`signup:ip:${hashKey(clientIp(request.headers))}`];
+    const check = await checkLimit(store, keys, SIGNUP_LIMIT);
+    if (!check.allowed) {
+      return NextResponse.json({ error: tooManyMessage(check.retryAfterSec) }, { status: 429 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    if (!(await billingColumnsReady())) {
+      console.error("[signup] billing columns missing: run docs/l2-signup/billing.sql");
+      return NextResponse.json({ error: "Sign-up is not ready yet. Please try again later." }, { status: 503 });
     }
 
-    // Check for existing email
-    const existingUser = await getAdminUserByEmail(email);
-    if (existingUser) {
-      return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
+    if (await getAdminUserByEmail(email)) {
+      return NextResponse.json({ error: "An account with this email already exists. Log in instead." }, { status: 409 });
     }
 
-    // Generate unique slug
-    let slug = slugify(hotelName);
-    let existing = await getHotelBySlug(slug);
-    let attempt = 0;
-    while (existing) {
-      attempt++;
-      slug = `${slugify(hotelName)}-${attempt}`;
-      existing = await getHotelBySlug(slug);
-    }
+    const base = slugify(hotelName);
+    let slug = base;
+    for (let attempt = 1; await getHotelBySlug(slug); attempt++) slug = `${base}-${attempt}`;
 
-    // Create hotel
     const hotel = await createHotel({
       name: hotelName,
       slug,
-      contact_phone: contactPhone || null,
       contact_email: email,
-      location_city: locationCity || null,
-      location_country: locationCountry || null,
-      currency: currency || "GHS",
+      location_country: "Ghana",
+      currency: "GHS",
+      billing_status: "pending_card",
     });
 
-    // Create admin user
-    const passwordHash = await hashPassword(password);
-    await createAdminUser({
+    const user = await createAdminUser({
       hotel_id: hotel.id,
-      email: email.toLowerCase(),
-      password_hash: passwordHash,
+      email,
+      password_hash: await hashPassword(password),
       name: hotelName,
       role: "admin",
     });
+    await recordFailure(store, keys); // counts successful sign-ups toward the hourly limit
 
-    // Seed default notification preferences (email on, WhatsApp off)
-    await seedDefaultNotificationPreferences(hotel.id);
+    try {
+      await seedDefaultNotificationPreferences(hotel.id);
+    } catch (err) {
+      console.error("[signup] notification defaults failed:", err);
+    }
 
-    return NextResponse.json({
-      success: true,
-      hotelId: hotel.id,
-      slug: hotel.slug,
-    });
+    const res = NextResponse.json({ success: true, next: "hotel" });
+    return setAdminSession(
+      res,
+      { userId: user.id, hotelId: hotel.id, email: user.email, hotelName: hotel.name, role: user.role },
+      billingView({ billing_status: "pending_card" })
+    );
   } catch (error) {
     console.error("Signup error:", error);
-    return NextResponse.json({ error: "Failed to create hotel" }, { status: 500 });
+    return NextResponse.json({ error: "We could not create your account. Please try again." }, { status: 500 });
   }
 }

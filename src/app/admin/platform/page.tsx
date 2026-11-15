@@ -2,6 +2,8 @@ import { Building2, CreditCard, TrendingUp, Wallet, type LucideIcon } from "luci
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/admin/auth";
 import { getPlatformStats, getAllHotelEarnings } from "@/lib/db";
+import { listHotelBilling } from "@/lib/billing/supabase-store";
+import { BillingTable } from "./BillingTable";
 
 function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: LucideIcon }) {
   return (
@@ -26,9 +28,10 @@ export default async function PlatformPage() {
     redirect("/admin/dashboard");
   }
 
-  const [stats, earnings] = await Promise.all([
+  const [stats, earnings, billing] = await Promise.all([
     getPlatformStats(),
     getAllHotelEarnings(),
+    listHotelBilling(),
   ]);
 
   const avgFee = stats.totalProcessed > 0
@@ -64,6 +67,8 @@ export default async function PlatformPage() {
           sub="Of total processed"
         />
       </div>
+
+      <BillingTable hotels={billing} />
 
       {/* Per-hotel earnings */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">

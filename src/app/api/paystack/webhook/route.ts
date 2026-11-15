@@ -5,8 +5,9 @@
 // 2. charge.failed — payment failed
 // 3. transfer.success — MoMo payout completed
 // 4. transfer.failed — MoMo payout failed
+// 5. L2: Abeiku's own hotel subscriptions (subscription.*, invoice.*, plan charges). Picked out
+//    by isPaystackBillingEvent() and handled in src/lib/billing; guest payments are unchanged.
 
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getPaymentByPaystackReference,
@@ -24,6 +25,9 @@ import { hotelStorage } from "@/lib/hotel-context";
 import { sendText, sendButtons } from "@/lib/whatsapp/client";
 import { notifyOwner } from "@/lib/notifications";
 import { initiateTransfer } from "@/lib/payments/paystack-transfer";
+import { billingDeps } from "@/lib/billing";
+import { planIdsFromEnv } from "@/lib/billing/plans";
+import { handlePaystackBillingEvent, isPaystackBillingEvent, verifyPaystackSignature } from "@/lib/billing/webhooks";
 
 function verifySignature(rawBody: string, signature: string): boolean {
   const secret = process.env.PAYSTACK_WEBHOOK_SECRET;
@@ -31,8 +35,7 @@ function verifySignature(rawBody: string, signature: string): boolean {
     console.error("Missing PAYSTACK_WEBHOOK_SECRET env var");
     return false;
   }
-  const hash = crypto.createHmac("sha512", secret).update(rawBody).digest("hex");
-  return hash === signature;
+  return verifyPaystackSignature(rawBody, signature, secret);
 }
 
 export async function POST(request: NextRequest) {
@@ -56,6 +59,18 @@ export async function POST(request: NextRequest) {
   }
 
   const { event, data } = body;
+
+  // L2 billing events never reach the guest-payment code below.
+  if (data && isPaystackBillingEvent(event, data, planIdsFromEnv())) {
+    try {
+      const out = await handlePaystackBillingEvent(billingDeps(), event, data);
+      console.log(`[billing] paystack ${event}: ${out.note}`);
+      return NextResponse.json({ received: true });
+    } catch (err) {
+      console.error(`[billing] paystack ${event} failed:`, err);
+      return NextResponse.json({ error: "Failed" }, { status: 500 }); // Paystack retries
+    }
+  }
 
   // Handle transfer events (payout to hotel MoMo)
   if (event === "transfer.success" || event === "transfer.failed") {

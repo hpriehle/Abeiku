@@ -1,0 +1,58 @@
+[
+  {
+    "shot": "1-account",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "Start your free trial"
+  },
+  {
+    "shot": "2-hotel",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "About Busua Beach Inn"
+  },
+  {
+    "shot": "3-calendars",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "Your calendars"
+  },
+  {
+    "shot": "4-plan-cedis",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "Add your card"
+  },
+  {
+    "shot": "4-plan-dollars",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "Add your card"
+  },
+  {
+    "shot": "5-done",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "Your free trial has started"
+  },
+  {
+    "shot": "5-done-error",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "Your card was not added"
+  },
+  {
+    "shot": "error-hotel-step",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "heading": "About Busua Beach Inn"
+  }
+]
