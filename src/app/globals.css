@@ -101,4 +101,8 @@ body {
   .admin-btn-ghost { @apply text-gray-700 hover:bg-gray-100; }
   /* Wide tables: scroll inside their own box instead of pushing the page sideways. */
   .admin-table-wrap { @apply overflow-x-auto; }
+  /* Feedback after an admin action (F2). */
+  .admin-error { @apply flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800; }
+  .admin-error-dismiss { @apply -my-1 px-1 text-lg leading-none text-red-800 hover:text-red-900; }
+  .admin-success { @apply rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800; }
 }

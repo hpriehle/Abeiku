@@ -3,6 +3,9 @@
 import { useState, useRef } from "react";
 import { COMMON_AMENITIES, BED_TYPES } from "@/lib/constants";
 import type { HotelRoom, RoomType } from "@/lib/db";
+import { apiRequest } from "@/lib/admin/api-client";
+import { basePriceTier, parsePrice, withBasePrice } from "@/lib/rooms/pricing";
+import { ErrorNotice } from "../useAdminAction";
 
 interface RoomFormModalProps {
   room?: HotelRoom | null;
@@ -27,24 +30,27 @@ function ImageUploadArea({
   onRemoved: (url: string) => void;
   multiple?: boolean;
 }) {
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   async function handleFiles(files: FileList) {
+    if (uploading) return;
     setUploading(true);
+    setUploadError(null);
+    const failed: string[] = [];
     for (const file of Array.from(files)) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("roomId", roomId);
-      try {
-        const res = await fetch("/api/admin/rooms/upload", { method: "POST", body: formData });
-        if (res.ok) {
-          const { url, path } = await res.json();
-          onUploaded(url, path);
-        }
-      } catch {
-        // Silently skip failed uploads
-      }
+      const r = await apiRequest<{ url: string; path: string }>("/api/admin/rooms/upload", { method: "POST", body: formData });
+      if (r.ok) onUploaded(r.data.url, r.data.path);
+      else failed.push(`${file.name}: ${r.error}`);
+    }
+    if (failed.length) {
+      setUploadError(
+        `${failed.length === 1 ? "1 image" : `${failed.length} images`} could not be uploaded. ${failed.join(" ")}`
+      );
     }
     setUploading(false);
   }
@@ -91,6 +97,7 @@ function ImageUploadArea({
         className="hidden"
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
       />
+      <ErrorNotice message={uploadError} onDismiss={() => setUploadError(null)} className="mt-2" />
     </div>
   );
 }
@@ -109,7 +116,7 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
     amenities: room?.amenities || [],
     description: room?.description || "",
     tagline: room?.tagline || "",
-    price: room?.pricing_tiers?.[0]?.price || 0,
+    price: basePriceTier(room?.pricing_tiers)?.price ? String(basePriceTier(room?.pricing_tiers)?.price) : "",
     room_type: (room?.room_type || "standard") as RoomType,
     group_id: room?.group_id || "",
   });
@@ -157,17 +164,28 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
         gallery: isHero ? galleryImages : galleryImages.filter((u) => u !== url),
       };
       if (!newImages.gallery.length) delete (newImages as Record<string, unknown>).gallery;
-      await fetch(`/api/admin/rooms/${room.id}`, {
+      const r = await apiRequest(`/api/admin/rooms/${room.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: newImages }),
+        json: { images: newImages },
+        fallbackError: "We couldn't remove the image from this room. Press Save to try again.",
       });
+      if (!r.ok) setError(r.error);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return; // no double submit
     setError("");
+    const price = parsePrice(form.price);
+    if (price === null) {
+      setError("Enter a price per night greater than 0.");
+      return;
+    }
+    if (!form.name.trim()) {
+      setError("Enter a room name.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -188,36 +206,33 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
             amenities: form.amenities,
             description: form.description || null,
             tagline: form.tagline || null,
-            pricing_tiers: [{
-              rooms: 1,
-              price: Number(form.price),
-              label: form.room_type === "group" ? "Entire House" : "1 Room",
-            }],
+            // Keep multi-room tiers; only the single-room price is edited here (audit B6).
+            pricing_tiers: withBasePrice(room.pricing_tiers, price, form.room_type),
             room_type: form.room_type,
             group_id: form.room_type === "individual" ? (form.group_id || null) : null,
             images,
           }
         : {
             ...form,
+            price,
             room_type: form.room_type,
             group_id: form.room_type === "individual" ? (form.group_id || null) : null,
             images,
           };
 
-      const res = await fetch(url, {
+      const r = await apiRequest(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        json: body,
+        fallbackError: isEdit
+          ? "We couldn't save your changes to this room. Please try again."
+          : "We couldn't add this room. Please try again.",
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save room");
+      if (!r.ok) {
+        setError(r.error);
+        return;
       }
 
       onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -369,7 +384,7 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
               min={0}
               step="0.01"
               value={form.price}
-              onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+              onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
               required
               className="admin-input"
             />
@@ -441,7 +456,7 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
             </div>
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <ErrorNotice message={error} onDismiss={() => setError("")} />
 
           <div className="flex gap-3 pt-2">
             <button

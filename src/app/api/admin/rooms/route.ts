@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Room name is required" }, { status: 400 });
     }
 
+    if (price !== undefined && price !== null && price !== "" && !(Number(price) > 0)) {
+      return NextResponse.json({ error: "Enter a price per night greater than 0." }, { status: 400 });
+    }
+
     // Generate unique slug
     const baseSlug = slugify(name);
     let slug = baseSlug;
