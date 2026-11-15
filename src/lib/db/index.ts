@@ -41,6 +41,10 @@ export interface Hotel {
   payout_method: "bank" | "momo" | null;
   paystack_transfer_recipient_code: string | null;
   google_place_id: string | null;
+  /** F2: Abeiku's own WhatsApp booking bot. Off unless set to true (column from supabase-migration-f2-reliability.sql; may not exist yet). */
+  whatsapp_booking_bot_enabled?: boolean | null;
+  /** F2: where the public widget's "Book" button goes (e.g. https://aracuya.com/reserve). Optional column. */
+  booking_url?: string | null;
   active: boolean;
   created_at: string;
   updated_at: string;

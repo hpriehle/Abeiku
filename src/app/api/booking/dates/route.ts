@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isBookingBotEnabled } from "@/lib/whatsapp/inbound";
 import {
   getHotelBySlug,
   getConversation,
@@ -68,6 +69,15 @@ export async function POST(req: NextRequest) {
     const hotel = await getHotelBySlug(hotelSlug);
     if (!hotel) {
       return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
+    }
+
+    // F2: part of Abeiku's own WhatsApp booking flow. Off unless the hotel has
+    // the booking bot switched on: no booking is created, no message is sent.
+    if (!isBookingBotEnabled(hotel)) {
+      return NextResponse.json(
+        { error: "Booking through this link is switched off. Please message the hotel on WhatsApp and someone will help you." },
+        { status: 403 }
+      );
     }
 
     // Run inside hotel context so WhatsApp client can access credentials
