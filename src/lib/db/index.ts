@@ -676,11 +676,17 @@ export async function createReview(
 
 // --- Lifecycle queries ---
 
+// Only bookings made through Abeiku (WhatsApp / admin) get automatic guest messages.
+// Imported ones (website, Google Calendar, Airbnb, VRBO, Booking.com) never do:
+// people reply to those guests themselves. Needs supabase-migration-booking-sources.sql.
+const MESSAGEABLE_BOOKINGS = "source.is.null,source.in.(whatsapp,manual)";
+
 export async function getBookingsNeedingCheckinReminder(hotelId: string, tomorrow: string): Promise<Booking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_in", tomorrow)
     .eq("booking_status", "confirmed");
   if (error) throw error;
@@ -705,6 +711,7 @@ export async function getBookingsNeedingCheckoutReminder(hotelId: string, today:
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_out", today)
     .in("booking_status", ["confirmed", "checked_in"]);
   if (error) throw error;
@@ -728,6 +735,7 @@ export async function getBookingsNeedingReviewRequest(hotelId: string, twoDaysAg
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_out", twoDaysAgo)
     .eq("booking_status", "checked_out");
   if (error) throw error;
@@ -761,6 +769,7 @@ export async function getGuestsNeedingReturnOffer(hotelId: string, cutoffDate: s
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("booking_status", "checked_out")
     .lte("check_out", cutoffDate)
     .order("check_out", { ascending: false });
@@ -803,6 +812,7 @@ export async function getGuestsNeedingPhotoInvite(hotelId: string, checkoutDate:
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_out", checkoutDate)
     .eq("booking_status", "checked_out");
   if (error) throw error;
