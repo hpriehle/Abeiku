@@ -12,6 +12,7 @@ import { deleteBookingEvent, updateBookingEvent } from "@/lib/calendar";
 import { hotelStorage } from "@/lib/hotel-context";
 import { notifyGuest } from "@/lib/whatsapp/guest-notify";
 import type { Booking } from "@/lib/whatsapp/types";
+import { sourceOf } from "@/lib/bookings/calendar-view";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   confirmed: ["checked_in", "cancelled"],
@@ -60,6 +61,16 @@ export async function PUT(
   try {
     const booking = await getBookingById(session.hotelId, id);
     if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    // Imported bookings (website, Google calendar, OTAs) are read-only here: the sync would undo
+    // the change, and they must never get automatic guest messages.
+    const src = sourceOf(booking as Parameters<typeof sourceOf>[0]);
+    if (src.imported) {
+      return NextResponse.json(
+        { error: `This booking came from ${src.label}. Change it in ${src.editIn}; Abeiku updates on the next sync.` },
+        { status: 409 }
+      );
+    }
 
     const hotel = await getHotelById(session.hotelId);
     if (!hotel) return NextResponse.json({ error: "Hotel not found" }, { status: 404 });

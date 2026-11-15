@@ -27,6 +27,32 @@ export interface CalendarBookingRow {
   created_at?: string | null;
 }
 
+/** Only the fields the calendar shows (no internal columns). */
+export function toCalendarRow(r: Record<string, unknown>): CalendarBookingRow {
+  const s = (k: string) => (r[k] == null ? null : String(r[k]));
+  return {
+    id: String(r.id),
+    source: (s("source") as CalendarBookingRow["source"]) ?? null,
+    external_ref: s("external_ref"),
+    guest_name: s("guest_name") ?? "",
+    phone: s("phone"),
+    guest_email: s("guest_email"),
+    guests: r.guests == null ? null : Number(r.guests),
+    room_slug: s("room_slug") ?? "",
+    rooms_count: Number(r.rooms_count) || 1,
+    check_in: String(r.check_in).slice(0, 10),
+    check_out: String(r.check_out).slice(0, 10),
+    total_price: Number(r.total_price) || 0,
+    currency: s("currency") ?? "",
+    payment_status: s("payment_status") ?? "unpaid",
+    payment_provider: s("payment_provider"),
+    booking_status: s("booking_status") ?? "confirmed",
+    ref_code: s("ref_code"),
+    paid_at: s("paid_at"),
+    created_at: s("created_at"),
+  };
+}
+
 export type SourceKind = "website" | "momo" | "google" | "airbnb" | "vrbo" | "booking_com" | "whatsapp" | "manual";
 
 export interface SourceInfo {

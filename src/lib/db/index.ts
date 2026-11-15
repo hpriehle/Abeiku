@@ -1178,6 +1178,24 @@ export async function getBookingsForMonth(
   return data ?? [];
 }
 
+/**
+ * C1 calendar (read-only): every booking of the hotel overlapping [from, to], cancelled ones included
+ * (the page hides them unless asked). `select("*")` so it works before and after the booking-sources migration.
+ */
+export async function getCalendarBookings(hotelId: string, from: string, to: string): Promise<Record<string, unknown>[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("hotel_id", hotelId)
+    .lte("check_in", to)
+    .gte("check_out", from)
+    .order("check_in", { ascending: true })
+    .limit(2000);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export interface ReviewWithBooking extends Review {
   guest_name: string;
   room_slug: string;
