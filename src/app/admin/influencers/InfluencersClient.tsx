@@ -183,8 +183,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className={`${TH} text-left`}>Partner</th>
-                    <th className={`${TH} text-left`}>Code</th>
+                    <th className={`${TH} text-left`}>Partner / code</th>
                     <th className={`${TH} text-left`}>Rule</th>
                     <th className={`${TH} text-right`}>Bookings</th>
                     <th className={`${TH} text-right`}>Pending</th>
@@ -196,14 +195,11 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
                 <tbody>
                   {data.partners.map((p) => (
                     <tr key={p.id} className="border-t border-gray-200 align-top">
-                      <td className="px-4 py-3 min-w-48">
-                        <PartnerIdentity p={p} withCode={false} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-mono text-gray-900">{p.code}</div>
+                      <td className="px-4 py-3 min-w-56">
+                        <PartnerIdentity p={p} />
                         <CopyLinkButton link={p.link} />
                       </td>
-                      <td className="px-4 py-3 text-gray-800">
+                      <td className="px-4 py-3 text-gray-800 min-w-32">
                         {ruleLabel(p.commission_kind, p.commission_value, p.currency)}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-800">{p.bookings}</td>
@@ -216,7 +212,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
                       <td className="px-4 py-3 text-right text-gray-800 whitespace-nowrap">
                         {formatMoney(p.totals.paid, p.currency)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <AccountCell p={p} onNewLink={newSetupLink} />
                       </td>
                     </tr>
@@ -334,12 +330,12 @@ function sumByCurrency(partners: PartnerView[], key: "owed"): string {
     .join(" + ");
 }
 
-function PartnerIdentity({ p, withCode = true }: { p: PartnerView; withCode?: boolean }) {
+function PartnerIdentity({ p }: { p: PartnerView }) {
   const details = [TYPE_LABEL[p.partner_type], p.town, p.country, p.whatsapp, p.email].filter(Boolean).join(" · ");
   return (
     <div>
       <div className="font-medium text-gray-900">{p.name}</div>
-      {withCode && <div className="font-mono text-sm text-gray-800">{p.code}</div>}
+      <div className="font-mono text-sm text-gray-800">{p.code}</div>
       <div className="text-xs text-gray-600 break-words">{details}</div>
     </div>
   );

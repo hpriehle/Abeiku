@@ -57,7 +57,7 @@ function PartnerSetup() {
         footer={<>Already set a password? You can sign in.</>}
       >
         <p className="text-sm text-gray-800 leading-relaxed" role="alert">
-          {check.message}
+          {INVITE_MESSAGES[check.reason] ?? INVITE_MESSAGES.invalid}
         </p>
         <Link href="/partner/login" className={`${BUTTON_SECONDARY} w-full mt-6`}>
           Go to sign in
