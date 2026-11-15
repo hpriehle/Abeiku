@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../../useAdminAction";
 
 const inputClass =
   "admin-input";
@@ -9,25 +11,23 @@ export function WhatsAppForm({ connected }: { connected: boolean }) {
   const [token, setToken] = useState("");
   const [phoneId, setPhoneId] = useState("");
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        json: {
           whatsapp_access_token: token,
           whatsapp_phone_number_id: phoneId,
-        }),
+        },
+        fallbackError: "We couldn't save your WhatsApp details. Please try again.",
       });
-      if (!res.ok) throw new Error("Failed to save");
-      setMsg("Saved successfully! WhatsApp is now connected.");
-    } catch {
-      setMsg("Failed to save credentials");
+      setMsg(r.ok ? { kind: "ok", text: "Saved. WhatsApp is now connected." } : { kind: "error", text: r.error });
     } finally {
       setSaving(false);
     }
@@ -77,11 +77,7 @@ export function WhatsAppForm({ connected }: { connected: boolean }) {
           >
             {saving ? "Saving..." : connected ? "Update Credentials" : "Connect WhatsApp"}
           </button>
-          {msg && (
-            <span className={`text-sm ${msg.includes("success") ? "text-green-700" : "text-red-600"}`}>
-              {msg}
-            </span>
-          )}
+          <FormStatus message={msg} />
         </div>
       </form>
     </div>

@@ -55,3 +55,19 @@ export function ErrorNotice({
     </div>
   );
 }
+
+export type FormMessage = { kind: "ok" | "error"; text: string } | null;
+
+/** Inline result of a form save: green "saved" text or a red error. */
+export function FormStatus({ message }: { message: FormMessage }) {
+  if (!message) return null;
+  return message.kind === "ok" ? (
+    <span role="status" className="text-sm text-green-700">
+      {message.text}
+    </span>
+  ) : (
+    <span role="alert" className="text-sm text-red-700">
+      {message.text}
+    </span>
+  );
+}

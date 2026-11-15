@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { NotificationPreference } from "@/lib/db";
 import type { HotelView } from "@/lib/admin/hotel-view";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
+import { apiRequest } from "@/lib/admin/api-client";
+import { useAdminAction, ErrorNotice } from "../../useAdminAction";
 
 interface LogEntry {
   id: string;
@@ -35,36 +37,28 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
     return map;
   });
 
-  const [saving, setSaving] = useState<string | null>(null);
+  const { pending, busy, error, setError, run } = useAdminAction();
+  const saving = pending;
 
   async function togglePref(event: string, channel: "whatsapp" | "email") {
     const current = prefs[event];
     const newValue = channel === "whatsapp" ? !current.whatsapp : !current.email;
+    const label = NOTIFICATION_EVENTS.find((e) => e.event === event)?.label ?? "this notification";
 
-    // Optimistic update
-    setPrefs((prev) => ({
-      ...prev,
-      [event]: { ...prev[event], [channel]: newValue },
-    }));
-
-    setSaving(event);
-    try {
-      await fetch("/api/admin/notifications", {
+    const r = await run(event, () => {
+      // Optimistic update; reverted below if the server says no.
+      setPrefs((prev) => ({ ...prev, [event]: { ...prev[event], [channel]: newValue } }));
+      return apiRequest("/api/admin/notifications", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        json: {
           event_type: event,
           ...(channel === "whatsapp" ? { whatsapp_enabled: newValue } : { email_enabled: newValue }),
-        }),
+        },
+        fallbackError: `We couldn't turn ${channel === "email" ? "email" : "WhatsApp"} ${newValue ? "on" : "off"} for "${label}". The setting was not changed.`,
       });
-    } catch {
-      // Revert on error
-      setPrefs((prev) => ({
-        ...prev,
-        [event]: { ...prev[event], [channel]: !newValue },
-      }));
-    } finally {
-      setSaving(null);
+    });
+    if (r && !r.ok) {
+      setPrefs((prev) => ({ ...prev, [event]: { ...prev[event], [channel]: !newValue } }));
     }
   }
 
@@ -76,6 +70,7 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
       {/* Toggle grid */}
       <div className="admin-card">
         <h3 className="text-sm font-semibold text-gray-900 mb-4">Event Notifications</h3>
+        <ErrorNotice message={error} onDismiss={() => setError(null)} className="mb-3" />
         <div className="space-y-1">
           {/* Header */}
           <div className="grid grid-cols-[1fr_72px_72px] gap-4 text-xs font-medium text-gray-500 uppercase tracking-wider px-1 pb-2">
@@ -108,7 +103,7 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
                     role="switch"
                     aria-checked={!!p.email}
                     aria-label={`${ec.label} by email`}
-                    disabled={!hasEmail}
+                    disabled={!hasEmail || busy}
                     className={`w-10 h-6 rounded-full transition-colors relative ${
                       p.email ? "bg-[#2D4A3E]" : "bg-[#868e9c]"
                     } ${!hasEmail ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
@@ -129,7 +124,7 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
                     role="switch"
                     aria-checked={!!p.whatsapp}
                     aria-label={`${ec.label} by WhatsApp`}
-                    disabled={!hasWhatsApp}
+                    disabled={!hasWhatsApp || busy}
                     className={`w-10 h-6 rounded-full transition-colors relative ${
                       p.whatsapp ? "bg-[#2D4A3E]" : "bg-[#868e9c]"
                     } ${!hasWhatsApp ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}

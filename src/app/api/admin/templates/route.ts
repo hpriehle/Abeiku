@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { getMessageTemplates, upsertMessageTemplate, getTemplateSentCounts } from "@/lib/db";
+import { TEMPLATE_TYPES } from "@/lib/constants";
 
 export async function GET() {
   const session = await getSession();
@@ -23,6 +24,12 @@ export async function PUT(request: NextRequest) {
 
     if (!templateType || typeof body !== "string") {
       return NextResponse.json({ error: "templateType and body are required" }, { status: 400 });
+    }
+    if (!TEMPLATE_TYPES.some((t) => t.type === templateType)) {
+      return NextResponse.json({ error: "Unknown message type." }, { status: 400 });
+    }
+    if (!body.trim()) {
+      return NextResponse.json({ error: "The message can't be empty." }, { status: 400 });
     }
 
     const template = await upsertMessageTemplate(

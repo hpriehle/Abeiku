@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { friendlyError } from "@/lib/admin/api-client";
 
 const inputClass =
   "admin-input";
@@ -65,12 +66,12 @@ export function PaystackSubaccountWizard({
           setBanks(data.banks);
           setStep("idle");
         } else {
-          setError("Failed to load banks");
+          setError("We couldn't load the list of banks. Refresh the page to try again.");
           setStep("idle");
         }
       })
       .catch(() => {
-        setError("Failed to load banks");
+        setError("We couldn't load the list of banks. Refresh the page to try again.");
         setStep("idle");
       });
   }, [isConnected]);
@@ -93,7 +94,7 @@ export function PaystackSubaccountWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Could not verify account");
+        setError(friendlyError(res.status, data, "Could not verify account"));
         setStep("bank_selected");
         return;
       }
@@ -119,7 +120,7 @@ export function PaystackSubaccountWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to set up card payments");
+        setError(friendlyError(res.status, data, "Failed to set up card payments"));
         setStep("account_verified");
         return;
       }
@@ -148,7 +149,7 @@ export function PaystackSubaccountWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to save payout preference");
+        setError(friendlyError(res.status, data, "Failed to save payout preference"));
         return;
       }
       setPayoutSuccess(true);
@@ -221,8 +222,8 @@ export function PaystackSubaccountWizard({
                 disabled={step === "verifying_account"}
               >
                 <option value="">Choose a bank</option>
-                {filteredBanks.map((bank) => (
-                  <option key={bank.code} value={bank.code}>
+                {filteredBanks.map((bank, i) => (
+                  <option key={`${bank.code}-${bank.slug}-${i}`} value={bank.code}>
                     {bank.name}
                   </option>
                 ))}

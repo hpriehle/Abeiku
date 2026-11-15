@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { TEMPLATE_TYPES } from "@/lib/constants";
 import type { MessageTemplate } from "@/lib/db";
+import { apiRequest } from "@/lib/admin/api-client";
+import { useAdminAction, ErrorNotice } from "../useAdminAction";
 
 interface TemplateEditorProps {
   templates: MessageTemplate[];
@@ -13,10 +15,10 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
   const [editingType, setEditingType] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
   const [editActive, setEditActive] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  const templateMap = new Map(templates.map((t) => [t.template_type, t]));
+  // Local copy so a save or toggle shows at once, without a page reload.
+  const [templateMap, setTemplateMap] = useState(() => new Map(templates.map((t) => [t.template_type, t])));
+  const { pending, busy, error, setError, run } = useAdminAction();
+  const [savedNote, setSavedNote] = useState("");
 
   function startEdit(type: string) {
     const existing = templateMap.get(type);
@@ -24,37 +26,41 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
     setEditBody(existing?.body || defaultTemplate?.defaultBody || "");
     setEditActive(existing?.active ?? true);
     setEditingType(type);
-    setMsg("");
+    setError(null);
+    setSavedNote("");
+  }
+
+  async function save(type: string, body: string, active: boolean, key: string, fallbackError: string) {
+    const r = await run(key, () =>
+      apiRequest<{ template?: MessageTemplate }>("/api/admin/templates", {
+        method: "PUT",
+        json: { templateType: type, body, active },
+        fallbackError,
+      })
+    );
+    if (r?.ok) {
+      const tmpl = r.data.template;
+      setTemplateMap((prev) => {
+        const next = new Map(prev);
+        const old = prev.get(type);
+        next.set(type, tmpl ?? ({ ...(old ?? {}), template_type: type, body, active } as MessageTemplate));
+        return next;
+      });
+    }
+    return !!r?.ok;
   }
 
   async function handleSave() {
     if (!editingType) return;
-    setSaving(true);
-    setMsg("");
-
-    try {
-      const res = await fetch("/api/admin/templates", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateType: editingType,
-          body: editBody,
-          active: editActive,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to save");
-      setMsg("Saved successfully");
-      // Update local map
-      const data = await res.json();
-      if (data.template) {
-        templateMap.set(editingType, data.template);
-      }
+    if (!editBody.trim()) {
+      setError("The message can't be empty.");
+      return;
+    }
+    const label = TEMPLATE_TYPES.find((t) => t.type === editingType)?.label ?? "Template";
+    const ok = await save(editingType, editBody, editActive, "save", "We couldn't save this message. Your text is still here; please try again.");
+    if (ok) {
       setEditingType(null);
-    } catch {
-      setMsg("Failed to save template");
-    } finally {
-      setSaving(false);
+      setSavedNote(`${label} saved.`);
     }
   }
 
@@ -63,26 +69,19 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
     const defaultTemplate = TEMPLATE_TYPES.find((t) => t.type === type);
     const currentBody = existing?.body || defaultTemplate?.defaultBody || "";
     const newActive = !(existing?.active ?? true);
-
-    try {
-      await fetch("/api/admin/templates", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateType: type,
-          body: currentBody,
-          active: newActive,
-        }),
-      });
-      // Force refresh
-      window.location.reload();
-    } catch {
-      // Silently fail
-    }
+    const label = defaultTemplate?.label ?? "this message";
+    setSavedNote("");
+    await save(type, currentBody, newActive, `toggle:${type}`, `We couldn't turn ${label} ${newActive ? "on" : "off"}. Please try again.`);
   }
 
   return (
     <>
+      {!editingType && <ErrorNotice message={error} onDismiss={() => setError(null)} className="mb-3" />}
+      {savedNote && !editingType && (
+        <p role="status" className="admin-success mb-3">
+          {savedNote}
+        </p>
+      )}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         <table className="w-full min-w-[600px]">
           <thead>
@@ -110,10 +109,12 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
                   <td className="px-6 py-4">
                     <button
                       onClick={() => toggleActive(tmpl.type)}
+                      disabled={busy}
+                      aria-busy={pending === `toggle:${tmpl.type}`}
                       role="switch"
                       aria-checked={isActive}
                       aria-label={`${tmpl.label} active`}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:cursor-wait ${
                         isActive ? "bg-[#2D4A3E]" : "bg-[#868e9c]"
                       }`}
                     >
@@ -186,23 +187,25 @@ export function TemplateEditor({ templates, sentCounts }: TemplateEditorProps) {
                 Template active
               </label>
 
-              {msg && (
-                <p className={`text-sm ${msg.includes("success") ? "text-green-700" : "text-red-600"}`}>{msg}</p>
-              )}
+              <ErrorNotice message={error} onDismiss={() => setError(null)} />
 
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setEditingType(null)}
+                  onClick={() => {
+                    setEditingType(null);
+                    setError(null);
+                  }}
+                  disabled={busy}
                   className="admin-btn-secondary flex-1"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={busy}
                   className="admin-btn-primary flex-1"
                 >
-                  {saving ? "Saving..." : "Save Template"}
+                  {pending === "save" ? "Saving..." : "Save Template"}
                 </button>
               </div>
             </div>

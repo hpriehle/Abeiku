@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../useAdminAction";
 import type { HotelView } from "@/lib/admin/hotel-view";
 
 interface SettingsFormProps {
@@ -24,22 +26,20 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
     wifi_password: hotel.wifi_password || "",
   });
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(hotelForm),
+        json: hotelForm,
+        fallbackError: "We couldn't save your hotel details. Your changes are still in the form; please try again.",
       });
-      if (!res.ok) throw new Error("Failed to save");
-      setMsg("Saved successfully");
-    } catch {
-      setMsg("Failed to save");
+      setMsg(r.ok ? { kind: "ok", text: "Saved." } : { kind: "error", text: r.error });
     } finally {
       setSaving(false);
     }
@@ -171,11 +171,7 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>
-          {msg && (
-            <span className={`text-sm ${msg.includes("success") ? "text-green-700" : "text-red-600"}`}>
-              {msg}
-            </span>
-          )}
+          <FormStatus message={msg} />
         </div>
       </form>
     </div>

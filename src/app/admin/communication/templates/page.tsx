@@ -44,7 +44,7 @@ export default async function TemplatesPage() {
         {!waConnected && (
           <p className="text-sm text-gray-500 mt-3">
             Configure WhatsApp in{" "}
-            <a href="/admin/settings" className="text-[#2D4A3E] hover:underline font-medium">Settings</a>
+            <a href="/admin/settings/whatsapp" className="text-[#2D4A3E] hover:underline font-medium">Settings</a>
             {" "}to enable messaging.
           </p>
         )}

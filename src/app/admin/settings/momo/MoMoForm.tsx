@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { friendlyError } from "@/lib/admin/api-client";
 import { useRouter } from "next/navigation";
 
 const inputClass =
@@ -85,7 +86,7 @@ export function MoMoVerificationWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Validation failed");
+        setError(friendlyError(res.status, data, "Validation failed"));
         setStep("idle");
         return;
       }
@@ -112,7 +113,7 @@ export function MoMoVerificationWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to send verification");
+        setError(friendlyError(res.status, data, "Failed to send verification"));
         setStep("account_valid");
         return;
       }
@@ -136,7 +137,7 @@ export function MoMoVerificationWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Verification failed");
+        setError(friendlyError(res.status, data, "Verification failed"));
         setStep(res.status === 410 ? "idle" : "awaiting_confirmation");
         return;
       }
@@ -145,7 +146,7 @@ export function MoMoVerificationWizard({
         onVerified?.();
         router.refresh();
       } else {
-        setError(data.error || "Incorrect amount. Try again.");
+        setError(friendlyError(400, data, "Incorrect amount. Try again."));
         setStep("awaiting_confirmation");
       }
     } catch {

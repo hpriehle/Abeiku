@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../../useAdminAction";
 
 interface CalendarEntry {
   id: string;
@@ -13,12 +15,18 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
   const [selected, setSelected] = useState(currentCalendarId || "primary");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   useEffect(() => {
-    fetch("/api/admin/calendar")
-      .then((res) => res.json())
-      .then((data) => {
+    apiRequest<{ calendars?: CalendarEntry[] }>("/api/admin/calendar", {
+      fallbackError: "We couldn't load your Google calendars. Try reconnecting Google Calendar.",
+    })
+      .then((r) => {
+        if (!r.ok) {
+          setMsg({ kind: "error", text: r.error });
+          return;
+        }
+        const data = r.data;
         setCalendars(data.calendars || []);
         // If we have a current selection that matches, keep it. Otherwise default to primary.
         if (currentCalendarId) {
@@ -28,23 +36,20 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
           if (primary) setSelected(primary.id);
         }
       })
-      .catch(() => setMsg("Failed to load calendars"))
       .finally(() => setLoading(false));
   }, [currentCalendarId]);
 
   async function handleSave() {
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/calendar", {
+      const r = await apiRequest("/api/admin/calendar", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calendarId: selected }),
+        json: { calendarId: selected },
+        fallbackError: "We couldn't save the calendar choice. Please try again.",
       });
-      if (!res.ok) throw new Error();
-      setMsg("Calendar saved");
-    } catch {
-      setMsg("Failed to save");
+      setMsg(r.ok ? { kind: "ok", text: "Calendar saved." } : { kind: "error", text: r.error });
     } finally {
       setSaving(false);
     }
@@ -102,11 +107,7 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
             >
               {saving ? "Saving..." : "Save Calendar"}
             </button>
-            {msg && (
-              <span className={`text-sm ${msg.includes("saved") ? "text-green-700" : "text-red-600"}`}>
-                {msg}
-              </span>
-            )}
+            <FormStatus message={msg} />
           </div>
         </div>
       )}

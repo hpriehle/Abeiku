@@ -371,6 +371,7 @@ function CopyLinkButton({ link }: { link: string | null }) {
 function AccountCell({ p, onNewLink }: { p: PartnerView; onNewLink: (p: PartnerView) => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const run = async () => {
+    if (busy) return;
     setBusy(true);
     await onNewLink(p);
     setBusy(false);
@@ -466,6 +467,7 @@ function CreatePartnerForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return; // no double submit
     setError("");
     if (!email.trim() && !whatsapp.trim()) {
       setError("Give an email or a WhatsApp number, so the partner can sign in.");
@@ -734,6 +736,7 @@ function Payout({
   const [error, setError] = useState("");
 
   async function send(body: object): Promise<boolean> {
+    if (busy) return false; // no double submit
     setBusy(true);
     setError("");
     try {

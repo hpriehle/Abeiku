@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../../useAdminAction";
 
 interface Place {
   id: string;
@@ -28,66 +30,72 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
   const [placeId, setPlaceId] = useState(currentPlaceId);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [showSearch, setShowSearch] = useState(!currentPlaceId);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
+    if (searching) return;
     setSearching(true);
-    setMsg("");
+    setMsg(null);
     setResults([]);
     try {
-      const res = await fetch(`/api/admin/google-places?q=${encodeURIComponent(query.trim())}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Search failed");
-      setResults(data.places || []);
-      if (data.places?.length === 0) setMsg("No results found. Try a different search.");
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Search failed");
+      const r = await apiRequest<{ places?: Place[] }>(`/api/admin/google-places?q=${encodeURIComponent(query.trim())}`, {
+        fallbackError: "Google search isn't working right now. Please try again in a moment.",
+      });
+      if (!r.ok) {
+        setMsg({ kind: "error", text: r.error });
+        return;
+      }
+      setResults(r.data.places || []);
+      if (!r.data.places?.length) setMsg({ kind: "error", text: "No results found. Try a different search." });
     } finally {
       setSearching(false);
     }
   }
 
   async function handleSelect(place: Place) {
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ google_place_id: place.id }),
+        json: { google_place_id: place.id },
+        fallbackError: "We couldn't connect this Google profile. Please try again.",
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        setMsg({ kind: "error", text: r.error });
+        return;
+      }
       setPlaceId(place.id);
       setSelectedPlace(place);
       setShowSearch(false);
       setResults([]);
       setQuery("");
-      setMsg("Google Business Profile connected!");
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Failed to save");
+      setMsg({ kind: "ok", text: "Google Business Profile connected." });
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDisconnect() {
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ google_place_id: null }),
+        json: { google_place_id: null },
+        fallbackError: "We couldn't disconnect the Google profile. Please try again.",
       });
-      if (!res.ok) throw new Error("Failed to disconnect");
+      if (!r.ok) {
+        setMsg({ kind: "error", text: r.error });
+        return;
+      }
       setPlaceId(null);
       setSelectedPlace(null);
       setShowSearch(true);
-      setMsg("");
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Failed to disconnect");
     } finally {
       setSaving(false);
     }
@@ -229,8 +237,8 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
       )}
 
       {msg && (
-        <p className={`text-sm ${msg.includes("connected") || msg.includes("Connected") ? "text-green-700" : "text-red-600"}`}>
-          {msg}
+        <p>
+          <FormStatus message={msg} />
         </p>
       )}
 
