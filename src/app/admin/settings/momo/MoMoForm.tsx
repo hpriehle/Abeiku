@@ -127,6 +127,7 @@ export function MoMoVerificationWizard({
   }
 
   async function handleConfirm() {
+    if (step === "confirming") return; // no double submit
     setError("");
     setStep("confirming");
     try {
@@ -138,7 +139,8 @@ export function MoMoVerificationWizard({
       const data = await res.json();
       if (!res.ok) {
         setError(friendlyError(res.status, data, "Verification failed"));
-        setStep(res.status === 410 ? "idle" : "awaiting_confirmation");
+        // 410 expired / 429 too many wrong amounts: the check is cancelled, send a new one.
+        setStep(res.status === 410 ? "idle" : res.status === 429 ? "account_valid" : "awaiting_confirmation");
         return;
       }
       if (data.verified) {

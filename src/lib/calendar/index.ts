@@ -194,10 +194,11 @@ export async function deleteBookingEvent(eventId: string): Promise<void> {
 }
 
 /** Generate the Google OAuth consent URL. */
-export function getOAuthConsentUrl(): string {
+export function getOAuthConsentUrl(state: string): string {
   const oauth2 = getOAuth2Client();
 
   return oauth2.generateAuthUrl({
+    state,
     access_type: "offline",
     prompt: "consent",
     scope: [

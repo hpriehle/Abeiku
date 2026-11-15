@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, updateHotel } from "@/lib/db";
+import { getAttemptStore, checkLimit, recordFailure, clearKeys, MOMO_CONFIRM_LIMIT } from "@/lib/auth/rate-limit";
 
 const EXPIRY_MINUTES = 30;
 
@@ -42,6 +43,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Attempt limit (audit B8): the amount is one of ~99 values, so after 5
+    // wrong guesses this verification is cancelled and a new one must be sent.
+    const store = await getAttemptStore();
+    const attemptKey = [`momo-confirm:${session.hotelId}:${hotel.momo_verification_ref ?? "pending"}`];
+    const check = await checkLimit(store, attemptKey, MOMO_CONFIRM_LIMIT);
+    if (!check.allowed) {
+      await updateHotel(session.hotelId, { momo_verification_amount: null, momo_verification_ref: null });
+      await clearKeys(store, attemptKey);
+      return NextResponse.json(
+        { error: "Too many wrong amounts. This check was cancelled; please send a new verification." },
+        { status: 429 }
+      );
+    }
+
     // Parse user input to pesewas
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) {
@@ -51,6 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (userPesewas === hotel.momo_verification_amount) {
       // Match — verified!
+      await clearKeys(store, attemptKey);
       await updateHotel(session.hotelId, {
         momo_phone_verified: true,
         momo_verification_amount: null,
@@ -62,9 +78,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Wrong amount
+    await recordFailure(store, attemptKey);
+    const used = (await store.recent(attemptKey[0], Date.now() - MOMO_CONFIRM_LIMIT.windowMs)).length;
+    const left = Math.max(0, MOMO_CONFIRM_LIMIT.max - used);
+    if (left === 0) {
+      await updateHotel(session.hotelId, { momo_verification_amount: null, momo_verification_ref: null });
+      await clearKeys(store, attemptKey);
+      return NextResponse.json(
+        { verified: false, error: "Too many wrong amounts. This check was cancelled; please send a new verification." },
+        { status: 429 }
+      );
+    }
     return NextResponse.json({
       verified: false,
-      error: "Amount does not match. Check your MoMo transaction history and try again.",
+      error: `Amount does not match. Check your MoMo transaction history and try again (${left} ${left === 1 ? "try" : "tries"} left).`,
     });
   } catch (error) {
     console.error("MoMo confirm-verification error:", error);

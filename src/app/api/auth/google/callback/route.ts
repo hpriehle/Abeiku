@@ -5,21 +5,25 @@ import { exchangeCodeForTokens } from "@/lib/calendar";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById } from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
+import { verifyOAuthState, OAUTH_STATE_COOKIE, stateCookieOptions } from "@/lib/calendar/oauth-state";
+
+function settingsRedirect(query: string) {
+  const res = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/settings?${query}`);
+  // One-time state: clear it whatever happened.
+  res.cookies.set(OAUTH_STATE_COOKIE, "", stateCookieOptions(0));
+  return res;
+}
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/admin/settings?calendar=error&reason=${error}`
-    );
+    return settingsRedirect(`calendar=error&reason=${encodeURIComponent(error)}`);
   }
 
   if (!code) {
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/admin/settings?calendar=error&reason=no_code`
-    );
+    return settingsRedirect("calendar=error&reason=no_code");
   }
 
   const session = await getSession();
@@ -29,11 +33,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // CSRF: the code must come back with the state this browser was given.
+  const state = request.nextUrl.searchParams.get("state");
+  if (!verifyOAuthState(state, request.cookies.get(OAUTH_STATE_COOKIE)?.value, session.hotelId)) {
+    return settingsRedirect("calendar=error&reason=state_mismatch");
+  }
+
   const hotel = await getHotelById(session.hotelId);
   if (!hotel) {
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/admin/settings?calendar=error&reason=hotel_not_found`
-    );
+    return settingsRedirect("calendar=error&reason=hotel_not_found");
   }
 
   try {
@@ -41,13 +49,9 @@ export async function GET(request: NextRequest) {
       exchangeCodeForTokens(code)
     );
 
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/admin/settings?calendar=connected`
-    );
+    return settingsRedirect("calendar=connected");
   } catch (err) {
     console.error("Google OAuth callback error:", err);
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/admin/settings?calendar=error&reason=token_exchange`
-    );
+    return settingsRedirect("calendar=error&reason=token_exchange");
   }
 }
