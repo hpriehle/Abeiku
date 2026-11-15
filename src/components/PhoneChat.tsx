@@ -16,6 +16,8 @@ export default function PhoneChat() {
   const [selectedDates, setSelectedDates] = useState<number[]>([])
   const chatRef = useRef<HTMLDivElement>(null)
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  // Lets the script schedule its own restart without referring to itself.
+  const restartRef = useRef<() => void>(() => {})
 
   const scrollToBottom = useCallback(() => {
     if (chatRef.current) {
@@ -152,12 +154,17 @@ export default function PhoneChat() {
     t += 4500
 
     // Loop
-    schedule(() => runScript(), t)
+    schedule(() => restartRef.current(), t)
   }, [scrollToBottom])
 
   useEffect(() => {
-    runScript()
-    return () => { timeoutsRef.current.forEach(t => clearTimeout(t)) }
+    restartRef.current = runScript
+    // Start on the next tick (state is already empty on mount), not synchronously in the effect.
+    const first = setTimeout(runScript, 0)
+    return () => {
+      clearTimeout(first)
+      timeoutsRef.current.forEach(t => clearTimeout(t))
+    }
   }, [runScript])
 
   const MiniCalendar = () => {

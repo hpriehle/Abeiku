@@ -31,6 +31,29 @@ interface CurrencyProviderProps {
   children: React.ReactNode;
 }
 
+/** USD→GHS rate: cached in localStorage for CACHE_TTL, else fetched. Null = keep the fallback. */
+async function loadRate(): Promise<number | null> {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const { rate: cachedRate, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < CACHE_TTL && typeof cachedRate === "number") return cachedRate;
+    }
+  } catch {
+    // Bad cache entry: fetch a fresh rate.
+  }
+  try {
+    const data = await (await fetch("https://open.er-api.com/v6/latest/USD")).json();
+    if (data.rates?.GHS) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ rate: data.rates.GHS, timestamp: Date.now() }));
+      return data.rates.GHS;
+    }
+  } catch {
+    // Use fallback rate silently
+  }
+  return null;
+}
+
 export function CurrencyProvider({
   baseCurrency = "USD",
   children,
@@ -39,30 +62,13 @@ export function CurrencyProvider({
   const [rate, setRate] = useState(FALLBACK_RATE);
 
   useEffect(() => {
-    const cached = localStorage.getItem(CACHE_KEY);
-
-    if (cached) {
-      const { rate: cachedRate, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_TTL) {
-        setRate(cachedRate);
-        return;
-      }
-    }
-
-    fetch("https://open.er-api.com/v6/latest/USD")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.rates?.GHS) {
-          setRate(data.rates.GHS);
-          localStorage.setItem(
-            CACHE_KEY,
-            JSON.stringify({ rate: data.rates.GHS, timestamp: Date.now() })
-          );
-        }
-      })
-      .catch(() => {
-        // Use fallback rate silently
-      });
+    let cancelled = false;
+    loadRate().then((r) => {
+      if (!cancelled && r) setRate(r);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const toggleCurrency = useCallback(() => {

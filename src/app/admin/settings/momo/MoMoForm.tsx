@@ -54,10 +54,8 @@ export function MoMoVerificationWizard({
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    if (step !== "awaiting_confirmation" || !verificationSentAt) {
-      setMinutesLeft(null);
-      return;
-    }
+    // minutesLeft is only shown while awaiting confirmation (see below), so no reset needed here.
+    if (step !== "awaiting_confirmation" || !verificationSentAt) return;
     function updateTimer() {
       const sentAt = new Date(verificationSentAt!).getTime();
       const remaining = Math.max(0, 30 - (Date.now() - sentAt) / (1000 * 60));
@@ -262,7 +260,7 @@ export function MoMoVerificationWizard({
             </p>
             <p className="text-xs text-blue-600 mt-1">
               Check your MoMo balance or transaction notifications.
-              {minutesLeft != null && minutesLeft > 0 && (
+              {step === "awaiting_confirmation" && minutesLeft != null && minutesLeft > 0 && (
                 <> Expires in {minutesLeft} minute{minutesLeft !== 1 ? "s" : ""}.</>
               )}
             </p>

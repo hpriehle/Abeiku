@@ -73,15 +73,12 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
     );
   }
 
-  // Group messages by date
-  let lastDate = "";
-
   return (
     <div className="p-4 space-y-3">
-      {messages.map((msg) => {
+      {messages.map((msg, i) => {
+        // Group messages by date: show a date chip when the day changes
         const msgDate = msg.created_at.split("T")[0];
-        const showDate = msgDate !== lastDate;
-        lastDate = msgDate;
+        const showDate = i === 0 || msgDate !== messages[i - 1].created_at.split("T")[0];
 
         const isInbound = msg.direction === "inbound";
         const isAdmin = msg.sender_type === "admin";

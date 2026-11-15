@@ -5,6 +5,8 @@ import type { ConversationListItem, ChatMessage } from "@/lib/db";
 import { ArrowLeft } from "lucide-react";
 import { MessageThread } from "./MessageThread";
 import { ReplyBox } from "./ReplyBox";
+import { apiRequest } from "@/lib/admin/api-client";
+import { ErrorNotice } from "../../useAdminAction";
 
 const STATE_FILTERS = [
   { value: "", label: "All" },
@@ -57,50 +59,72 @@ export function InboxTab({
 
   const selectedConv = conversations.find((c) => c.id === selectedId);
 
-  // Fetch conversations with filters
-  const fetchConversations = useCallback(
-    async (offset = 0, append = false) => {
+  const [listError, setListError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+
+  // Fetch conversations with filters (no state is set here; callers apply the result)
+  const loadConversations = useCallback(
+    (offset = 0) => {
       const params = new URLSearchParams({ limit: "30", offset: String(offset) });
       if (stateFilter) params.set("state", stateFilter);
       if (search) params.set("search", search);
-
-      const res = await fetch(`/api/admin/chats/conversations?${params}`);
-      if (!res.ok) return;
-      const data = await res.json();
-
-      if (append) {
-        setConversations((prev) => [...prev, ...data.conversations]);
-      } else {
-        setConversations(data.conversations);
-      }
-      setTotal(data.total);
+      return apiRequest<{ conversations: ConversationListItem[]; total: number }>(
+        `/api/admin/chats/conversations?${params}`,
+        { fallbackError: "We couldn't load your conversations. Please try again." }
+      );
     },
     [stateFilter, search]
   );
 
-  // Refetch when filters change
+  // Refetch when filters change (debounced so typing in search doesn't fire a request per key;
+  // a stale response is ignored so results can't arrive out of order).
   useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      loadConversations(0).then((r) => {
+        if (cancelled) return;
+        if (r.ok) {
+          setConversations(r.data.conversations);
+          setTotal(r.data.total);
+          setListError(null);
+        } else {
+          setListError(r.error);
+        }
+      });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [loadConversations]);
+
+  function selectConversation(id: string | null) {
+    setSelectedId(id);
+    setMessages([]);
+    setMessagesError(null);
+    setLoadingMessages(id !== null);
+  }
 
   // Fetch messages when conversation selected
   useEffect(() => {
-    if (!selectedId) {
-      setMessages([]);
-      return;
-    }
-
-    setLoadingMessages(true);
-    fetch(`/api/admin/chats/conversations/${selectedId}/messages`)
-      .then((res) => res.json())
-      .then((data) => {
-        setMessages(data.messages ?? []);
+    if (!selectedId) return;
+    let cancelled = false;
+    apiRequest<{ messages?: ChatMessage[] }>(`/api/admin/chats/conversations/${selectedId}/messages`, {
+      fallbackError: "We couldn't load this conversation. Please try again.",
+    }).then((r) => {
+      if (cancelled) return;
+      if (r.ok) {
+        setMessages(r.data.messages ?? []);
         // Mark as read locally
-        setConversations((prev) =>
-          prev.map((c) => (c.id === selectedId ? { ...c, unread_count: 0 } : c))
-        );
-      })
-      .finally(() => setLoadingMessages(false));
+        setConversations((prev) => prev.map((c) => (c.id === selectedId ? { ...c, unread_count: 0 } : c)));
+      } else {
+        setMessagesError(r.error);
+      }
+      setLoadingMessages(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId]);
 
   // Handle sending a reply
@@ -151,8 +175,15 @@ export function InboxTab({
   };
 
   const handleLoadMore = async () => {
+    if (loadingMore) return;
     setLoadingMore(true);
-    await fetchConversations(conversations.length, true);
+    const r = await loadConversations(conversations.length);
+    if (r.ok) {
+      setConversations((prev) => [...prev, ...r.data.conversations]);
+      setTotal(r.data.total);
+    } else {
+      setListError(r.error);
+    }
     setLoadingMore(false);
   };
 
@@ -192,13 +223,14 @@ export function InboxTab({
 
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
+          <ErrorNotice message={listError} onDismiss={() => setListError(null)} className="m-3" />
           {conversations.length === 0 && (
             <p className="text-sm text-gray-500 text-center py-8">No conversations found</p>
           )}
           {conversations.map((conv) => (
             <button
               key={conv.id}
-              onClick={() => setSelectedId(conv.id)}
+              onClick={() => selectConversation(conv.id)}
               className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
                 selectedId === conv.id ? "bg-gray-50" : ""
               }`}
@@ -262,7 +294,7 @@ export function InboxTab({
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setSelectedId(null)}
+                onClick={() => selectConversation(null)}
                 className="md:hidden -ml-2 inline-flex items-center justify-center size-10 rounded-lg text-gray-700 hover:bg-gray-100"
                 aria-label="Back to conversations"
               >
@@ -290,6 +322,10 @@ export function InboxTab({
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <p className="text-sm text-gray-500">Loading messages...</p>
+                </div>
+              ) : messagesError ? (
+                <div className="p-4">
+                  <ErrorNotice message={messagesError} />
                 </div>
               ) : (
                 <MessageThread messages={messages} />

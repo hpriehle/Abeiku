@@ -56,7 +56,7 @@ export default function OnboardingPage() {
   const [rooms, setRooms] = useState<RoomDraft[]>([
     { key: 1, name: "", bed_type: "Queen", occupancy: 2, size: "", price: 0, total_rooms: 1, amenities: [] },
   ]);
-  let nextKey = rooms.length > 0 ? Math.max(...rooms.map((r) => r.key)) + 1 : 1;
+  const nextKey = rooms.length > 0 ? Math.max(...rooms.map((r) => r.key)) + 1 : 1;
 
   // Step 3 state
   const [integrations, setIntegrations] = useState<IntegrationStatus>({
