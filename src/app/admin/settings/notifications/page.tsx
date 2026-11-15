@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { hotelView } from "@/lib/admin/hotel-view";
 import Link from "next/link";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, getNotificationPreferences, getNotificationLog } from "@/lib/db";
@@ -36,7 +37,7 @@ export default async function NotificationsPage() {
       </div>
 
       <NotificationSettings
-        hotel={hotel}
+        hotel={hotelView(hotel)}
         preferences={preferences}
         recentLog={recentLog}
       />

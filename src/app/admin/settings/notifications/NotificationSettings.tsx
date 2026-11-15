@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Hotel, NotificationPreference } from "@/lib/db";
+import type { NotificationPreference } from "@/lib/db";
+import type { HotelView } from "@/lib/admin/hotel-view";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 interface LogEntry {
@@ -16,7 +17,7 @@ interface LogEntry {
 }
 
 interface Props {
-  hotel: Hotel;
+  hotel: HotelView;
   preferences: NotificationPreference[];
   recentLog: LogEntry[];
 }
@@ -68,7 +69,7 @@ export function NotificationSettings({ hotel, preferences, recentLog }: Props) {
   }
 
   const hasEmail = !!hotel.contact_email;
-  const hasWhatsApp = !!hotel.whatsapp_access_token && !!hotel.contact_phone;
+  const hasWhatsApp = hotel.whatsapp_configured && !!hotel.contact_phone;
 
   return (
     <div className="space-y-6">
