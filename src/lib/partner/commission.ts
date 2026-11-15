@@ -127,7 +127,16 @@ export function isValidRefCode(code: string): boolean {
   return REF_CODE_RE.test(normalizeRefCode(code));
 }
 
-export function formatMoney(amount: number, currency: PartnerCurrency): string {
-  const n = amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return currency === "GHS" ? `GH₵${n}` : `$${n}`;
+/** "GH₵ 1,050.00" / "$8.93". A missing or non-numeric amount shows as "—", never "NaN". */
+export function formatMoney(
+  amount: number | null | undefined,
+  currency: PartnerCurrency | null | undefined
+): string {
+  const value = Number(amount);
+  if (amount == null || !Number.isFinite(value)) return "—";
+  const n = Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sign = value < 0 ? "−" : "";
+  if (currency === "GHS") return `${sign}GH₵ ${n}`;
+  if (currency === "USD") return `${sign}$${n}`;
+  return `${sign}${n}`;
 }
