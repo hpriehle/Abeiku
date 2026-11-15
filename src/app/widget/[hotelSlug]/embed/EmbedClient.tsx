@@ -177,7 +177,7 @@ function BookingFlow({ rooms, hotel }: { rooms: WidgetRoom[]; hotel: WidgetHotel
       message += `\nCheck-out: ${formatDateFull(checkOut)}`;
       message += `\n${nights} night${nights > 1 ? "s" : ""} — ${formatPrice(totalPrice)} total`;
     }
-    const phone = hotel.whatsappPhone?.replace(/\D/g, "") ?? "";
+    const phone = hotel.booking.kind === "whatsapp" ? hotel.booking.phone : "";
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }
 
@@ -400,7 +400,15 @@ function BookingFlow({ rooms, hotel }: { rooms: WidgetRoom[]; hotel: WidgetHotel
       <div className="my-6 border-t border-gray-light" />
 
       {/* CTA */}
-      {hotel.whatsappPhone ? (
+      {hotel.booking.kind === "url" ? (
+        <a
+          href={hotel.booking.url}
+          target="_top"
+          className="inline-flex w-full items-center justify-center rounded px-8 py-3.5 font-body text-small font-medium uppercase tracking-wide transition-all duration-300 bg-green text-white hover:bg-green-light"
+        >
+          Book now
+        </a>
+      ) : hotel.booking.kind === "whatsapp" ? (
         <a
           href={canBook ? getWhatsAppUrl() : undefined}
           target="_blank"
@@ -417,7 +425,7 @@ function BookingFlow({ rooms, hotel }: { rooms: WidgetRoom[]; hotel: WidgetHotel
         </a>
       ) : (
         <p className="text-center font-body text-small text-gray">
-          Contact hotel to book
+          Online booking isn&apos;t available here. To book, please contact {hotel.name} directly.
         </p>
       )}
       {(selectedRooms.find((r) => r.airbnbUrl)?.airbnbUrl ?? rooms.find((r) => r.airbnbUrl)?.airbnbUrl) && (

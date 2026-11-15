@@ -67,7 +67,7 @@ export function BookingWidget({ room, hotel, variant = "light" }: BookingWidgetP
 
     message += `. (${formatPrice(tier.price)}/night)`;
 
-    const phone = hotel.whatsappPhone?.replace(/\D/g, "") ?? "";
+    const phone = hotel.booking.kind === "whatsapp" ? hotel.booking.phone : "";
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   }
 
@@ -229,7 +229,20 @@ export function BookingWidget({ room, hotel, variant = "light" }: BookingWidgetP
 
       {/* CTA */}
       <div>
-        {hotel.whatsappPhone ? (
+        {hotel.booking.kind === "url" ? (
+          <a
+            href={hotel.booking.url}
+            target="_top"
+            className={cn(
+              "inline-flex w-full items-center justify-center rounded px-8 py-3.5 font-body text-small font-medium uppercase tracking-wide transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2",
+              isDark
+                ? "bg-cream text-black hover:bg-white focus-visible:outline-cream"
+                : "bg-green text-white hover:bg-green-light focus-visible:outline-green"
+            )}
+          >
+            Book now
+          </a>
+        ) : hotel.booking.kind === "whatsapp" ? (
           <a
             href={getWhatsAppUrl()}
             target="_blank"
@@ -246,9 +259,9 @@ export function BookingWidget({ room, hotel, variant = "light" }: BookingWidgetP
         ) : (
           <p className={cn(
             "text-center font-body text-small",
-            isDark ? "text-cream/50" : "text-gray"
+            isDark ? "text-cream" : "text-gray"
           )}>
-            Contact hotel to book
+            Online booking isn&apos;t available here. To book, please contact {hotel.name} directly.
           </p>
         )}
         {room.airbnbUrl && (
