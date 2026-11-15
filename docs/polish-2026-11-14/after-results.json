@@ -1,0 +1,310 @@
+[
+ {
+  "name": "partner-login-375",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-wrong-password-375",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-network-error-375",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-signed-in-375",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-root-375",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-setup-valid-375",
+  "url": "http://localhost:3457/partner/setup?token=mock-valid-token",
+  "title": "Set your password · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-setup-expired-375",
+  "url": "http://localhost:3457/partner/setup?token=mock-expired-token",
+  "title": "Set your password · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-setup-missing-token-375",
+  "url": "http://localhost:3457/partner/setup",
+  "title": "Set your password · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-dashboard-375",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-dashboard-empty-375",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-dashboard-load-error-375",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-logout-375",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-create-form-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-setup-link-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-mock-list-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-filter-all-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-filter-unknown-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-mark-paid-form-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-marked-paid-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-nav-open-375",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-logout-375",
+  "url": "http://localhost:3457/admin/login",
+  "title": "Sign in · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-1280",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-wrong-password-1280",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-network-error-1280",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-login-signed-in-1280",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-root-1280",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-setup-valid-1280",
+  "url": "http://localhost:3457/partner/setup?token=mock-valid-token",
+  "title": "Set your password · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-setup-expired-1280",
+  "url": "http://localhost:3457/partner/setup?token=mock-expired-token",
+  "title": "Set your password · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-setup-missing-token-1280",
+  "url": "http://localhost:3457/partner/setup",
+  "title": "Set your password · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-dashboard-1280",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-dashboard-empty-1280",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-dashboard-load-error-1280",
+  "url": "http://localhost:3457/partner/dashboard",
+  "title": "Your referrals · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partner-logout-1280",
+  "url": "http://localhost:3457/partner/login",
+  "title": "Sign in · Abeiku Partner Portal",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-create-form-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-setup-link-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-mock-list-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-filter-all-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-filter-unknown-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-mark-paid-form-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-partners-marked-paid-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-nav-open-1280",
+  "url": "http://localhost:3457/admin/influencers",
+  "title": "Partners · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "admin-logout-1280",
+  "url": "http://localhost:3457/admin/login",
+  "title": "Sign in · Abeiku Admin",
+  "bad": [],
+  "errors": []
+ }
+]
