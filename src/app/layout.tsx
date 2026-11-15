@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Abeiku — WhatsApp Hotel Booking for Ghana",
-  description: "Guests book rooms, pay with Mobile Money or card, and chat with hotels — all through WhatsApp. No app downloads needed.",
+  title: "Abeiku",
+  description: "Hotel management for small hotels and guesthouses in Ghana.",
 };
 
 export default function RootLayout({
