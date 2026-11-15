@@ -65,6 +65,10 @@ export interface FeedBooking {
   calendar_event_id: string | null;
   /** Guest name parsed from an "Aracuya · <rooms> · <guest> (paid …)" summary without props. */
   webGuestFromSummary?: string;
+  /** Per-hotel feed (hotel_calendar_feeds.id) this came from; unset for Aracuya's env feeds. */
+  feed_id?: string;
+  /** Room it blocks when the feed is tied to one room (else the hotel's whole-property slug). */
+  room_slug?: string;
 }
 
 // ── Dates ────────────────────────────────────────────────────────────────
@@ -255,6 +259,8 @@ export function parseIcalBookings(ics: string, source: IcalSource, totalRooms: n
 
 export interface FeedResult {
   source: "google_calendar" | IcalSource;
+  /** Set for a per-hotel feed: rows are then judged by this feed alone, not by source. */
+  feedId?: string;
   /** null when the feed failed to load: then nothing from it is cancelled. */
   bookings: FeedBooking[] | null;
 }
@@ -279,7 +285,7 @@ function newRow(hotelId: string, roomSlug: string, b: FeedBooking): NewHotelBook
     phone: b.phone,
     guest_email: b.guest_email,
     guests: b.guests,
-    room_slug: roomSlug,
+    room_slug: b.room_slug ?? roomSlug,
     rooms_count: b.rooms_count,
     check_in: b.check_in,
     check_out: b.check_out,
@@ -291,6 +297,7 @@ function newRow(hotelId: string, roomSlug: string, b: FeedBooking): NewHotelBook
     calendar_event_id: b.calendar_event_id,
     ref_code: null,
     paid_at: null,
+    ...(b.feed_id ? { feed_id: b.feed_id } : {}),
   };
 }
 
@@ -317,6 +324,8 @@ function feedPatch(row: HotelBookingRow, b: FeedBooking): HotelBookingPatch {
     rooms_count: b.rooms_count,
     guest_name: b.guest_name,
     ...(row.booking_status === "cancelled" ? { booking_status: "confirmed" as const } : {}),
+    // Per-hotel feeds: the row follows its feed (a re-added link, or a changed room).
+    ...(b.feed_id ? { feed_id: b.feed_id, room_slug: b.room_slug } : {}),
   };
 }
 
@@ -388,6 +397,7 @@ export async function syncHotelBookings(input: {
         row = rows.find(
           (r) =>
             r.source === b.source &&
+            (r.feed_id ?? null) === (b.feed_id ?? null) &&
             !seen.has(r.id) &&
             r.booking_status !== "cancelled" &&
             r.check_in === b.check_in &&
@@ -416,12 +426,15 @@ export async function syncHotelBookings(input: {
     }
   }
 
-  // Gone from a feed that loaded → cancelled (stays not yet over only).
-  const loaded = new Set(feeds.filter((f) => f.bookings).map((f) => f.source));
+  // Gone from a feed that loaded → cancelled (stays not yet over only). Rows of a per-hotel
+  // feed are judged by that feed; other rows by source (Aracuya's env feeds).
+  const loaded = new Set(feeds.filter((f) => f.bookings && !f.feedId).map((f) => f.source));
+  const loadedFeedIds = new Set(feeds.filter((f) => f.bookings && f.feedId).map((f) => f.feedId!));
   for (const row of rows) {
     if (seen.has(row.id) || row.booking_status === "cancelled" || row.check_out < today) continue;
-    const fromLoadedFeed =
-      row.source === WEB_SOURCE
+    const fromLoadedFeed = row.feed_id
+      ? loadedFeedIds.has(row.feed_id)
+      : row.source === WEB_SOURCE
         ? // A website booking is only judged by the calendar once the sync has linked its event.
           loaded.has("google_calendar") && Boolean(row.calendar_event_id)
         : loaded.has(row.source as FeedResult["source"]);

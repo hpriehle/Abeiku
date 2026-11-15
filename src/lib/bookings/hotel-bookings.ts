@@ -41,6 +41,8 @@ export interface HotelBookingRow {
   calendar_event_id: string | null;
   ref_code: string | null;
   paid_at: string | null;
+  /** hotel_calendar_feeds.id for rows from a per-hotel feed (docs/l2-feeds); absent before that SQL. */
+  feed_id?: string | null;
 }
 
 export type NewHotelBooking = Omit<HotelBookingRow, "id">;

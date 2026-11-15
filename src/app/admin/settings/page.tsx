@@ -1,4 +1,6 @@
-import { CreditCard } from "lucide-react";
+import { CalendarRange, CreditCard } from "lucide-react";
+import { listHotelFeeds } from "@/lib/db/hotel-feeds";
+import { SYNC_HOTEL_SLUG } from "@/lib/bookings/feeds";
 import { redirect } from "next/navigation";
 import { hotelView } from "@/lib/admin/hotel-view";
 import Link from "next/link";
@@ -147,11 +149,13 @@ export default async function SettingsPage({
   const session = await getSession();
   if (!session) redirect("/admin/login");
 
-  const [hotel, oauthToken, preferences, recentLog] = await Promise.all([
+  const [hotel, oauthToken, preferences, recentLog, feedCount] = await Promise.all([
     getHotelById(session.hotelId),
     getOAuthToken(session.hotelId, "google"),
     getNotificationPreferences(session.hotelId),
     getNotificationLog(session.hotelId, 20),
+    // null before docs/l2-feeds/calendar-feeds.sql has run
+    listHotelFeeds(session.hotelId).then((f) => f.length).catch(() => null),
   ]);
 
   if (!hotel) redirect("/admin/login");
@@ -192,6 +196,20 @@ export default async function SettingsPage({
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Connected Services</h3>
           <div className="grid grid-cols-2 gap-3">
+            <ServiceTile
+              logo={<CalendarRange className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
+              name="Calendars"
+              tooltip="Bring in bookings from Airbnb, Booking.com, VRBO and Google calendar"
+              connected={hotel.slug === SYNC_HOTEL_SLUG || (feedCount ?? 0) > 0}
+              statusLabel={
+                hotel.slug === SYNC_HOTEL_SLUG
+                  ? "Set up by Abeiku"
+                  : feedCount
+                    ? `${feedCount} connected`
+                    : "Not connected"
+              }
+              href="/admin/settings/calendars"
+            />
             <ServiceTile
               logo={<WhatsAppLogo className="w-8 h-8 text-[#25D366]" />}
               name="WhatsApp"

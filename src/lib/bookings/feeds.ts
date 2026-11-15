@@ -40,9 +40,11 @@ const hostOf = (url: string) => {
   }
 };
 
-async function listGoogleEvents(
+/** Also used for other hotels' calendars (shared with the same service account): docs/l2-feeds. */
+export async function listGoogleEvents(
   cfg: NonNullable<FeedConfig["google"]>,
-  today: string
+  today: string,
+  opts: { timeoutMs?: number; maxResults?: number; onePage?: boolean } = {}
 ): Promise<calendar_v3.Schema$Event[]> {
   const auth = new google.auth.JWT({
     email: cfg.email,
@@ -60,11 +62,11 @@ async function listGoogleEvents(
       timeMax: `${addDays(today, 3 * 366)}T00:00:00Z`,
       singleEvents: true,
       showDeleted: false,
-      maxResults: 2500,
+      maxResults: opts.maxResults ?? 2500,
       pageToken,
-    });
+    }, opts.timeoutMs ? { timeout: opts.timeoutMs } : undefined);
     events.push(...(res.data.items ?? []));
-    pageToken = res.data.nextPageToken ?? undefined;
+    pageToken = opts.onePage ? undefined : (res.data.nextPageToken ?? undefined);
   } while (pageToken);
   return events;
 }

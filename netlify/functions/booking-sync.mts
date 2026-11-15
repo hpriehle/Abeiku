@@ -1,5 +1,6 @@
 // Netlify scheduled function: every 15 minutes, ask the site to import Aracuya's
-// Google booking calendar and OTA iCal feeds into the bookings table.
+// Google booking calendar and OTA iCal feeds (env), and every other hotel's own calendar
+// links (hotel_calendar_feeds, docs/l2-feeds), into the bookings table.
 // The work happens in the Next route /api/cron/booking-sync (Bearer $CRON_SECRET).
 // Netlify sets URL to the site's main address; BOOKING_SYNC_URL overrides it.
 

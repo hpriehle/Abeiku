@@ -48,6 +48,31 @@ export async function alertsAfterSync(input: {
   return { silencedBackfill, ...counts };
 }
 
+/**
+ * After a sync of several hotels: keep each feed's first import silent (per hotel), then one
+ * sweep. A hotel whose backfill couldn't be marked is left out of the sweep this run.
+ */
+export async function alertsAfterSyncs(inputs: { hotelId: string; loadedFeeds: string[]; syncedBefore: Set<string> | null }[]) {
+  let silencedBackfill = 0;
+  const skipHotelIds: string[] = [];
+  let skipped: string | undefined;
+  for (const input of inputs) {
+    try {
+      silencedBackfill += await silenceBackfill({
+        store: supabaseAlertStore,
+        hotelId: input.hotelId,
+        loadedFeeds: input.loadedFeeds,
+        syncedBefore: input.syncedBefore ?? new Set(),
+      });
+    } catch (err) {
+      skipHotelIds.push(input.hotelId);
+      skipped = logSkip("backfill", err);
+    }
+  }
+  const counts = await runBookingAlerts({ store: supabaseAlertStore, mailer: resendMailer, today: todayUtc(), skipHotelIds });
+  return { silencedBackfill, ...counts, ...(skipHotelIds.length ? { backfillFailedHotels: skipHotelIds.length, skipped: counts.skipped ?? skipped } : {}) };
+}
+
 /** Right after a known write (website report, admin cancel). */
 export async function alertBookingIds(hotelId: string, ids: string[]) {
   return alertBookingsNow({ store: supabaseAlertStore, mailer: resendMailer, hotelId, ids, today: todayUtc() });

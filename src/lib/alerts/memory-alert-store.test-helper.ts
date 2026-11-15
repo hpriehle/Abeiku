@@ -23,6 +23,7 @@ export function memoryAlertStore(
   const view = (r: Row) => ({
     ...toCalendarRow(r),
     calendar_event_id: (r.calendar_event_id as string | null) ?? null,
+    feed_id: (r.feed_id as string | null) ?? null,
     alert_new_sent_at: (r.alert_new_sent_at as string | null) ?? null,
     alert_cancel_sent_at: (r.alert_cancel_sent_at as string | null) ?? null,
   });

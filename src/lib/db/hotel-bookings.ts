@@ -9,10 +9,9 @@ import type {
   NewHotelBooking,
 } from "@/lib/bookings/hotel-bookings";
 
-const COLUMNS =
-  "id, hotel_id, source, external_ref, guest_name, phone, guest_email, guests, room_slug, rooms_count, " +
-  "check_in, check_out, total_price, currency, payment_status, payment_provider, booking_status, " +
-  "calendar_event_id, ref_code, paid_at";
+// "*" so feed_id (docs/l2-feeds/calendar-feeds.sql) comes back once it exists, and nothing
+// fails before it does.
+const COLUMNS = "*";
 
 const ON_CONFLICT = "hotel_id,source,external_ref";
 

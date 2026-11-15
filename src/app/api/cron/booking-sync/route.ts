@@ -1,5 +1,6 @@
 // POST /api/cron/booking-sync — import Aracuya's Google booking calendar and OTA iCal
-// feeds into the hotel bookings table. Called every 15 minutes by the Netlify scheduled
+// feeds (env) into the hotel bookings table, and, next to it, every other hotel's own
+// feeds from hotel_calendar_feeds (docs/l2-feeds; skipped until that SQL has run). Called every 15 minutes by the Netlify scheduled
 // function netlify/functions/booking-sync.mts. Auth: Authorization: Bearer $CRON_SECRET
 // (refused when CRON_SECRET is not set). Reads the feeds only; writes only to bookings
 // (and the booking-alert bookkeeping). Afterwards it emails pending booking alerts to the
@@ -12,7 +13,38 @@ import { supabaseHotelBookingsStore } from "@/lib/db/hotel-bookings";
 import { listingFor } from "@/lib/bookings/hotel-bookings";
 import { syncHotelBookings } from "@/lib/bookings/calendar-sync";
 import { feedConfigFromEnv, readFeeds, SYNC_HOTEL_SLUG } from "@/lib/bookings/feeds";
-import { alertsAfterSync, syncedFeedsBefore } from "@/lib/alerts";
+import { alertsAfterSync, alertsAfterSyncs, syncedFeedsBefore } from "@/lib/alerts";
+import { syncFeedHotels, type FeedSyncSummary } from "@/lib/bookings/feed-sync";
+import { supabaseFeedSyncStore } from "@/lib/db/hotel-feeds";
+import { googleListerFromEnv } from "@/lib/bookings/google-lister";
+
+/** No new feed of another hotel is started after this, nor a hotel saved after WRITE_MS. */
+const READ_MS = 9_000;
+const WRITE_MS = 18_000;
+
+function otherHotels(excludeHotelIds: string[], today: string, started: number): Promise<FeedSyncSummary | null> {
+  return syncFeedHotels({
+    store: supabaseFeedSyncStore,
+    bookings: supabaseHotelBookingsStore,
+    syncedFeeds: syncedFeedsBefore,
+    read: { today, listGoogle: googleListerFromEnv() },
+    excludeHotelIds,
+    readDeadline: started + READ_MS,
+    writeDeadline: started + WRITE_MS,
+  }).catch((err) => {
+    console.error("[booking-sync] other hotels failed", (err as Error)?.message ?? err);
+    return null;
+  });
+}
+
+/** Counts only (no links, no guest data). */
+function othersReport(o: FeedSyncSummary | null) {
+  if (!o) return { error: "failed" };
+  if (o.notSetUp) return { notSetUp: true };
+  const { alertInputs: _alertInputs, ...counts } = o;
+  void _alertInputs;
+  return counts;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +53,18 @@ async function run(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const started = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
   try {
     const hotelId = await supabaseBookingReportStore.findHotelId(SYNC_HOTEL_SLUG);
-    if (!hotelId) return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
+    // Other hotels run alongside Aracuya, so a slow Aracuya feed doesn't eat their time.
+    const others = otherHotels(hotelId ? [hotelId] : [], today, started);
+    if (!hotelId) {
+      const o = await others;
+      if (o?.alertInputs.length) await alertsAfterSyncs(o.alertInputs).catch(() => undefined);
+      return NextResponse.json({ error: "Hotel not found", otherHotels: othersReport(o) }, { status: 404 });
+    }
 
-    const today = new Date().toISOString().slice(0, 10);
     // Read before the sync: a feed's first successful sync is its backfill (no alerts).
     const syncedBefore = await syncedFeedsBefore(hotelId);
     const { feeds, errors } = await readFeeds(feedConfigFromEnv(), listingFor(SYNC_HOTEL_SLUG).totalRooms, today);
@@ -37,13 +76,18 @@ async function run(request: NextRequest) {
       today,
     });
     if (errors.length) console.error("[booking-sync] feed errors", errors);
-    const alerts = await alertsAfterSync({
+    const o = await others;
+    const aracuyaAlerts = {
       hotelId,
       loadedFeeds: feeds.filter((f) => f.bookings).map((f) => f.source),
       syncedBefore,
-    }).catch((err) => ({ skipped: `error: ${(err as Error)?.message ?? err}` }));
+    };
+    // Only Aracuya: exactly as before. With other hotels: each one's backfill, then one sweep.
+    const alerts = await (o?.alertInputs.length ? alertsAfterSyncs([aracuyaAlerts, ...o.alertInputs]) : alertsAfterSync(aracuyaAlerts)).catch(
+      (err) => ({ skipped: `error: ${(err as Error)?.message ?? err}` })
+    );
     // Counts only: no guest data in the response or logs.
-    return NextResponse.json({ ok: true, hotel: SYNC_HOTEL_SLUG, ...summary, errors, alerts });
+    return NextResponse.json({ ok: true, hotel: SYNC_HOTEL_SLUG, ...summary, errors, alerts, otherHotels: othersReport(o) });
   } catch (err) {
     console.error("[booking-sync] failed", (err as Error).message);
     return NextResponse.json({ error: "Sync failed" }, { status: 500 });

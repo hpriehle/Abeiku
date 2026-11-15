@@ -38,7 +38,7 @@ export interface AlertStore {
   /** Hotels with an alert address. Throws a missing-schema error before the migration. */
   listAlertHotels(): Promise<AlertHotel[]>;
   /** Rows with no new-booking alert yet (any status). */
-  listPendingNew(hotelId: string): Promise<(CalendarBookingRow & { calendar_event_id?: string | null })[]>;
+  listPendingNew(hotelId: string): Promise<(CalendarBookingRow & { calendar_event_id?: string | null; feed_id?: string | null })[]>;
   /** Cancelled rows with no cancellation alert yet, for stays not over by `today`. */
   listPendingCancel(hotelId: string, today: string): Promise<(CalendarBookingRow & { alert_new_sent_at: string | null })[]>;
   /** Rows by id (for an alert right after a known write). */
@@ -316,13 +316,21 @@ async function hotelsOrSkip(store: AlertStore, where: string, counts: AlertCount
  * New-booking and cancellation alerts for every hotel with an alert address
  * (or just `hotelId`). Safe to run as often as you like.
  */
-export async function runBookingAlerts(input: { store: AlertStore; mailer: Mailer; today: string; hotelId?: string }): Promise<AlertCounts> {
+export async function runBookingAlerts(input: {
+  store: AlertStore;
+  mailer: Mailer;
+  today: string;
+  hotelId?: string;
+  /** Hotels whose backfill couldn't be marked this run: not swept, or the backfill would be emailed. */
+  skipHotelIds?: string[];
+}): Promise<AlertCounts> {
   const { store, mailer, today } = input;
   const counts = emptyCounts();
   const hotels = await hotelsOrSkip(store, "sweep", counts);
   if (!hotels) return counts;
   for (const hotel of hotels) {
     if (input.hotelId && hotel.id !== input.hotelId) continue;
+    if (input.skipHotelIds?.includes(hotel.id)) continue;
     try {
       const [pendingNew, pendingCancel] = await Promise.all([store.listPendingNew(hotel.id), store.listPendingCancel(hotel.id, today)]);
       await alertRows(store, mailer, hotel, pendingNew, pendingCancel, counts);
@@ -356,8 +364,15 @@ export async function alertBookingsNow(input: { store: AlertStore; mailer: Maile
   return counts;
 }
 
-/** Does this row come from that feed? (Website bookings reach the sync through the Google calendar.) */
-export function rowFromFeed(row: Pick<CalendarBookingRow, "source"> & { calendar_event_id?: string | null }, feed: string): boolean {
+/**
+ * Does this row come from that feed? (Website bookings reach the sync through the Google calendar.)
+ * Per-hotel feeds (docs/l2-feeds) are keyed "feed:<id>" and own the rows with that feed_id.
+ */
+export function rowFromFeed(
+  row: Pick<CalendarBookingRow, "source"> & { calendar_event_id?: string | null; feed_id?: string | null },
+  feed: string
+): boolean {
+  if (feed.startsWith("feed:")) return row.feed_id === feed.slice(5);
   if (feed === "google_calendar") return row.source === "google_calendar" || (row.source === "aracuya_web" && Boolean(row.calendar_event_id));
   return row.source === feed;
 }
