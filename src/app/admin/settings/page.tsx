@@ -1,9 +1,14 @@
+import { CalendarRange, CreditCard } from "lucide-react";
+import { listHotelFeeds } from "@/lib/db/hotel-feeds";
+import { SYNC_HOTEL_SLUG } from "@/lib/bookings/feeds";
 import { redirect } from "next/navigation";
 import { hotelView } from "@/lib/admin/hotel-view";
 import Link from "next/link";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, getOAuthToken, getNotificationPreferences, getNotificationLog } from "@/lib/db";
 import { SettingsForm } from "./SettingsForm";
+import { AlertEmailForm } from "./AlertEmailForm";
+import { alertEmailOf } from "@/lib/db/alert-email";
 import { NotificationSettings } from "./notifications/NotificationSettings";
 
 function WhatsAppLogo({ className }: { className?: string }) {
@@ -50,10 +55,14 @@ function GoogleBusinessLogo({ className }: { className?: string }) {
 function InfoTooltip({ text }: { text: string }) {
   return (
     <span className="relative group/tip">
-      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 text-[9px] font-medium text-gray-400 cursor-help">
+      <span
+        tabIndex={0}
+        aria-label={text}
+        className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#868e9c] text-[9px] font-medium text-gray-600 cursor-help"
+      >
         i
       </span>
-      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-md whitespace-nowrap opacity-0 pointer-events-none group-hover/tip:opacity-100 transition-opacity z-10">
+      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-[10px] rounded-md w-max max-w-[14rem] whitespace-normal hidden pointer-events-none group-hover/tip:block group-focus-within/tip:block z-10" aria-hidden="true">
         {text}
         <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
       </span>
@@ -81,10 +90,10 @@ function ServiceTile({
   const content = (
     <div
       className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col items-center text-center ${
-        !comingSoon ? "hover:border-gray-200 hover:shadow-md transition-all group" : "opacity-70"
+        !comingSoon ? "hover:border-gray-300 hover:shadow-md transition-all group" : "bg-gray-50"
       }`}
     >
-      <div className="w-10 h-10 flex items-center justify-center mb-2">
+      <div className={`w-10 h-10 flex items-center justify-center mb-2 ${comingSoon ? "opacity-60 grayscale" : ""}`}>
         {logo}
       </div>
       <div className="flex items-center gap-1 mb-3">
@@ -92,7 +101,7 @@ function ServiceTile({
         <InfoTooltip text={tooltip} />
       </div>
       {comingSoon ? (
-        <span className="px-3 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-[10px] font-medium">
+        <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-medium">
           Coming soon
         </span>
       ) : (
@@ -107,7 +116,7 @@ function ServiceTile({
           }`}
         />
         <span className={`text-[10px] font-medium ${
-          comingSoon ? "text-gray-400" : connected ? "text-green-600" : "text-yellow-600"
+          comingSoon ? "text-gray-500" : connected ? "text-green-700" : "text-amber-700"
         }`}>
           {comingSoon ? "Unavailable" : statusLabel}
         </span>
@@ -120,15 +129,35 @@ function ServiceTile({
   return <Link href={href}>{content}</Link>;
 }
 
-export default async function SettingsPage() {
+const CALENDAR_ERRORS: Record<string, string> = {
+  access_denied: "Google Calendar was not connected: access was not allowed.",
+  state_mismatch: "Google Calendar was not connected: the sign-in link had expired or was not started here. Please try again.",
+  token_exchange: "Google Calendar was not connected: Google did not accept the sign-in. Please try again.",
+  no_code: "Google Calendar was not connected. Please try again.",
+};
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ calendar?: string; reason?: string }>;
+}) {
+  const { calendar, reason } = await searchParams;
+  const calendarNotice =
+    calendar === "connected"
+      ? { ok: true, text: "Google Calendar connected." }
+      : calendar === "error"
+        ? { ok: false, text: CALENDAR_ERRORS[reason ?? ""] ?? "Google Calendar was not connected. Please try again." }
+        : null;
   const session = await getSession();
   if (!session) redirect("/admin/login");
 
-  const [hotel, oauthToken, preferences, recentLog] = await Promise.all([
+  const [hotel, oauthToken, preferences, recentLog, feedCount] = await Promise.all([
     getHotelById(session.hotelId),
     getOAuthToken(session.hotelId, "google"),
     getNotificationPreferences(session.hotelId),
     getNotificationLog(session.hotelId, 20),
+    // null before docs/l2-feeds/calendar-feeds.sql has run
+    listHotelFeeds(session.hotelId).then((f) => f.length).catch(() => null),
   ]);
 
   if (!hotel) redirect("/admin/login");
@@ -140,22 +169,29 @@ export default async function SettingsPage() {
   const googleReviewsConnected = !!hotel.google_place_id;
 
   return (
-    <div className="p-8">
+    <div className="admin-page">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+        <h1 className="admin-h1">Settings</h1>
         {/* TODO: Remove this dev button before production */}
         <a
           href="/admin/onboarding"
-          className="px-4 py-2 border border-dashed border-orange-300 text-orange-600 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
+          className="px-4 py-2 border border-dashed border-orange-300 text-orange-700 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
         >
           Dev: Run Onboarding
         </a>
       </div>
 
+      {calendarNotice && (
+        <p role={calendarNotice.ok ? "status" : "alert"} className={`${calendarNotice.ok ? "admin-success" : "admin-error"} mb-6`}>
+          {calendarNotice.text}
+        </p>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Left column: Hotel Info + Notifications */}
         <div className="space-y-6">
           <SettingsForm hotel={hotelView(hotel)} />
+          <AlertEmailForm {...alertEmailOf(hotel as unknown as Record<string, unknown>)} />
           <NotificationSettings hotel={hotelView(hotel)} preferences={preferences} recentLog={recentLog} />
         </div>
 
@@ -163,6 +199,20 @@ export default async function SettingsPage() {
         <div>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Connected Services</h3>
           <div className="grid grid-cols-2 gap-3">
+            <ServiceTile
+              logo={<CalendarRange className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
+              name="Calendars"
+              tooltip="Bring in bookings from Airbnb, Booking.com, VRBO and Google calendar"
+              connected={hotel.slug === SYNC_HOTEL_SLUG || (feedCount ?? 0) > 0}
+              statusLabel={
+                hotel.slug === SYNC_HOTEL_SLUG
+                  ? "Set up by Abeiku"
+                  : feedCount
+                    ? `${feedCount} connected`
+                    : "Not connected"
+              }
+              href="/admin/settings/calendars"
+            />
             <ServiceTile
               logo={<WhatsAppLogo className="w-8 h-8 text-[#25D366]" />}
               name="WhatsApp"
@@ -188,7 +238,7 @@ export default async function SettingsPage() {
               href="/admin/settings/momo"
             />
             <ServiceTile
-              logo={<span className="text-2xl">💳</span>}
+              logo={<CreditCard className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
               name="Card Payments"
               tooltip="Accept card payments from guests with automatic payouts"
               connected={paystackConnected}

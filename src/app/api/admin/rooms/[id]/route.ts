@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { updateHotelRoom, deleteHotelRoom } from "@/lib/db";
+import { validatePricingTiers } from "@/lib/rooms/pricing";
 
 export async function PUT(
   request: NextRequest,
@@ -14,6 +15,11 @@ export async function PUT(
   try {
     const body = await request.json();
     const { name, bed_type, occupancy, size, total_rooms, amenities, description, tagline, pricing_tiers, room_type, group_id, images } = body;
+
+    if (pricing_tiers !== undefined) {
+      const invalid = validatePricingTiers(pricing_tiers);
+      if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
+    }
 
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;

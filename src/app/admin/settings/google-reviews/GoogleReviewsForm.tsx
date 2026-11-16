@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../../useAdminAction";
 
 interface Place {
   id: string;
@@ -18,7 +20,7 @@ interface GoogleReviewsFormProps {
 }
 
 const inputClass =
-  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent";
+  "admin-input";
 
 export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: GoogleReviewsFormProps) {
   const [query, setQuery] = useState("");
@@ -28,66 +30,72 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
   const [placeId, setPlaceId] = useState(currentPlaceId);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [showSearch, setShowSearch] = useState(!currentPlaceId);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
+    if (searching) return;
     setSearching(true);
-    setMsg("");
+    setMsg(null);
     setResults([]);
     try {
-      const res = await fetch(`/api/admin/google-places?q=${encodeURIComponent(query.trim())}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Search failed");
-      setResults(data.places || []);
-      if (data.places?.length === 0) setMsg("No results found. Try a different search.");
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Search failed");
+      const r = await apiRequest<{ places?: Place[] }>(`/api/admin/google-places?q=${encodeURIComponent(query.trim())}`, {
+        fallbackError: "Google search isn't working right now. Please try again in a moment.",
+      });
+      if (!r.ok) {
+        setMsg({ kind: "error", text: r.error });
+        return;
+      }
+      setResults(r.data.places || []);
+      if (!r.data.places?.length) setMsg({ kind: "error", text: "No results found. Try a different search." });
     } finally {
       setSearching(false);
     }
   }
 
   async function handleSelect(place: Place) {
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ google_place_id: place.id }),
+        json: { google_place_id: place.id },
+        fallbackError: "We couldn't connect this Google profile. Please try again.",
       });
-      if (!res.ok) throw new Error("Failed to save");
+      if (!r.ok) {
+        setMsg({ kind: "error", text: r.error });
+        return;
+      }
       setPlaceId(place.id);
       setSelectedPlace(place);
       setShowSearch(false);
       setResults([]);
       setQuery("");
-      setMsg("Google Business Profile connected!");
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Failed to save");
+      setMsg({ kind: "ok", text: "Google Business Profile connected." });
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDisconnect() {
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ google_place_id: null }),
+        json: { google_place_id: null },
+        fallbackError: "We couldn't disconnect the Google profile. Please try again.",
       });
-      if (!res.ok) throw new Error("Failed to disconnect");
+      if (!r.ok) {
+        setMsg({ kind: "error", text: r.error });
+        return;
+      }
       setPlaceId(null);
       setSelectedPlace(null);
       setShowSearch(true);
-      setMsg("");
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Failed to disconnect");
     } finally {
       setSaving(false);
     }
@@ -101,12 +109,12 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
     <div className="space-y-6">
       {/* Connected state */}
       {placeId && !showSearch && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <div className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-lg px-4 py-3 mb-4">
             <span className="inline-block w-3 h-3 rounded-full bg-green-500 shrink-0" />
             <div>
               <p className="text-sm font-medium text-green-800">Google Business Profile connected</p>
-              <p className="text-xs text-green-600">
+              <p className="text-xs text-green-700">
                 {selectedPlace
                   ? `${selectedPlace.displayName} — ${selectedPlace.formattedAddress}`
                   : `Place ID: ${placeId}`}
@@ -135,7 +143,7 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
             >
               {reviewLink}
             </a>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               This link will be sent to guests after checkout via WhatsApp.
             </p>
           </div>
@@ -143,7 +151,7 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
           <div className="flex gap-2">
             <button
               onClick={() => setShowSearch(true)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="admin-btn-secondary"
             >
               Change
             </button>
@@ -160,7 +168,7 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
 
       {/* Search state */}
       {showSearch && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="admin-card">
           <p className="text-sm text-gray-600 mb-4">
             Search for your hotel on Google to connect your Business Profile.
             This enables automatic Google review links for guests after checkout.
@@ -177,7 +185,7 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
             <button
               type="submit"
               disabled={searching || !query.trim()}
-              className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="admin-btn-primary whitespace-nowrap"
             >
               {searching ? "Searching..." : "Search"}
             </button>
@@ -229,29 +237,29 @@ export function GoogleReviewsForm({ currentPlaceId, hotelName, hotelCity }: Goog
       )}
 
       {msg && (
-        <p className={`text-sm ${msg.includes("connected") || msg.includes("Connected") ? "text-green-600" : "text-red-600"}`}>
-          {msg}
+        <p>
+          <FormStatus message={msg} />
         </p>
       )}
 
       {/* How it works */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="admin-card">
         <h3 className="text-sm font-semibold text-gray-900 mb-3">How it works</h3>
         <ul className="text-sm text-gray-500 space-y-2">
           <li className="flex items-start gap-2">
-            <span className="text-green-500 mt-0.5">&#10003;</span>
+            <span className="text-green-700 mt-0.5">&#10003;</span>
             After checkout, guests receive a WhatsApp message with a Google review link
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-500 mt-0.5">&#10003;</span>
+            <span className="text-green-700 mt-0.5">&#10003;</span>
             One tap opens the Google review form for your hotel
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-500 mt-0.5">&#10003;</span>
+            <span className="text-green-700 mt-0.5">&#10003;</span>
             All guests receive the same link — no filtering by rating
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-green-500 mt-0.5">&#10003;</span>
+            <span className="text-green-700 mt-0.5">&#10003;</span>
             Track how many guests click the link from your reviews dashboard
           </li>
         </ul>

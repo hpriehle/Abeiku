@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isBookingBotEnabled } from "@/lib/whatsapp/inbound";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, getConversation } from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
@@ -60,6 +61,18 @@ export async function POST(request: NextRequest) {
   const hotel = await getHotelById(session.hotelId);
   if (!hotel) return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
 
+  // F2: the simulator runs the real booking flow (it creates real booking rows),
+  // so it only works for a hotel that has the WhatsApp booking bot switched on.
+  if (!isBookingBotEnabled(hotel)) {
+    return NextResponse.json(
+      {
+        error:
+          "The WhatsApp booking bot is switched off for this hotel (people reply to guests), so there is nothing to simulate.",
+      },
+      { status: 409 }
+    );
+  }
+
   const input: SimulatorInput = await request.json();
   const message = buildMessage(input);
   const simContext: SimulatorContext = { messages: [] };
@@ -80,6 +93,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Simulator error:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: "The simulator hit an error. Please try again." }, { status: 500 });
   }
 }

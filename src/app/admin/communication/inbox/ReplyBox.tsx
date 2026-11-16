@@ -52,7 +52,7 @@ export function ReplyBox({
   return (
     <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-100">
       {error && (
-        <p className="text-xs text-red-500 mb-2">{error}</p>
+        <p className="text-xs text-red-600 mb-2">{error}</p>
       )}
       <div className="flex gap-2">
         <input
@@ -61,12 +61,12 @@ export function ReplyBox({
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a reply..."
           disabled={sending}
-          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E] disabled:opacity-50"
+          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E] disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={!text.trim() || sending}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-[#2D4A3E] text-white hover:bg-[#1E3329] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="admin-btn-primary"
         >
           {sending ? "..." : "Send"}
         </button>

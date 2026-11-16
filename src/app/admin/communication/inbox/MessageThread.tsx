@@ -68,20 +68,17 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
   if (messages.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-sm text-gray-400">No messages yet</p>
+        <p className="text-sm text-gray-500">No messages yet</p>
       </div>
     );
   }
 
-  // Group messages by date
-  let lastDate = "";
-
   return (
     <div className="p-4 space-y-3">
-      {messages.map((msg) => {
+      {messages.map((msg, i) => {
+        // Group messages by date: show a date chip when the day changes
         const msgDate = msg.created_at.split("T")[0];
-        const showDate = msgDate !== lastDate;
-        lastDate = msgDate;
+        const showDate = i === 0 || msgDate !== messages[i - 1].created_at.split("T")[0];
 
         const isInbound = msg.direction === "inbound";
         const isAdmin = msg.sender_type === "admin";
@@ -90,7 +87,7 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
           <div key={msg.id}>
             {showDate && (
               <div className="flex justify-center my-3">
-                <span className="text-[10px] text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
+                <span className="text-[10px] text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
                   {formatDate(msg.created_at)}
                 </span>
               </div>
@@ -136,7 +133,7 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
                   )}
 
                 {/* Timestamp */}
-                <p className={`text-[10px] mt-1 ${isInbound ? "text-gray-400" : "text-gray-400"}`}>
+                <p className={`text-[10px] mt-1 ${isInbound ? "text-gray-600" : "text-gray-600"}`}>
                   {formatTime(msg.created_at)}
                 </p>
               </div>

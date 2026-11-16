@@ -12,6 +12,16 @@ import {
   createPartnerSessionToken,
   getPartnerSessionCookieOptions,
 } from "@/lib/partner/auth";
+import {
+  getAttemptStore,
+  checkLimit,
+  recordFailure,
+  clearKeys,
+  clientIp,
+  loginKeys,
+  tooManyMessage,
+  LOGIN_LIMIT,
+} from "@/lib/auth/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +32,17 @@ export async function POST(request: NextRequest) {
 
     if (!login || !password) {
       return NextResponse.json({ error: "Email or WhatsApp number and password required" }, { status: 400 });
+    }
+
+    // Rate limit: 10 failed tries per 15 minutes, per IP and per account.
+    const store = await getAttemptStore();
+    const keys = loginKeys("partner", clientIp(request.headers), login.includes("@") ? login : normalizeWhatsapp(login) || login);
+    const check = await checkLimit(store, keys, LOGIN_LIMIT);
+    if (!check.allowed) {
+      return NextResponse.json(
+        { error: tooManyMessage(check.retryAfterSec) },
+        { status: 429, headers: { "Retry-After": String(check.retryAfterSec) } }
+      );
     }
 
     let influencer: Influencer | null = null;
@@ -40,8 +61,10 @@ export async function POST(request: NextRequest) {
       }
     }
     if (!influencer) {
+      await recordFailure(store, keys);
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
+    await clearKeys(store, [keys[1]]);
 
     const hotel = await getHotelById(influencer.hotel_id);
     if (!hotel) {

@@ -1,0 +1,62 @@
+[
+  {
+    "page": "/",
+    "width": 375,
+    "status": 200,
+    "title": "Abeiku: hotel management for small hotels and guesthouses in Ghana",
+    "overflowX": false,
+    "emDash": false,
+    "bookOnWhatsApp": false,
+    "links": [
+      "/",
+      "/admin/login",
+      "/signup",
+      "mailto:hello@abeiku.com",
+      "/partner/login"
+    ]
+  },
+  {
+    "page": "/",
+    "width": 1280,
+    "status": 200,
+    "title": "Abeiku: hotel management for small hotels and guesthouses in Ghana",
+    "overflowX": false,
+    "emDash": false,
+    "bookOnWhatsApp": false,
+    "links": [
+      "/",
+      "/admin/login",
+      "/signup",
+      "mailto:hello@abeiku.com",
+      "/partner/login"
+    ]
+  },
+  {
+    "page": "/signup",
+    "width": 375,
+    "status": 200,
+    "title": "Sign up | Abeiku",
+    "overflowX": false,
+    "emDash": false,
+    "bookOnWhatsApp": false,
+    "links": [
+      "mailto:hello@abeiku.com",
+      "/",
+      "/admin/login"
+    ]
+  },
+  {
+    "page": "/signup",
+    "width": 1280,
+    "status": 200,
+    "title": "Sign up | Abeiku",
+    "overflowX": false,
+    "emDash": false,
+    "bookOnWhatsApp": false,
+    "links": [
+      "mailto:hello@abeiku.com",
+      "/",
+      "/admin/login"
+    ]
+  }
+]

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { useAdminAction, ErrorNotice } from "../useAdminAction";
 
 interface Booking {
   id: string;
@@ -72,89 +74,83 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
   const [booking, setBooking] = useState<Booking | null>(null);
   const [groupedBookings, setGroupedBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const { pending: actionLoading, error: actionError, setError: setActionError, run } = useAdminAction();
   const [showDateEdit, setShowDateEdit] = useState(false);
   const [newCheckIn, setNewCheckIn] = useState("");
   const [newCheckOut, setNewCheckOut] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/bookings/${bookingId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setBooking(data.booking);
-        setGroupedBookings(data.groupedBookings || []);
-        setNewCheckIn(data.booking?.check_in || "");
-        setNewCheckOut(data.booking?.check_out || "");
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    apiRequest<{ booking: Booking | null; groupedBookings?: Booking[] }>(`/api/admin/bookings/${bookingId}`, {
+      fallbackError: "We couldn't load this booking. Please try again.",
+    }).then((r) => {
+      if (cancelled) return;
+      if (r.ok && r.data.booking) {
+        setBooking(r.data.booking);
+        setGroupedBookings(r.data.groupedBookings || []);
+        setNewCheckIn(r.data.booking.check_in || "");
+        setNewCheckOut(r.data.booking.check_out || "");
+      } else {
+        setLoadError(r.ok ? "We couldn't find this booking. It may have been deleted." : r.error);
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [bookingId]);
 
-  async function doAction(action: string, extra?: Record<string, unknown>) {
-    setActionLoading(action);
-    try {
-      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...extra }),
-      });
-      if (res.ok) {
-        onUpdated();
-        onClose();
-      }
-    } finally {
-      setActionLoading("");
+  async function update(key: string, body: Record<string, unknown>, fallbackError: string) {
+    const r = await run(key, () =>
+      apiRequest(`/api/admin/bookings/${bookingId}`, { method: "PUT", json: body, fallbackError })
+    );
+    if (r?.ok) {
+      onUpdated();
+      onClose();
     }
   }
 
-  async function changeDates() {
-    if (!newCheckIn || !newCheckOut) return;
-    setActionLoading("dates");
-    try {
-      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ check_in: newCheckIn, check_out: newCheckOut }),
-      });
-      if (res.ok) {
-        onUpdated();
-        onClose();
-      }
-    } finally {
-      setActionLoading("");
-    }
+  function doAction(action: string, extra?: Record<string, unknown>, key: string = action) {
+    const what =
+      action === "cancelled" ? "cancel the booking" : action === "checked_in" ? "check the guest in" : "check the guest out";
+    return update(key, { action, ...extra }, `We couldn't ${what}. Nothing was changed. Please try again.`);
   }
 
-  async function changePayment(payment_status: string) {
-    setActionLoading(payment_status);
-    try {
-      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_status }),
-      });
-      if (res.ok) {
-        onUpdated();
-        onClose();
-      }
-    } finally {
-      setActionLoading("");
+  function changeDates() {
+    if (!newCheckIn || !newCheckOut) {
+      setActionError("Pick both a check-in and a check-out date.");
+      return;
     }
+    if (newCheckOut <= newCheckIn) {
+      setActionError("Check-out must be after check-in.");
+      return;
+    }
+    return update("dates", { check_in: newCheckIn, check_out: newCheckOut }, "We couldn't change the dates. Please try again.");
   }
 
-  if (loading) {
+  function changePayment(payment_status: string) {
+    return update(payment_status, { payment_status }, "We couldn't update the payment status. Please try again.");
+  }
+
+  if (loading || !booking) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-xl p-8">
-          <span className="text-sm text-gray-500">Loading...</span>
+      <div role="dialog" aria-modal="true" aria-label="Booking details" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
+        <div className="bg-white rounded-xl p-6 sm:p-8 w-full max-w-sm space-y-4">
+          {loading ? (
+            <span className="text-sm text-gray-600">Loading...</span>
+          ) : (
+            <>
+              <ErrorNotice message={loadError} />
+              <button type="button" onClick={onClose} className="admin-btn-secondary w-full">
+                Close
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
-  }
-
-  if (!booking) {
-    onClose();
-    return null;
   }
 
   const roomName = rooms.find((r) => r.slug === booking.room_slug)?.name || booking.room_slug;
@@ -162,15 +158,16 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
   const hasGroupSiblings = groupedBookings.length > 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Booking Details</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} aria-label="Close" className="text-gray-500 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-5">
+          <ErrorNotice message={actionError} onDismiss={() => setActionError(null)} />
           {/* Guest info */}
           <div className="flex items-start justify-between">
             <div>
@@ -235,7 +232,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                     type="date"
                     value={newCheckIn}
                     onChange={(e) => setNewCheckIn(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    className="admin-input"
                   />
                 </div>
                 <div>
@@ -244,7 +241,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                     type="date"
                     value={newCheckOut}
                     onChange={(e) => setNewCheckOut(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+                    className="admin-input"
                   />
                 </div>
               </div>
@@ -252,13 +249,13 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 <button
                   onClick={changeDates}
                   disabled={!!actionLoading}
-                  className="px-4 py-2 bg-[#2D4A3E] text-white text-sm rounded-lg hover:bg-[#1E3329] disabled:opacity-50"
+                  className="admin-btn-primary"
                 >
                   {actionLoading === "dates" ? "Saving..." : "Save Dates"}
                 </button>
                 <button
                   onClick={() => setShowDateEdit(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50"
+                  className="admin-btn-secondary"
                 >
                   Cancel
                 </button>
@@ -271,7 +268,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
             <div className="border border-red-200 bg-red-50 rounded-lg p-4 space-y-3">
               <p className="text-sm font-medium text-red-700">
                 Are you sure you want to cancel this booking?
-                {booking.payment_status === "paid" && " Payment will be marked as refunded."}
+                {booking.payment_status === "paid" && " Payment will be marked as refunded. Abeiku does not send the money back: refund the guest yourself."}
               </p>
               <div className="flex gap-2">
                 <button
@@ -283,16 +280,16 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 </button>
                 {hasGroupSiblings && (
                   <button
-                    onClick={() => doAction("cancelled", { cancel_group: true })}
+                    onClick={() => doAction("cancelled", { cancel_group: true }, "cancelled_group")}
                     disabled={!!actionLoading}
                     className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
                   >
-                    Cancel All Linked
+                    {actionLoading === "cancelled_group" ? "Cancelling..." : "Cancel All Linked"}
                   </button>
                 )}
                 <button
                   onClick={() => setConfirmCancel(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50"
+                  className="admin-btn-secondary"
                 >
                   Keep
                 </button>
@@ -308,14 +305,14 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 <button
                   onClick={() => doAction("checked_in")}
                   disabled={!!actionLoading}
-                  className="flex-1 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 disabled:opacity-50"
                 >
-                  {actionLoading === "checked_in" ? "..." : "Check In"}
+                  {actionLoading === "checked_in" ? "Checking in..." : "Check In"}
                 </button>
                 {!showDateEdit && (
                   <button
                     onClick={() => setShowDateEdit(true)}
-                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    className="admin-btn-secondary flex-1"
                   >
                     Change Dates
                   </button>
@@ -338,12 +335,12 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                   disabled={!!actionLoading}
                   className="flex-1 py-2.5 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50"
                 >
-                  {actionLoading === "checked_out" ? "..." : "Check Out"}
+                  {actionLoading === "checked_out" ? "Checking out..." : "Check Out"}
                 </button>
                 {!showDateEdit && (
                   <button
                     onClick={() => setShowDateEdit(true)}
-                    className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                    className="admin-btn-secondary flex-1"
                   >
                     Change Dates
                   </button>
@@ -366,7 +363,7 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 disabled={!!actionLoading}
                 className="w-full py-2.5 border border-green-300 text-green-700 text-sm font-medium rounded-lg hover:bg-green-50 disabled:opacity-50"
               >
-                {actionLoading === "paid" ? "..." : "Mark as Paid"}
+                {actionLoading === "paid" ? "Saving..." : "Mark as Paid"}
               </button>
             )}
 
@@ -376,12 +373,12 @@ export function BookingDetailModal({ bookingId, rooms, currency, onClose, onUpda
                 disabled={!!actionLoading}
                 className="w-full py-2.5 border border-purple-300 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-50 disabled:opacity-50"
               >
-                {actionLoading === "refunded" ? "..." : "Mark as Refunded"}
+                {actionLoading === "refunded" ? "Saving..." : "Mark as Refunded"}
               </button>
             )}
 
             {/* Meta */}
-            <p className="text-xs text-gray-400 text-center pt-2">
+            <p className="text-xs text-gray-500 text-center pt-2">
               Booked {new Date(booking.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               {" "}at {new Date(booking.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
             </p>

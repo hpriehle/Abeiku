@@ -13,13 +13,10 @@ export default function CommunicationLayout({ children }: { children: React.Reac
   const pathname = usePathname();
 
   return (
-    <div className="p-8">
-      <h2
-        className="text-2xl font-bold text-gray-900 mb-6"
-        style={{ fontFamily: "var(--font-heading), Georgia, serif" }}
-      >
+    <div className="admin-page">
+      <h1 className="admin-h1 mb-6">
         Communication
-      </h2>
+      </h1>
 
       {/* Horizontal tab bar */}
       <div className="border-b border-gray-200 mb-6">

@@ -21,8 +21,16 @@ export interface LogMessageParams {
 }
 
 export function logMessage(params: LogMessageParams): void {
-  // Insert message record
-  supabase
+  void recordMessage(params);
+}
+
+/**
+ * Same writes as logMessage, but the caller can await them. Used when storing
+ * the message is the whole job (WhatsApp bot off), so a serverless function
+ * must not return before the row is written. Never throws.
+ */
+export async function recordMessage(params: LogMessageParams): Promise<boolean> {
+  const insert = supabase
     .from("chat_messages")
     .insert({
       hotel_id: params.hotelId,
@@ -40,10 +48,11 @@ export function logMessage(params: LogMessageParams): void {
     })
     .then(({ error }) => {
       if (error) console.error("[ChatLogger] logMessage error:", error.message);
+      return !error;
     });
 
   // Update conversation last_message_at + preview
-  supabase
+  const touch = supabase
     .from("conversations")
     .update({
       last_message_at: new Date().toISOString(),
@@ -56,12 +65,21 @@ export function logMessage(params: LogMessageParams): void {
     });
 
   // Increment unread count for inbound messages
-  if (params.direction === "inbound") {
-    supabase
-      .rpc("increment_unread", { p_hotel_id: params.hotelId, p_phone: params.phone })
-      .then(({ error }) => {
-        if (error) console.error("[ChatLogger] increment_unread error:", error.message);
-      });
+  const unread =
+    params.direction === "inbound"
+      ? supabase
+          .rpc("increment_unread", { p_hotel_id: params.hotelId, p_phone: params.phone })
+          .then(({ error }) => {
+            if (error) console.error("[ChatLogger] increment_unread error:", error.message);
+          })
+      : Promise.resolve();
+
+  try {
+    const [ok] = await Promise.all([insert, touch, unread]);
+    return ok;
+  } catch (err) {
+    console.error("[ChatLogger] recordMessage failed:", err);
+    return false;
   }
 }
 

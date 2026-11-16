@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../useAdminAction";
 import type { HotelView } from "@/lib/admin/hotel-view";
 
 interface SettingsFormProps {
@@ -8,7 +10,7 @@ interface SettingsFormProps {
 }
 
 const inputClass =
-  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent";
+  "admin-input";
 
 export function SettingsForm({ hotel }: SettingsFormProps) {
   const [hotelForm, setHotelForm] = useState({
@@ -24,40 +26,39 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
     wifi_password: hotel.wifi_password || "",
   });
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/hotel", {
+      const r = await apiRequest("/api/admin/hotel", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(hotelForm),
+        json: hotelForm,
+        fallbackError: "We couldn't save your hotel details. Your changes are still in the form; please try again.",
       });
-      if (!res.ok) throw new Error("Failed to save");
-      setMsg("Saved successfully");
-    } catch {
-      setMsg("Failed to save");
+      setMsg(r.ok ? { kind: "ok", text: "Saved." } : { kind: "error", text: r.error });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="admin-card">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Hotel Information</h3>
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Hotel Name</label>
+          <label className="admin-label">Hotel Name</label>
           <p className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-lg">{hotel.name}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+            <label htmlFor="settingsfo-country" className="admin-label">Country</label>
             <select
+              id="settingsfo-country"
               value={hotelForm.location_country}
               onChange={(e) => {
                 const country = e.target.value;
@@ -74,12 +75,13 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+            <label htmlFor="settingsfo-contact-phone" className="admin-label">Contact Phone</label>
             <div className="flex">
               <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-sm text-gray-500">
                 {hotelForm.location_country === "United States" ? "+1" : "+233"}
               </span>
               <input
+                id="settingsfo-contact-phone"
                 type="tel"
                 value={hotelForm.contact_phone}
                 onChange={(e) => setHotelForm((f) => ({ ...f, contact_phone: e.target.value }))}
@@ -91,8 +93,9 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+            <label htmlFor="settingsfo-city" className="admin-label">City</label>
             <input
+              id="settingsfo-city"
               type="text"
               value={hotelForm.location_city}
               onChange={(e) => setHotelForm((f) => ({ ...f, location_city: e.target.value }))}
@@ -100,8 +103,9 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+            <label htmlFor="settingsfo-contact-email" className="admin-label">Contact Email</label>
             <input
+              id="settingsfo-contact-email"
               type="email"
               value={hotelForm.contact_email}
               onChange={(e) => setHotelForm((f) => ({ ...f, contact_email: e.target.value }))}
@@ -112,8 +116,9 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Check-in Time</label>
+            <label htmlFor="settingsfo-check-in-time" className="admin-label">Check-in Time</label>
             <input
+              id="settingsfo-check-in-time"
               type="time"
               value={hotelForm.check_in_time}
               onChange={(e) => setHotelForm((f) => ({ ...f, check_in_time: e.target.value }))}
@@ -121,8 +126,9 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Check-out Time</label>
+            <label htmlFor="settingsfo-check-out-time" className="admin-label">Check-out Time</label>
             <input
+              id="settingsfo-check-out-time"
               type="time"
               value={hotelForm.check_out_time}
               onChange={(e) => setHotelForm((f) => ({ ...f, check_out_time: e.target.value }))}
@@ -133,8 +139,9 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+            <label htmlFor="settingsfo-currency" className="admin-label">Currency</label>
             <select
+              id="settingsfo-currency"
               value={hotelForm.currency}
               onChange={(e) => setHotelForm((f) => ({ ...f, currency: e.target.value }))}
               className={inputClass}
@@ -144,8 +151,9 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Wi-Fi Password</label>
+            <label htmlFor="settingsfo-wi-fi-password" className="admin-label">Wi-Fi Password</label>
             <input
+              id="settingsfo-wi-fi-password"
               type="text"
               value={hotelForm.wifi_password}
               onChange={(e) => setHotelForm((f) => ({ ...f, wifi_password: e.target.value }))}
@@ -159,15 +167,11 @@ export function SettingsForm({ hotel }: SettingsFormProps) {
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+            className="admin-btn-primary"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>
-          {msg && (
-            <span className={`text-sm ${msg.includes("success") ? "text-green-600" : "text-red-600"}`}>
-              {msg}
-            </span>
-          )}
+          <FormStatus message={msg} />
         </div>
       </form>
     </div>

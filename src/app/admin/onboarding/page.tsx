@@ -1,4 +1,5 @@
 "use client";
+import { CalendarDays, CreditCard, MessageSquare, Star, Wallet } from "lucide-react";
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -55,7 +56,7 @@ export default function OnboardingPage() {
   const [rooms, setRooms] = useState<RoomDraft[]>([
     { key: 1, name: "", bed_type: "Queen", occupancy: 2, size: "", price: 0, total_rooms: 1, amenities: [] },
   ]);
-  let nextKey = rooms.length > 0 ? Math.max(...rooms.map((r) => r.key)) + 1 : 1;
+  const nextKey = rooms.length > 0 ? Math.max(...rooms.map((r) => r.key)) + 1 : 1;
 
   // Step 3 state
   const [integrations, setIntegrations] = useState<IntegrationStatus>({
@@ -260,7 +261,7 @@ export default function OnboardingPage() {
 
   // --- Input helper ---
   const inputClass =
-    "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent";
+    "admin-input";
 
   return (
     <div className="fixed inset-0 z-50 bg-[#1a1a2e] flex items-start justify-center p-4 pt-12 overflow-y-auto" style={{ fontFamily: "system-ui, sans-serif" }}>
@@ -274,8 +275,8 @@ export default function OnboardingPage() {
                   s === step
                     ? "bg-[#2D4A3E] text-white"
                     : s < step
-                      ? "bg-green-500 text-white"
-                      : "bg-white/20 text-gray-400"
+                      ? "bg-green-700 text-white"
+                      : "bg-white/20 text-gray-300"
                 }`}
               >
                 {s < step ? "✓" : s}
@@ -293,7 +294,7 @@ export default function OnboardingPage() {
             {step === 2 && "Room Types"}
             {step === 3 && "Connect Services"}
           </h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-gray-300 text-sm mt-1">
             {step === 1 && "Set your location and operating hours"}
             {step === 2 && "Configure your room types and pricing"}
             {step === 3 && "Connect your integrations (you can skip and do this later)"}
@@ -304,8 +305,9 @@ export default function OnboardingPage() {
         {step === 1 && (
           <div className="bg-white rounded-xl shadow-lg p-8 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+              <label htmlFor="page-contact-phone" className="admin-label">Contact Phone</label>
               <input
+                id="page-contact-phone"
                 type="tel"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
@@ -316,8 +318,9 @@ export default function OnboardingPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <label htmlFor="page-city" className="admin-label">City</label>
                 <input
+                  id="page-city"
                   type="text"
                   value={locationCity}
                   onChange={(e) => setLocationCity(e.target.value)}
@@ -326,8 +329,9 @@ export default function OnboardingPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <label htmlFor="page-country" className="admin-label">Country</label>
                 <input
+                  id="page-country"
                   type="text"
                   value={locationCountry}
                   onChange={(e) => setLocationCountry(e.target.value)}
@@ -341,7 +345,7 @@ export default function OnboardingPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Pin Your Location
                 {locationLat && locationLng && (
-                  <span className="text-xs text-gray-400 ml-2">
+                  <span className="text-xs text-gray-500 ml-2">
                     ({locationLat.toFixed(4)}, {locationLng.toFixed(4)})
                   </span>
                 )}
@@ -353,13 +357,14 @@ export default function OnboardingPage() {
                   onClick={handleMapClick}
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-1">Click on the map to set your hotel location</p>
+              <p className="text-xs text-gray-500 mt-1">Click on the map to set your hotel location</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check-in Time</label>
+                <label htmlFor="page-check-in-time" className="admin-label">Check-in Time</label>
                 <input
+                  id="page-check-in-time"
                   type="time"
                   value={checkInTime}
                   onChange={(e) => setCheckInTime(e.target.value)}
@@ -367,8 +372,9 @@ export default function OnboardingPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Check-out Time</label>
+                <label htmlFor="page-check-out-time" className="admin-label">Check-out Time</label>
                 <input
+                  id="page-check-out-time"
                   type="time"
                   value={checkOutTime}
                   onChange={(e) => setCheckOutTime(e.target.value)}
@@ -382,7 +388,7 @@ export default function OnboardingPage() {
             <button
               onClick={handleStep1Next}
               disabled={saving}
-              className="w-full py-3 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+              className="admin-btn-primary w-full py-3"
             >
               {saving ? "Saving..." : "Next: Room Types"}
             </button>
@@ -483,7 +489,7 @@ export default function OnboardingPage() {
                           type="checkbox"
                           checked={room.amenities.includes(amenity)}
                           onChange={() => toggleRoomAmenity(room.key, amenity)}
-                          className="rounded border-gray-300 text-[#2D4A3E] focus:ring-[#2D4A3E]"
+                          className="rounded border-[#868e9c] text-[#2D4A3E] focus:ring-[#2D4A3E]"
                         />
                         {amenity}
                       </label>
@@ -516,7 +522,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleStep2Next}
                 disabled={saving}
-                className="flex-1 py-3 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+                className="admin-btn-primary flex-1 py-3"
               >
                 {saving ? "Saving..." : "Next: Connect Services"}
               </button>
@@ -531,7 +537,7 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">📅</span>
+                  <CalendarDays className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900">Google Calendar</h3>
                     <p className="text-xs text-gray-500">Sync bookings with your calendar</p>
@@ -549,13 +555,13 @@ export default function OnboardingPage() {
                     href="/api/auth/google"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+                    className="admin-btn-primary"
                   >
                     Connect Google Calendar
                   </a>
                   <button
                     onClick={refreshIntegrations}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                    className="admin-btn-secondary"
                   >
                     Refresh Status
                   </button>
@@ -567,7 +573,7 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">💬</span>
+                  <MessageSquare className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900">WhatsApp Cloud API</h3>
                     <p className="text-xs text-gray-500">Enable WhatsApp booking assistant</p>
@@ -598,7 +604,7 @@ export default function OnboardingPage() {
                   <button
                     onClick={saveWhatsApp}
                     disabled={saving || !whatsappToken || !whatsappPhoneId}
-                    className="px-4 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+                    className="admin-btn-primary"
                   >
                     {saving ? "Saving..." : "Save"}
                   </button>
@@ -610,7 +616,7 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               {momoVerified || integrations.momo ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">💰</span>
+                  <Wallet className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900">MTN Mobile Money</h3>
                     <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Verified</span>
@@ -633,7 +639,7 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">💳</span>
+                  <CreditCard className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900">Card Payments</h3>
                     <p className="text-xs text-gray-500">Accept card payments from guests</p>
@@ -647,7 +653,7 @@ export default function OnboardingPage() {
                 href="/admin/settings/paystack"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block px-4 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+                className="admin-btn-primary"
               >
                 Set Up Card Payments
               </a>
@@ -657,7 +663,7 @@ export default function OnboardingPage() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">⭐</span>
+                  <Star className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900">Google Reviews</h3>
                     <p className="text-xs text-gray-500">Help guests find you on Google</p>
@@ -684,7 +690,7 @@ export default function OnboardingPage() {
                     <button
                       onClick={searchGooglePlaces}
                       disabled={googleSearching || !googleQuery.trim()}
-                      className="px-4 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50 whitespace-nowrap"
+                      className="admin-btn-primary whitespace-nowrap"
                     >
                       {googleSearching ? "..." : "Search"}
                     </button>
@@ -701,7 +707,7 @@ export default function OnboardingPage() {
                           <p className="text-sm font-medium text-gray-900">{place.displayName}</p>
                           <p className="text-xs text-gray-500">{place.formattedAddress}</p>
                           {place.rating && (
-                            <p className="text-xs text-gray-400 mt-0.5">
+                            <p className="text-xs text-gray-500 mt-0.5">
                               ⭐ {place.rating.toFixed(1)} ({place.userRatingCount?.toLocaleString()} reviews)
                             </p>
                           )}
@@ -728,7 +734,7 @@ export default function OnboardingPage() {
               </button>
               <button
                 onClick={handleComplete}
-                className="flex-1 py-3 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+                className="admin-btn-primary flex-1 py-3"
               >
                 Complete Setup
               </button>

@@ -36,8 +36,12 @@ export async function notifyOwner(
 
     const content = buildContent(event, hotel, data);
 
+    // Hotels with a booking-alert address get new bookings from src/lib/alerts (every source);
+    // skip this email so they don't get two.
+    const coveredByBookingAlerts = event === "new_booking" && Boolean(hotel.alert_email);
+
     // --- Email ---
-    if (emailEnabled && hotel.contact_email) {
+    if (emailEnabled && hotel.contact_email && !coveredByBookingAlerts) {
       const result = await sendEmail({
         to: hotel.contact_email,
         subject: content.subject,

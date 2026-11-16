@@ -1,0 +1,30 @@
+[
+  {
+    "shot": "calendars",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "blockedWrites": []
+  },
+  {
+    "shot": "calendars-google",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "blockedWrites": []
+  },
+  {
+    "shot": "calendars-edit",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "blockedWrites": []
+  },
+  {
+    "shot": "calendars-add-error",
+    "status": 200,
+    "overflowX": false,
+    "emDash": false,
+    "blockedWrites": []
+  }
+]

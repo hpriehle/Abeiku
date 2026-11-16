@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { friendlyError } from "@/lib/admin/api-client";
 import { useRouter } from "next/navigation";
 
 const inputClass =
-  "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent";
+  "admin-input";
 
 type Step =
   | "idle"
@@ -53,10 +54,8 @@ export function MoMoVerificationWizard({
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    if (step !== "awaiting_confirmation" || !verificationSentAt) {
-      setMinutesLeft(null);
-      return;
-    }
+    // minutesLeft is only shown while awaiting confirmation (see below), so no reset needed here.
+    if (step !== "awaiting_confirmation" || !verificationSentAt) return;
     function updateTimer() {
       const sentAt = new Date(verificationSentAt!).getTime();
       const remaining = Math.max(0, 30 - (Date.now() - sentAt) / (1000 * 60));
@@ -85,7 +84,7 @@ export function MoMoVerificationWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Validation failed");
+        setError(friendlyError(res.status, data, "Validation failed"));
         setStep("idle");
         return;
       }
@@ -112,7 +111,7 @@ export function MoMoVerificationWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to send verification");
+        setError(friendlyError(res.status, data, "Failed to send verification"));
         setStep("account_valid");
         return;
       }
@@ -126,6 +125,7 @@ export function MoMoVerificationWizard({
   }
 
   async function handleConfirm() {
+    if (step === "confirming") return; // no double submit
     setError("");
     setStep("confirming");
     try {
@@ -136,8 +136,9 @@ export function MoMoVerificationWizard({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Verification failed");
-        setStep(res.status === 410 ? "idle" : "awaiting_confirmation");
+        setError(friendlyError(res.status, data, "Verification failed"));
+        // 410 expired / 429 too many wrong amounts: the check is cancelled, send a new one.
+        setStep(res.status === 410 ? "idle" : res.status === 429 ? "account_valid" : "awaiting_confirmation");
         return;
       }
       if (data.verified) {
@@ -145,7 +146,7 @@ export function MoMoVerificationWizard({
         onVerified?.();
         router.refresh();
       } else {
-        setError(data.error || "Incorrect amount. Try again.");
+        setError(friendlyError(400, data, "Incorrect amount. Try again."));
         setStep("awaiting_confirmation");
       }
     } catch {
@@ -166,7 +167,7 @@ export function MoMoVerificationWizard({
     : "";
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="admin-card">
       <h3 className="text-lg font-semibold text-gray-900 mb-1">MoMo Payout Verification</h3>
       <p className="text-sm text-gray-500 mb-4">
         Verify your MoMo number to receive guest payment disbursements.
@@ -187,12 +188,13 @@ export function MoMoVerificationWizard({
       {(step === "idle" || step === "validating") && (
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">MoMo Phone Number</label>
+            <label htmlFor="momoform-momo-phone-number" className="admin-label">MoMo Phone Number</label>
             <div className="flex gap-2">
               <span className="inline-flex items-center px-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-500">
                 +233
               </span>
               <input
+                id="momoform-momo-phone-number"
                 type="tel"
                 value={phoneDigits}
                 onChange={(e) => {
@@ -205,12 +207,12 @@ export function MoMoVerificationWizard({
                 disabled={step === "validating"}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">Enter your 9-digit MoMo number (without country code)</p>
+            <p className="text-xs text-gray-500 mt-1">Enter your 9-digit MoMo number (without country code)</p>
           </div>
           <button
             onClick={handleValidate}
             disabled={!phoneValid || step === "validating"}
-            className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+            className="admin-btn-primary"
           >
             {step === "validating" ? "Validating..." : "Validate Number"}
           </button>
@@ -221,10 +223,10 @@ export function MoMoVerificationWizard({
       {(step === "account_valid" || step === "sending") && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-4 py-3">
-            <span className="text-green-600 text-lg">&#10003;</span>
+            <span className="text-green-700 text-lg">&#10003;</span>
             <div>
               <p className="text-sm font-medium text-green-800">Active MoMo account found</p>
-              <p className="text-xs text-green-600">{displayPhone}</p>
+              <p className="text-xs text-green-700">{displayPhone}</p>
             </div>
           </div>
           <p className="text-sm text-gray-600">
@@ -234,14 +236,14 @@ export function MoMoVerificationWizard({
             <button
               onClick={handleSendVerification}
               disabled={step === "sending"}
-              className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+              className="admin-btn-primary"
             >
               {step === "sending" ? "Sending..." : "Send Test Payment"}
             </button>
             <button
               onClick={handleChangeNumber}
               disabled={step === "sending"}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="admin-btn-secondary"
             >
               Change Number
             </button>
@@ -258,20 +260,19 @@ export function MoMoVerificationWizard({
             </p>
             <p className="text-xs text-blue-600 mt-1">
               Check your MoMo balance or transaction notifications.
-              {minutesLeft != null && minutesLeft > 0 && (
+              {step === "awaiting_confirmation" && minutesLeft != null && minutesLeft > 0 && (
                 <> Expires in {minutesLeft} minute{minutesLeft !== 1 ? "s" : ""}.</>
               )}
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Enter the exact amount you received
-            </label>
+            <label htmlFor="momoform-enter-the-exact-amount-y" className="admin-label">Enter the exact amount you received</label>
             <div className="flex gap-2">
               <span className="inline-flex items-center px-3 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-500">
                 {currency}
               </span>
               <input
+                id="momoform-enter-the-exact-amount-y"
                 type="text"
                 inputMode="decimal"
                 value={amountInput}
@@ -289,7 +290,7 @@ export function MoMoVerificationWizard({
             <button
               onClick={handleConfirm}
               disabled={!amountInput || step === "confirming"}
-              className="px-5 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+              className="admin-btn-primary"
             >
               {step === "confirming" ? "Verifying..." : "Verify Amount"}
             </button>
@@ -300,7 +301,7 @@ export function MoMoVerificationWizard({
                 setError("");
               }}
               disabled={step === "confirming"}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="admin-btn-secondary"
             >
               Send Again
             </button>
@@ -312,10 +313,10 @@ export function MoMoVerificationWizard({
       {step === "verified" && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-4 py-3">
-            <span className="text-green-600 text-lg">&#10003;</span>
+            <span className="text-green-700 text-lg">&#10003;</span>
             <div>
               <p className="text-sm font-medium text-green-800">MoMo number verified</p>
-              <p className="text-xs text-green-600">
+              <p className="text-xs text-green-700">
                 {displayPhone || (initialPhone ? `+${initialPhone}` : "")}
               </p>
             </div>
@@ -325,7 +326,7 @@ export function MoMoVerificationWizard({
           </p>
           <button
             onClick={handleChangeNumber}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+            className="admin-btn-secondary"
           >
             Change Number
           </button>

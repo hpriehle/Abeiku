@@ -11,7 +11,7 @@ import type { BookingView, PartnerView } from "@/lib/partner/views";
 import { codeFromName } from "@/lib/partner/codes";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
-import { BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, FONT_HEADING, NETWORK_ERROR, apiError } from "@/components/partner/ui";
+import { BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, NETWORK_ERROR, apiError } from "@/components/partner/ui";
 
 interface AdminData {
   site_url: string | null;
@@ -99,7 +99,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
     <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900" style={FONT_HEADING}>
+          <h1 className="admin-h1">
             Partners
           </h1>
           <p className="text-sm text-gray-700 mt-1 max-w-2xl">
@@ -371,6 +371,7 @@ function CopyLinkButton({ link }: { link: string | null }) {
 function AccountCell({ p, onNewLink }: { p: PartnerView; onNewLink: (p: PartnerView) => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const run = async () => {
+    if (busy) return;
     setBusy(true);
     await onNewLink(p);
     setBusy(false);
@@ -466,6 +467,7 @@ function CreatePartnerForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return; // no double submit
     setError("");
     if (!email.trim() && !whatsapp.trim()) {
       setError("Give an email or a WhatsApp number, so the partner can sign in.");
@@ -734,6 +736,7 @@ function Payout({
   const [error, setError] = useState("");
 
   async function send(body: object): Promise<boolean> {
+    if (busy) return false; // no double submit
     setBusy(true);
     setError("");
     try {

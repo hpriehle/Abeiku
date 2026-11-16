@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { ConversationListItem, ChatMessage } from "@/lib/db";
+import { ArrowLeft } from "lucide-react";
 import { MessageThread } from "./MessageThread";
 import { ReplyBox } from "./ReplyBox";
+import { apiRequest } from "@/lib/admin/api-client";
+import { ErrorNotice } from "../../useAdminAction";
 
 const STATE_FILTERS = [
   { value: "", label: "All" },
@@ -56,50 +59,72 @@ export function InboxTab({
 
   const selectedConv = conversations.find((c) => c.id === selectedId);
 
-  // Fetch conversations with filters
-  const fetchConversations = useCallback(
-    async (offset = 0, append = false) => {
+  const [listError, setListError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+
+  // Fetch conversations with filters (no state is set here; callers apply the result)
+  const loadConversations = useCallback(
+    (offset = 0) => {
       const params = new URLSearchParams({ limit: "30", offset: String(offset) });
       if (stateFilter) params.set("state", stateFilter);
       if (search) params.set("search", search);
-
-      const res = await fetch(`/api/admin/chats/conversations?${params}`);
-      if (!res.ok) return;
-      const data = await res.json();
-
-      if (append) {
-        setConversations((prev) => [...prev, ...data.conversations]);
-      } else {
-        setConversations(data.conversations);
-      }
-      setTotal(data.total);
+      return apiRequest<{ conversations: ConversationListItem[]; total: number }>(
+        `/api/admin/chats/conversations?${params}`,
+        { fallbackError: "We couldn't load your conversations. Please try again." }
+      );
     },
     [stateFilter, search]
   );
 
-  // Refetch when filters change
+  // Refetch when filters change (debounced so typing in search doesn't fire a request per key;
+  // a stale response is ignored so results can't arrive out of order).
   useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      loadConversations(0).then((r) => {
+        if (cancelled) return;
+        if (r.ok) {
+          setConversations(r.data.conversations);
+          setTotal(r.data.total);
+          setListError(null);
+        } else {
+          setListError(r.error);
+        }
+      });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [loadConversations]);
+
+  function selectConversation(id: string | null) {
+    setSelectedId(id);
+    setMessages([]);
+    setMessagesError(null);
+    setLoadingMessages(id !== null);
+  }
 
   // Fetch messages when conversation selected
   useEffect(() => {
-    if (!selectedId) {
-      setMessages([]);
-      return;
-    }
-
-    setLoadingMessages(true);
-    fetch(`/api/admin/chats/conversations/${selectedId}/messages`)
-      .then((res) => res.json())
-      .then((data) => {
-        setMessages(data.messages ?? []);
+    if (!selectedId) return;
+    let cancelled = false;
+    apiRequest<{ messages?: ChatMessage[] }>(`/api/admin/chats/conversations/${selectedId}/messages`, {
+      fallbackError: "We couldn't load this conversation. Please try again.",
+    }).then((r) => {
+      if (cancelled) return;
+      if (r.ok) {
+        setMessages(r.data.messages ?? []);
         // Mark as read locally
-        setConversations((prev) =>
-          prev.map((c) => (c.id === selectedId ? { ...c, unread_count: 0 } : c))
-        );
-      })
-      .finally(() => setLoadingMessages(false));
+        setConversations((prev) => prev.map((c) => (c.id === selectedId ? { ...c, unread_count: 0 } : c)));
+      } else {
+        setMessagesError(r.error);
+      }
+      setLoadingMessages(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedId]);
 
   // Handle sending a reply
@@ -150,23 +175,31 @@ export function InboxTab({
   };
 
   const handleLoadMore = async () => {
+    if (loadingMore) return;
     setLoadingMore(true);
-    await fetchConversations(conversations.length, true);
+    const r = await loadConversations(conversations.length);
+    if (r.ok) {
+      setConversations((prev) => [...prev, ...r.data.conversations]);
+      setTotal(r.data.total);
+    } else {
+      setListError(r.error);
+    }
     setLoadingMore(false);
   };
 
   return (
-    <div className="flex bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" style={{ height: "calc(100vh - 220px)" }}>
+    <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-[calc(100dvh-210px)] md:h-[calc(100vh-220px)] min-h-[420px]">
       {/* Left panel — conversation list */}
-      <div className="w-80 border-r border-gray-100 flex flex-col shrink-0">
+      <div className={`w-full md:w-80 md:border-r border-gray-100 flex-col shrink-0 ${selectedId ? "hidden md:flex" : "flex"}`}>
         {/* Search */}
         <div className="p-3 border-b border-gray-100">
           <input
             type="text"
             placeholder="Search by name or phone..."
+            aria-label="Search conversations"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E]"
+            className="admin-input"
           />
         </div>
 
@@ -176,10 +209,11 @@ export function InboxTab({
             <button
               key={f.value}
               onClick={() => setStateFilter(f.value)}
-              className={`px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+              aria-pressed={stateFilter === f.value}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                 stateFilter === f.value
                   ? "bg-[#2D4A3E] text-white"
-                  : "text-gray-500 hover:bg-gray-100"
+                  : "text-gray-600 hover:bg-gray-100"
               }`}
             >
               {f.label}
@@ -189,13 +223,14 @@ export function InboxTab({
 
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
+          <ErrorNotice message={listError} onDismiss={() => setListError(null)} className="m-3" />
           {conversations.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-8">No conversations found</p>
+            <p className="text-sm text-gray-500 text-center py-8">No conversations found</p>
           )}
           {conversations.map((conv) => (
             <button
               key={conv.id}
-              onClick={() => setSelectedId(conv.id)}
+              onClick={() => selectConversation(conv.id)}
               className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
                 selectedId === conv.id ? "bg-gray-50" : ""
               }`}
@@ -204,7 +239,7 @@ export function InboxTab({
                 <span className="text-sm font-medium text-gray-900 truncate">
                   {conv.guest_name || conv.phone}
                 </span>
-                <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                <span className="text-[10px] text-gray-500 shrink-0 ml-2">
                   {formatRelativeTime(conv.last_message_at)}
                 </span>
               </div>
@@ -218,7 +253,7 @@ export function InboxTab({
                   className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                     isLive(conv.last_message_at)
                       ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-400"
+                      : "bg-gray-100 text-gray-600"
                   }`}
                 >
                   {isLive(conv.last_message_at) ? "Live" : "Idle"}
@@ -230,7 +265,7 @@ export function InboxTab({
                 )}
               </div>
               {conv.last_message_preview && (
-                <p className="text-xs text-gray-400 mt-1 truncate">{conv.last_message_preview}</p>
+                <p className="text-xs text-gray-500 mt-1 truncate">{conv.last_message_preview}</p>
               )}
             </button>
           ))}
@@ -248,20 +283,28 @@ export function InboxTab({
       </div>
 
       {/* Right panel — message thread */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`flex-1 flex-col min-w-0 ${selectedId ? "flex" : "hidden md:flex"}`}>
         {!selectedId ? (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-gray-400">Select a conversation to view messages</p>
+            <p className="text-sm text-gray-500">Select a conversation to view messages</p>
           </div>
         ) : (
           <>
             {/* Header */}
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => selectConversation(null)}
+                className="md:hidden -ml-2 inline-flex items-center justify-center size-10 rounded-lg text-gray-700 hover:bg-gray-100"
+                aria-label="Back to conversations"
+              >
+                <ArrowLeft className="size-5" aria-hidden="true" />
+              </button>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {selectedConv?.guest_name || selectedConv?.phone}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-500">
                   {selectedConv?.guest_name ? selectedConv.phone : ""}
                 </p>
               </div>
@@ -275,10 +318,14 @@ export function InboxTab({
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" tabIndex={0} role="log" aria-label="Messages">
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-sm text-gray-400">Loading messages...</p>
+                  <p className="text-sm text-gray-500">Loading messages...</p>
+                </div>
+              ) : messagesError ? (
+                <div className="p-4">
+                  <ErrorNotice message={messagesError} />
                 </div>
               ) : (
                 <MessageThread messages={messages} />

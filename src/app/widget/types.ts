@@ -1,4 +1,5 @@
 import { HotelRoom, Hotel } from "@/lib/db";
+import { bookingTarget, type BookingTarget } from "@/lib/widget/booking-target";
 
 export interface WidgetPricingTier {
   rooms: number;
@@ -25,7 +26,8 @@ export interface WidgetRoom {
 export interface WidgetHotel {
   name: string;
   slug: string;
-  whatsappPhone: string | null;
+  /** Where "Book" goes: the hotel's booking page, a WhatsApp chat, or nowhere (contact note). */
+  booking: BookingTarget;
   currency: string;
 }
 
@@ -54,7 +56,7 @@ export function mapHotelToWidgetHotel(hotel: Hotel): WidgetHotel {
   return {
     name: hotel.name,
     slug: hotel.slug,
-    whatsappPhone: hotel.whatsapp_display_phone ?? hotel.momo_phone ?? hotel.contact_phone,
+    booking: bookingTarget(hotel),
     currency: hotel.currency,
   };
 }

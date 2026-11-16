@@ -1,29 +1,19 @@
-import {
-  getBookingStats,
-  getBookingsForMonth,
-  getReviewStats,
-  getConversationCount,
-  getReferralStats,
-  getHotelById,
-  getHotelRooms,
-} from "@/lib/db";
+import { CalendarDays, type LucideIcon, MessageSquare, Star, Wallet } from "lucide-react";
+import { getBookingStats, getReviewStats, getConversationCount, getReferralStats, getHotelById } from "@/lib/db";
 import { getSession } from "@/lib/admin/auth";
 import { redirect } from "next/navigation";
-import { BookingCalendar } from "./BookingCalendar";
-import { RoomAvailabilityGrid } from "./RoomAvailabilityGrid";
-import { getBookedDates } from "@/lib/calendar";
-import { hotelStorage } from "@/lib/hotel-context";
+import { CalendarBoard } from "../calendar/CalendarBoard";
 
-function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon: string }) {
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: LucideIcon }) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="admin-card">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500">{label}</p>
           <p className="text-2xl font-bold mt-1 text-gray-900">{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
         </div>
-        <span className="text-2xl">{icon}</span>
+        <Icon className="size-6 text-[#2D4A3E] shrink-0" aria-hidden="true" />
       </div>
     </div>
   );
@@ -37,75 +27,52 @@ export default async function DashboardPage() {
   const hotel = await getHotelById(hotelId);
   const currency = hotel?.currency || "GHS";
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const firstDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`;
-  const lastDayDate = new Date(currentYear, currentMonth, 0);
-  const lastDay = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
-
-  const [bookings, calendarBookings, rooms, calendarDates, reviews, conversations, referrals] = await Promise.all([
+  const [bookings, reviews, conversations, referrals] = await Promise.all([
     getBookingStats(hotelId),
-    getBookingsForMonth(hotelId, currentYear, currentMonth),
-    getHotelRooms(hotelId),
-    hotel
-      ? hotelStorage.run({ hotelId: hotel.id, hotel }, () => getBookedDates(firstDay, lastDay)).catch(() => [] as string[])
-      : ([] as string[]),
     getReviewStats(hotelId),
     getConversationCount(hotelId),
     getReferralStats(hotelId),
   ]);
 
-  // Deduplicate: dates covered by DB bookings are not "external blocks"
-  const dbBookedDates = new Set<string>();
-  for (const b of calendarBookings) {
-    const start = new Date(b.check_in + "T00:00:00");
-    const end = new Date(b.check_out + "T00:00:00");
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      const y = cursor.getFullYear();
-      const m = String(cursor.getMonth() + 1).padStart(2, "0");
-      const d = String(cursor.getDate()).padStart(2, "0");
-      dbBookedDates.add(`${y}-${m}-${d}`);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-  }
-  const blockedDates = calendarDates.filter((d) => !dbBookedDates.has(d));
-
   return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
+    <div className="admin-page">
+      <h1 className="admin-h1 mb-6">Dashboard</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          icon="📅"
+          icon={CalendarDays}
           label="Total Bookings"
           value={bookings.total}
           sub={`${bookings.confirmed} upcoming · ${bookings.checked_in} in-house`}
         />
         <StatCard
-          icon="💰"
+          icon={Wallet}
           label="Revenue (Paid)"
           value={`${currency} ${bookings.paidRevenue.toLocaleString()}`}
           sub={`${currency} ${bookings.totalRevenue.toLocaleString()} total`}
         />
         <StatCard
-          icon="⭐"
+          icon={Star}
           label="Avg Rating"
           value={reviews.totalReviews > 0 ? reviews.averageRating.toFixed(1) : "—"}
           sub={`${reviews.totalReviews} reviews`}
         />
         <StatCard
-          icon="💬"
+          icon={MessageSquare}
           label="Conversations"
           value={conversations}
           sub={`${referrals.totalCodes} referral codes · ${referrals.totalUses} uses`}
         />
       </div>
 
+      {/* C1: every booking from every source, the main block of the dashboard. */}
+      <div className="mb-8">
+        <CalendarBoard onDashboard />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Booking Status Breakdown */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="admin-card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Status</h3>
           <div className="space-y-3">
             <StatusBar label="Confirmed" count={bookings.confirmed} total={bookings.total} color="bg-blue-500" />
@@ -116,7 +83,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Rating Distribution */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="admin-card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Rating Distribution</h3>
           {reviews.totalReviews > 0 ? (
             <div className="space-y-3">
@@ -127,54 +94,11 @@ export default async function DashboardPage() {
               <RatingBar stars={1} count={reviews.oneStar} total={reviews.totalReviews} />
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No reviews yet.</p>
+            <p className="text-gray-500 text-sm">No reviews yet.</p>
           )}
         </div>
       </div>
 
-      {/* Room Availability Grid */}
-      <div className="mt-6">
-        <RoomAvailabilityGrid
-          initialBookings={calendarBookings.map((b) => ({
-            id: b.id,
-            guest_name: b.guest_name,
-            room_slug: b.room_slug,
-            check_in: b.check_in,
-            check_out: b.check_out,
-            booking_status: b.booking_status,
-            rooms_count: b.rooms_count,
-          }))}
-          initialRooms={rooms.map((r) => ({
-            id: r.id,
-            slug: r.slug,
-            name: r.name,
-            room_type: r.room_type,
-            group_id: r.group_id,
-            total_rooms: r.total_rooms,
-          }))}
-          initialBlockedDates={blockedDates}
-          initialYear={currentYear}
-          initialMonth={currentMonth}
-        />
-      </div>
-
-      {/* Calendar */}
-      <div className="mt-6">
-        <BookingCalendar
-          initialBookings={calendarBookings.map((b) => ({
-            id: b.id,
-            guest_name: b.guest_name,
-            room_slug: b.room_slug,
-            check_in: b.check_in,
-            check_out: b.check_out,
-            booking_status: b.booking_status,
-            rooms_count: b.rooms_count,
-          }))}
-          initialBlockedDates={blockedDates}
-          initialYear={currentYear}
-          initialMonth={currentMonth}
-        />
-      </div>
     </div>
   );
 }

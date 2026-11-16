@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { HotelRoom } from "@/lib/db";
 import { RoomFormModal } from "./RoomFormModal";
+import { apiRequest } from "@/lib/admin/api-client";
+import { useAdminAction, ErrorNotice } from "../useAdminAction";
 
 interface RoomTableProps {
   initialRooms: HotelRoom[];
@@ -34,6 +36,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
   const [showModal, setShowModal] = useState(false);
   const [editRoom, setEditRoom] = useState<HotelRoom | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const { pending, busy, error, setError, run } = useAdminAction();
 
   // Organize rooms: groups first with their members indented below, then standalone rooms
   const organizedRooms = useMemo(() => {
@@ -80,35 +83,50 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
     setShowModal(true);
   }
 
+  async function reloadRooms() {
+    const r = await apiRequest<{ rooms: HotelRoom[] }>("/api/admin/rooms");
+    if (r.ok) setRooms(r.data.rooms);
+    else setError("The room was saved, but we couldn't reload the list. Refresh the page to see it.");
+  }
+
   function handleSaved() {
     setShowModal(false);
     setEditRoom(null);
     router.refresh();
-    fetch("/api/admin/rooms")
-      .then((r) => r.json())
-      .then((data) => setRooms(data.rooms));
+    void reloadRooms();
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/admin/rooms/${id}`, { method: "DELETE" });
+    const r = await run(`delete:${id}`, () =>
+      apiRequest(`/api/admin/rooms/${id}`, {
+        method: "DELETE",
+        fallbackError: "We couldn't delete this room. It is still there. Please try again.",
+      })
+    );
+    if (!r?.ok) return;
     setDeleteConfirm(null);
     setRooms((prev) => prev.filter((r) => r.id !== id));
     router.refresh();
   }
 
   async function handleMove(index: number, direction: "up" | "down") {
+    const previous = rooms;
     const newRooms = [...rooms];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newRooms.length) return;
 
     [newRooms[index], newRooms[targetIndex]] = [newRooms[targetIndex], newRooms[index]];
-    setRooms(newRooms);
 
-    await fetch("/api/admin/rooms/reorder", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderedIds: newRooms.map((r) => r.id) }),
+    const r = await run("reorder", async () => {
+      setRooms(newRooms);
+      return apiRequest("/api/admin/rooms/reorder", {
+        method: "PUT",
+        json: { orderedIds: newRooms.map((r) => r.id) },
+        fallbackError: "We couldn't save the new room order. The previous order is back.",
+      });
     });
+    // Roll back the optimistic move if the server didn't save it.
+    if (r && !r.ok) setRooms(previous);
   }
 
   // Count stats
@@ -118,7 +136,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
     <>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Rooms</h2>
+          <h1 className="admin-h1">Rooms</h1>
           <p className="text-sm text-gray-500 mt-1">
             {rooms.length} room{rooms.length !== 1 ? "s" : ""} &middot;{" "}
             {physicalRooms} bookable unit{physicalRooms !== 1 ? "s" : ""}
@@ -126,24 +144,26 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
         </div>
         <button
           onClick={handleAdd}
-          className="px-4 py-2.5 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+          className="admin-btn-primary"
         >
           + Add Room
         </button>
       </div>
 
+      <ErrorNotice message={error} onDismiss={() => setError(null)} className="mb-4" />
+
       {rooms.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+        <div className="admin-card py-12 text-center">
           <p className="text-gray-500 text-sm">No rooms configured yet.</p>
           <button
             onClick={handleAdd}
-            className="mt-4 px-4 py-2 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors"
+            className="admin-btn-primary mt-4"
           >
             Add Your First Room
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -175,16 +195,18 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                       <div className="flex flex-col gap-0.5">
                         <button
                           onClick={() => handleMove(originalIndex, "up")}
-                          disabled={originalIndex === 0}
-                          className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
+                          disabled={originalIndex === 0 || busy}
+                          aria-label={`Move ${room.name} up`}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
                           title="Move up"
                         >
                           &#x25B2;
                         </button>
                         <button
                           onClick={() => handleMove(originalIndex, "down")}
-                          disabled={originalIndex === rooms.length - 1}
-                          className="text-gray-400 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
+                          disabled={originalIndex === rooms.length - 1 || busy}
+                          aria-label={`Move ${room.name} down`}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-20 text-xs leading-none"
                           title="Move down"
                         >
                           &#x25BC;
@@ -194,7 +216,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                     <td className="px-6 py-4">
                       <div className={`${indent ? "pl-6" : ""}`}>
                         <div className="text-sm font-medium text-gray-900">
-                          {indent && <span className="text-gray-300 mr-1">&#x2514;</span>}
+                          {indent && <span className="text-gray-500 mr-1" aria-hidden="true">&#x2514;</span>}
                           {room.name}
                         </div>
                         {room.tagline && <div className="text-xs text-gray-500">{room.tagline}</div>}
@@ -228,12 +250,14 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => handleDelete(room.id)}
-                              className="text-sm text-red-600 hover:underline font-medium"
+                              disabled={busy}
+                              className="text-sm text-red-700 hover:underline font-medium disabled:text-gray-600 disabled:no-underline"
                             >
-                              Confirm
+                              {pending === `delete:${room.id}` ? "Deleting..." : "Confirm"}
                             </button>
                             <button
                               onClick={() => setDeleteConfirm(null)}
+                              disabled={busy}
                               className="text-sm text-gray-500 hover:underline"
                             >
                               Cancel
@@ -242,7 +266,7 @@ export function RoomTable({ initialRooms, currency }: RoomTableProps) {
                         ) : (
                           <button
                             onClick={() => setDeleteConfirm(room.id)}
-                            className="text-sm text-red-500 hover:underline font-medium"
+                            className="text-sm text-red-600 hover:underline font-medium"
                           >
                             Delete
                           </button>

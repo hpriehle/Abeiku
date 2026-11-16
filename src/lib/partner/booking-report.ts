@@ -10,6 +10,7 @@ import {
   type PartnerCurrency,
   type PayoutStatus,
 } from "./commission";
+import { recordWebBooking, type HotelBookingsStore } from "@/lib/bookings/web-ingest";
 
 export type BookingEvent = BookingStatus;
 const EVENTS: BookingEvent[] = ["paid", "refunded", "cancelled"];
@@ -17,6 +18,7 @@ const EVENTS: BookingEvent[] = ["paid", "refunded", "cancelled"];
 export interface BookingReport {
   event: BookingEvent;
   booking_ref: string;
+  /** Normalized partner code; "" when the booking came without one. */
   ref_code: string;
   check_in: string | null;
   check_out: string | null;
@@ -27,6 +29,13 @@ export interface BookingReport {
   amount_paid: number | null;
   currency: string | null;
   paid_at: string | null;
+  guest_name: string | null;
+  guest_email: string | null;
+  guest_phone: string | null;
+  /** Rooms booked (Aracuya: 1-3), from rooms_count or room.id. */
+  rooms_count: number | null;
+  room_name: string | null;
+  guests: number | null;
 }
 
 export interface PartnerRule {
@@ -122,6 +131,16 @@ function optString(v: unknown, field: string, errors: string[], max = 200): stri
   return v.trim();
 }
 
+function lenientString(v: unknown, max: number): string | null {
+  return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+}
+
+/** A whole number >= min (numbers or digit strings), else null. */
+function lenientCount(v: unknown, min: number): number | null {
+  const n = typeof v === "string" && /^\s*\d+\s*$/.test(v) ? Number(v) : v;
+  return typeof n === "number" && Number.isInteger(n) && n >= min ? n : null;
+}
+
 export function parseBookingReport(body: unknown): Parsed {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { ok: false, error: "Body must be a JSON object" };
@@ -135,7 +154,10 @@ export function parseBookingReport(body: unknown): Parsed {
   const booking_ref = optString(b.booking_ref, "booking_ref", errors);
   if (!booking_ref) errors.push("booking_ref is required");
 
-  const ref_code = normalizeRefCode(optString(b.ref_code, "ref_code", errors) ?? "");
+  // ref_code: null/absent = booking without a partner link; an empty string is still rejected.
+  const refRaw = optString(b.ref_code, "ref_code", errors);
+  const ref_code = normalizeRefCode(refRaw ?? "");
+  if (refRaw !== null && !ref_code) errors.push("ref_code must not be empty (send null when there is none)");
   const check_in = optDate(b.check_in, "check_in", errors);
   const check_out = optDate(b.check_out, "check_out", errors);
   const nightsRaw = optNumber(b.nights, "nights", errors);
@@ -148,8 +170,18 @@ export function parseBookingReport(body: unknown): Parsed {
   const paidAtRaw = optString(b.paid_at, "paid_at", errors, 60);
   if (paidAtRaw && Number.isNaN(Date.parse(paidAtRaw))) errors.push("paid_at must be an ISO timestamp");
 
+  // Guest and room details are informational: a bad value becomes null instead of
+  // rejecting the report (the partner commission must never be lost over them).
+  const guest_name = lenientString(b.guest_name, 200);
+  const guest_email = lenientString(b.guest_email, 200);
+  const guest_phone = lenientString(b.guest_phone, 50);
+  const guests = lenientCount(b.guests, 0);
+  const roomObj =
+    b.room && typeof b.room === "object" && !Array.isArray(b.room) ? (b.room as Record<string, unknown>) : null;
+  const room_name = lenientString(roomObj?.name, 100);
+  const rooms_count = lenientCount(b.rooms_count, 1) ?? lenientCount(roomObj?.id, 1);
+
   if (event === "paid") {
-    if (!ref_code) errors.push("ref_code is required for paid");
     if (!check_in) errors.push("check_in is required for paid");
     if (!check_out) errors.push("check_out is required for paid");
     if (nightsRaw == null) errors.push("nights is required for paid");
@@ -176,6 +208,12 @@ export function parseBookingReport(body: unknown): Parsed {
       amount_paid,
       currency: currencyRaw ? currencyRaw.toUpperCase() : null,
       paid_at: paidAtRaw ? new Date(paidAtRaw).toISOString() : null,
+      guest_name,
+      guest_email,
+      guest_phone,
+      rooms_count,
+      room_name,
+      guests,
     },
   };
 }
@@ -204,6 +242,10 @@ export async function handleBookingReport(input: {
   hotelSlug: string;
   body: unknown;
   store: BookingReportStore;
+  /** The hotel `bookings` table: every reported booking is kept there, partner or not. */
+  hotelBookings?: HotelBookingsStore;
+  /** Called with the hotel bookings row the report wrote (booking alerts). Errors are logged, never returned. */
+  onHotelBooking?: (hotelId: string, rowId: string) => Promise<unknown>;
 }): Promise<HandlerResult> {
   if (!isAuthorized(input.authHeader, input.secret)) {
     return { status: 401, body: { error: "Unauthorized" } };
@@ -221,8 +263,21 @@ export async function handleBookingReport(input: {
   if (!isNew) return { status: 200, body: { ok: true, duplicate: true } };
 
   try {
+    if (input.hotelBookings) {
+      const rowId = await recordWebBooking(input.hotelBookings, { hotelId, hotelSlug: input.hotelSlug, report: r });
+      if (rowId && input.onHotelBooking) {
+        await input.onHotelBooking(hotelId, rowId).catch((err) =>
+          console.error("[booking-report] booking alert failed", (err as Error)?.message ?? err)
+        );
+      }
+    }
+
     const existing = await store.getBooking(hotelId, r.booking_ref);
     const refCode = r.ref_code || existing?.ref_code || "";
+    // Partner commission rows only for bookings that came with a ref code.
+    if (!refCode && !existing) {
+      return { status: 200, body: { ok: true, partner_found: false } };
+    }
     const partner = refCode ? await store.findPartnerByRefCode(hotelId, refCode) : null;
     const fields = reportFields(r);
 

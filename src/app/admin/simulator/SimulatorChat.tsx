@@ -261,7 +261,7 @@ function BotBubble({
         {msg.type === "image" && msg.imageUrl && (
           <div className="mt-1">
             <div className="bg-white rounded-lg overflow-hidden border border-gray-100">
-              <div className="bg-gray-100 px-3 py-6 text-center text-xs text-gray-400">
+              <div className="bg-gray-100 px-3 py-6 text-center text-xs text-gray-600">
                 [Image: {msg.imageUrl}]
               </div>
               {msg.imageCaption && (
@@ -433,21 +433,21 @@ export function SimulatorChat({ hotelName }: { hotelName: string }) {
       <div className="bg-[#1a1a2e] px-4 py-3 flex items-center justify-between">
         <div>
           <p className="text-white font-semibold text-sm">{hotelName}</p>
-          <p className="text-gray-400 text-xs">Simulator Mode</p>
+          <p className="text-gray-300 text-xs">Simulator Mode</p>
         </div>
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-32 text-xs bg-white/10 text-white rounded px-2 py-1 placeholder-gray-400"
+            className="w-32 text-xs bg-white/10 text-white rounded px-2 py-1 placeholder-gray-300"
             placeholder="Phone"
           />
           <input
             type="text"
             value={guestName}
             onChange={(e) => setGuestName(e.target.value)}
-            className="w-24 text-xs bg-white/10 text-white rounded px-2 py-1 placeholder-gray-400"
+            className="w-24 text-xs bg-white/10 text-white rounded px-2 py-1 placeholder-gray-300"
             placeholder="Name"
           />
           <button
@@ -488,7 +488,7 @@ export function SimulatorChat({ hotelName }: { hotelName: string }) {
         {loading && (
           <div className="flex justify-start mb-3">
             <div className="bg-white rounded-lg rounded-tl-none shadow-sm border border-gray-100 px-4 py-2">
-              <span className="text-sm text-gray-400">typing...</span>
+              <span className="text-sm text-gray-500">typing...</span>
             </div>
           </div>
         )}
@@ -504,7 +504,7 @@ export function SimulatorChat({ hotelName }: { hotelName: string }) {
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
           placeholder="Type a message..."
           disabled={loading}
-          className="flex-1 text-sm rounded-full border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/30 focus:border-[#2D4A3E] disabled:opacity-50"
+          className="flex-1 text-sm rounded-full border border-[#868e9c] px-4 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/30 focus:border-[#2D4A3E] disabled:opacity-50"
         />
         <button
           onClick={handleSend}

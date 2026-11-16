@@ -13,7 +13,7 @@ import {
   createWakeupCall,
   getOrCreateReferralCode,
   lookupReferralCode,
-  useReferralCode,
+  useReferralCode as redeemReferralCode,
   getHotelRooms,
   getHotelRoomBySlug,
   getRoomAvailability,
@@ -1280,7 +1280,7 @@ async function handleConfirmBooking(phone: string) {
     finalPrice = finalPrice - discount;
     discountNote = `\n🎁 Referral discount: *-${hotel.currency} ${discount}* (${context.discount_percent}%)`;
     // Mark the referral code as used
-    await useReferralCode(hotelId, context.referral_code);
+    await redeemReferralCode(hotelId, context.referral_code);
   }
 
   // Create booking in database

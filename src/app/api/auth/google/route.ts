@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { getOAuthConsentUrl } from "@/lib/calendar";
 import { getSession } from "@/lib/admin/auth";
+import { createOAuthState, OAUTH_STATE_COOKIE, stateCookieOptions } from "@/lib/calendar/oauth-state";
 
 export async function GET() {
   const session = await getSession();
@@ -17,6 +18,8 @@ export async function GET() {
     );
   }
 
-  const url = getOAuthConsentUrl();
-  return NextResponse.redirect(url);
+  const { state, cookieValue } = createOAuthState(session.hotelId);
+  const response = NextResponse.redirect(getOAuthConsentUrl(state));
+  response.cookies.set(OAUTH_STATE_COOKIE, cookieValue, stateCookieOptions());
+  return response;
 }

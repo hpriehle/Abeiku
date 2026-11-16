@@ -1,14 +1,18 @@
 import { supabase } from "@/lib/supabase/client";
 import { Booking, Conversation, ConversationContext, GuestState } from "@/lib/whatsapp/types";
+import type { HotelBilling } from "@/lib/billing/access";
 
 // --- Hotel types ---
 
-export interface Hotel {
+/** Billing fields (HotelBilling) are optional: docs/l2-signup/billing.sql adds them. */
+export interface Hotel extends HotelBilling {
   id: string;
   name: string;
   slug: string;
   contact_phone: string | null;
   contact_email: string | null;
+  /** Booking alerts go here (docs/c2-alerts/booking-alerts.sql); undefined before that migration. */
+  alert_email?: string | null;
   location_lat: number | null;
   location_lng: number | null;
   location_city: string | null;
@@ -41,6 +45,12 @@ export interface Hotel {
   payout_method: "bank" | "momo" | null;
   paystack_transfer_recipient_code: string | null;
   google_place_id: string | null;
+  /** F2: Abeiku's own WhatsApp booking bot. Off unless set to true (column from supabase-migration-f2-reliability.sql; may not exist yet). */
+  whatsapp_booking_bot_enabled?: boolean | null;
+  /** F2: where the public widget's "Book" button goes (e.g. https://aracuya.com/reserve). Optional column. */
+  booking_url?: string | null;
+  /** L2 sign-up: the owner's calendar links (stored only, not synced yet). Optional column. */
+  calendar_links?: { airbnb: string | null; booking: string | null; vrbo: string | null; google: string | null } | null;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -676,11 +686,17 @@ export async function createReview(
 
 // --- Lifecycle queries ---
 
+// Only bookings made through Abeiku (WhatsApp / admin) get automatic guest messages.
+// Imported ones (website, Google Calendar, Airbnb, VRBO, Booking.com) never do:
+// people reply to those guests themselves. Needs supabase-migration-booking-sources.sql.
+const MESSAGEABLE_BOOKINGS = "source.is.null,source.in.(whatsapp,manual)";
+
 export async function getBookingsNeedingCheckinReminder(hotelId: string, tomorrow: string): Promise<Booking[]> {
   const { data, error } = await supabase
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_in", tomorrow)
     .eq("booking_status", "confirmed");
   if (error) throw error;
@@ -705,6 +721,7 @@ export async function getBookingsNeedingCheckoutReminder(hotelId: string, today:
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_out", today)
     .in("booking_status", ["confirmed", "checked_in"]);
   if (error) throw error;
@@ -728,6 +745,7 @@ export async function getBookingsNeedingReviewRequest(hotelId: string, twoDaysAg
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_out", twoDaysAgo)
     .eq("booking_status", "checked_out");
   if (error) throw error;
@@ -761,6 +779,7 @@ export async function getGuestsNeedingReturnOffer(hotelId: string, cutoffDate: s
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("booking_status", "checked_out")
     .lte("check_out", cutoffDate)
     .order("check_out", { ascending: false });
@@ -803,6 +822,7 @@ export async function getGuestsNeedingPhotoInvite(hotelId: string, checkoutDate:
     .from("bookings")
     .select("*")
     .eq("hotel_id", hotelId)
+    .or(MESSAGEABLE_BOOKINGS)
     .eq("check_out", checkoutDate)
     .eq("booking_status", "checked_out");
   if (error) throw error;
@@ -1159,6 +1179,24 @@ export async function getBookingsForMonth(
     .lte("check_in", lastDayStr)
     .gte("check_out", firstDay)
     .order("check_in", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * C1 calendar (read-only): every booking of the hotel overlapping [from, to], cancelled ones included
+ * (the page hides them unless asked). `select("*")` so it works before and after the booking-sources migration.
+ */
+export async function getCalendarBookings(hotelId: string, from: string, to: string): Promise<Record<string, unknown>[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("hotel_id", hotelId)
+    .lte("check_in", to)
+    .gte("check_out", from)
+    .order("check_in", { ascending: true })
+    .limit(2000);
 
   if (error) throw error;
   return data ?? [];

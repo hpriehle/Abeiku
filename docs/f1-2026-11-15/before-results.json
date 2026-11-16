@@ -1,0 +1,1220 @@
+[
+ {
+  "name": "login-375",
+  "url": "/admin/login",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "root-375",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "label",
+    "n": 2,
+    "sample": [
+     "input[value=\"14:00\"] :: Element does not have an implicit (wrapped) <label>",
+     "input[value=\"11:00\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "dashboard-375",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 63,
+   "wide": [
+    "div.flex.items-center.gap-3@438",
+    "div.flex.items-center.gap-1@438",
+    "span.text-sm.font-medium.text-gray-900@406"
+   ]
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 2,
+    "sample": [
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(1) :: Element does not have inner text that is visible to screen readers",
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(3) :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 20,
+    "sample": [
+     ".rounded-xl.shadow-sm.p-6:nth-child(1) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(2) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(3) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "nav-open-375",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 63,
+   "wide": [
+    "div.flex.items-center.gap-3@438",
+    "div.flex.items-center.gap-1@438",
+    "span.text-sm.font-medium.text-gray-900@406"
+   ]
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 2,
+    "sample": [
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(1) :: Element does not have inner text that is visible to screen readers",
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(3) :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 20,
+    "sample": [
+     ".rounded-xl.shadow-sm.p-6:nth-child(1) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(2) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(3) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "bookings-375",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 79,
+   "wide": [
+    "a.px-3.py-1.5.rounded-lg@454"
+   ]
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 2,
+    "sample": [
+     ".hover\\:bg-gray-50.cursor-pointer:nth-child(1) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".hover\\:bg-gray-50.cursor-pointer:nth-child(2) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "bookings-detail-375",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 79,
+   "wide": [
+    "a.px-3.py-1.5.rounded-lg@454"
+   ]
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 2,
+    "sample": [
+     ".hover\\:bg-gray-50.cursor-pointer:nth-child(1) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.48 (foreground color: #99a1af, background color: #f9fafb, font si",
+     ".hover\\:bg-gray-50.cursor-pointer:nth-child(2) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "rooms-375",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "rooms-form-375",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "label",
+    "n": 3,
+    "sample": [
+     "input[value=\"2\"] :: Element does not have an implicit (wrapped) <label>",
+     ".disabled\\:bg-gray-50 :: Element does not have an implicit (wrapped) <label>",
+     "input[min=\"0\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   },
+   {
+    "id": "select-name",
+    "n": 1,
+    "sample": [
+     "select :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "inbox-375",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 18,
+    "sample": [
+     ".border-gray-50.hover\\:bg-gray-50.text-left:nth-child(1) > .mb-1.justify-between.items-center > .ml-2.shrink-0.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".border-gray-50.hover\\:bg-gray-50.text-left:nth-child(1) > .gap-1\\.5.items-center.flex > .bg-gray-100.px-1\\.5.py-0\\.5 :: Element has insufficient color contrast of 2.36 (foreground color: #99a1af, background color: #f3f4f6, font si",
+     ".border-gray-50.hover\\:bg-gray-50.text-left:nth-child(1) > .mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "inbox-thread-375",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 17,
+    "sample": [
+     ".bg-gray-50.border-gray-50.hover\\:bg-gray-50 > .mb-1.justify-between.items-center > .ml-2.shrink-0.text-gray-400 :: Element has insufficient color contrast of 2.48 (foreground color: #99a1af, background color: #f9fafb, font si",
+     ".bg-gray-50.border-gray-50.hover\\:bg-gray-50 > .gap-1\\.5.items-center.flex > .bg-gray-100.px-1\\.5.rounded :: Element has insufficient color contrast of 2.36 (foreground color: #99a1af, background color: #f3f4f6, font si",
+     ".bg-gray-50.border-gray-50.hover\\:bg-gray-50 > .mt-1.text-xs :: Element has insufficient color contrast of 2.48 (foreground color: #99a1af, background color: #f9fafb, font si"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".flex-col.min-w-0.flex-1 > .overflow-y-auto.flex-1 :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "templates-375",
+  "url": "/admin/communication/templates",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 6,
+    "sample": [
+     ".border-gray-50.hover\\:bg-gray-50\\/50:nth-child(1) > td:nth-child(4) > .relative.inline-flex.h-5 :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.hover\\:bg-gray-50\\/50:nth-child(2) > td:nth-child(4) > .relative.inline-flex.h-5 :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.hover\\:bg-gray-50\\/50:nth-child(3) > td:nth-child(4) > .relative.inline-flex.h-5 :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.93 (foreground color: #d08700, background color: #ffffff, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "report-375",
+  "url": "/admin/communication/report",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 7,
+    "sample": [
+     ".rounded-xl.shadow-sm.border-gray-100:nth-child(1) > .mt-1.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.border-gray-100:nth-child(2) > .mt-1.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.border-gray-100:nth-child(3) > .mt-1.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "reviews-375",
+  "url": "/admin/reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "payments-375",
+  "url": "/admin/payments",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 5,
+    "sample": [
+     ".bg-white.rounded-xl.p-5:nth-child(1) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(2) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(3) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-375",
+  "url": "/admin/settings",
+  "overflow": {
+   "doc": 0,
+   "main": 88,
+   "wide": [
+    "span.absolute.bottom-full.left-1/2@447",
+    "span.absolute.bottom-full.left-1/2@463",
+    "span.absolute.bottom-full.left-1/2@417"
+   ]
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 12,
+    "sample": [
+     ".border-gray-50.grid-cols-\\[1fr_72px_72px\\].py-3:nth-child(2) > .justify-center.flex:nth-child(2) > .cursor-pointer.h-6.bg-\\[\\#2D4A3E\\] :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid-cols-\\[1fr_72px_72px\\].py-3:nth-child(2) > .justify-center.flex:nth-child(3) > .bg-gray-200.opacity-40.cursor-not-allowed :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid-cols-\\[1fr_72px_72px\\].py-3:nth-child(3) > .justify-center.flex:nth-child(2) > .cursor-pointer.h-6.bg-\\[\\#2D4A3E\\] :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 13,
+    "sample": [
+     ".border-dashed :: Element has insufficient color contrast of 3.44 (foreground color: #f54900, background color: #f9fafb, font si",
+     ".uppercase > span:nth-child(1) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".text-center:nth-child(2) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "label",
+    "n": 5,
+    "sample": [
+     ".rounded-l-none :: Element does not have an implicit (wrapped) <label>",
+     "input[value=\"Accra\"] :: Element does not have an implicit (wrapped) <label>",
+     "input[type=\"email\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   },
+   {
+    "id": "select-name",
+    "n": 2,
+    "sample": [
+     ".grid-cols-2.gap-4.grid:nth-child(2) > div:nth-child(1) > select :: Element does not have an implicit (wrapped) <label>",
+     ".grid-cols-2.gap-4.grid:nth-child(5) > div:nth-child(1) > select :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-whatsapp-375",
+  "url": "/admin/settings/whatsapp",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-google-375",
+  "url": "/admin/settings/google",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-google-reviews-375",
+  "url": "/admin/settings/google-reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-momo-375",
+  "url": "/admin/settings/momo",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 2,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si",
+     ".text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-paystack-375",
+  "url": "/admin/settings/paystack",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   },
+   {
+    "id": "select-name",
+    "n": 1,
+    "sample": [
+     "select :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-notifications-375",
+  "url": "/admin/settings/notifications",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 12,
+    "sample": [
+     ".border-gray-50.grid.grid-cols-\\[1fr_72px_72px\\]:nth-child(2) > .justify-center.flex:nth-child(2) > .bg-\\[\\#2D4A3E\\].cursor-pointer.w-10 :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid.grid-cols-\\[1fr_72px_72px\\]:nth-child(2) > .justify-center.flex:nth-child(3) > .bg-gray-200.opacity-40.cursor-not-allowed :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid.grid-cols-\\[1fr_72px_72px\\]:nth-child(3) > .justify-center.flex:nth-child(2) > .bg-\\[\\#2D4A3E\\].cursor-pointer.w-10 :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 5,
+    "sample": [
+     ".uppercase > span:nth-child(1) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".text-center:nth-child(2) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".text-center:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partners-375",
+  "url": "/admin/influencers",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "simulator-375",
+  "url": "/admin/simulator",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "onboarding-375",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "label",
+    "n": 2,
+    "sample": [
+     "input[value=\"14:00\"] :: Element does not have an implicit (wrapped) <label>",
+     "input[value=\"11:00\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "platform-375",
+  "url": "/admin/platform",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 4,
+    "sample": [
+     ".bg-white.rounded-xl.p-5:nth-child(1) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(2) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(4) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "login-1280",
+  "url": "/admin/login",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "root-1280",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".ml-2 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "label",
+    "n": 2,
+    "sample": [
+     "input[value=\"14:00\"] :: Element does not have an implicit (wrapped) <label>",
+     "input[value=\"11:00\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "dashboard-1280",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 2,
+    "sample": [
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(1) :: Element does not have inner text that is visible to screen readers",
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(3) :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 23,
+    "sample": [
+     ".rounded-xl.shadow-sm.p-6:nth-child(1) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(2) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(3) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "nav-open-1280",
+  "url": "/admin/dashboard",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 2,
+    "sample": [
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(1) :: Element does not have inner text that is visible to screen readers",
+     ".mb-4.justify-between.items-center > .gap-3.items-center.flex > .gap-1.items-center.flex > .hover\\:bg-gray-100.text-gray-600:nth-child(3) :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 23,
+    "sample": [
+     ".rounded-xl.shadow-sm.p-6:nth-child(1) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(2) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.p-6:nth-child(3) > .items-start.justify-between.flex > div > .mt-1:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "scrollable-region-focusable",
+    "n": 1,
+    "sample": [
+     ".overflow-x-auto :: Element should have focusable content"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "bookings-1280",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 2,
+    "sample": [
+     ".hover\\:bg-gray-50.cursor-pointer:nth-child(1) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".hover\\:bg-gray-50.cursor-pointer:nth-child(2) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "bookings-detail-1280",
+  "url": "/admin/bookings",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 4,
+    "sample": [
+     ".cursor-pointer:nth-child(1) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.48 (foreground color: #99a1af, background color: #f9fafb, font si",
+     ".cursor-pointer:nth-child(2) > td:nth-child(1) > .text-gray-400.text-xs :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-green-600 :: Element has insufficient color contrast of 3.21 (foreground color: #ffffff, background color: #00a63e, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "rooms-1280",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "rooms-form-1280",
+  "url": "/admin/rooms",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "label",
+    "n": 3,
+    "sample": [
+     "input[value=\"2\"] :: Element does not have an implicit (wrapped) <label>",
+     ".disabled\\:bg-gray-50 :: Element does not have an implicit (wrapped) <label>",
+     "input[min=\"0\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   },
+   {
+    "id": "select-name",
+    "n": 1,
+    "sample": [
+     "select :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "inbox-1280",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 17,
+    "sample": [
+     ".border-gray-50.hover\\:bg-gray-50.text-left:nth-child(1) > .mb-1.justify-between.items-center > .ml-2.shrink-0.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".border-gray-50.hover\\:bg-gray-50.text-left:nth-child(1) > .gap-1\\.5.items-center.flex > .bg-gray-100.px-1\\.5.py-0\\.5 :: Element has insufficient color contrast of 2.36 (foreground color: #99a1af, background color: #f3f4f6, font si",
+     ".border-gray-50.hover\\:bg-gray-50.text-left:nth-child(1) > .mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "inbox-thread-1280",
+  "url": "/admin/communication/inbox",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 20,
+    "sample": [
+     ".bg-gray-50.border-gray-50.hover\\:bg-gray-50 > .mb-1.justify-between.items-center > .ml-2.shrink-0.text-gray-400 :: Element has insufficient color contrast of 2.48 (foreground color: #99a1af, background color: #f9fafb, font si",
+     ".bg-gray-50.border-gray-50.hover\\:bg-gray-50 > .gap-1\\.5.items-center.flex > .bg-gray-100.px-1\\.5.rounded :: Element has insufficient color contrast of 2.36 (foreground color: #99a1af, background color: #f3f4f6, font si",
+     ".bg-gray-50.border-gray-50.hover\\:bg-gray-50 > .mt-1.text-xs :: Element has insufficient color contrast of 2.48 (foreground color: #99a1af, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "templates-1280",
+  "url": "/admin/communication/templates",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 6,
+    "sample": [
+     ".border-gray-50.hover\\:bg-gray-50\\/50:nth-child(1) > td:nth-child(4) > .relative.inline-flex.h-5 :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.hover\\:bg-gray-50\\/50:nth-child(2) > td:nth-child(4) > .relative.inline-flex.h-5 :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.hover\\:bg-gray-50\\/50:nth-child(3) > td:nth-child(4) > .relative.inline-flex.h-5 :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.93 (foreground color: #d08700, background color: #ffffff, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "report-1280",
+  "url": "/admin/communication/report",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 7,
+    "sample": [
+     ".rounded-xl.shadow-sm.border-gray-100:nth-child(1) > .mt-1.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.border-gray-100:nth-child(2) > .mt-1.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".rounded-xl.shadow-sm.border-gray-100:nth-child(3) > .mt-1.text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "reviews-1280",
+  "url": "/admin/reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "payments-1280",
+  "url": "/admin/payments",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 5,
+    "sample": [
+     ".bg-white.rounded-xl.p-5:nth-child(1) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(2) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(3) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-1280",
+  "url": "/admin/settings",
+  "overflow": {
+   "doc": 0,
+   "main": 49,
+   "wide": [
+    "span.absolute.bottom-full.left-1/2@1314",
+    "span.absolute.bottom-full.left-1/2@1329",
+    "span.absolute.bottom-full.left-1/2@1283"
+   ]
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 12,
+    "sample": [
+     ".border-gray-50.grid-cols-\\[1fr_72px_72px\\].py-3:nth-child(2) > .justify-center.flex:nth-child(2) > .cursor-pointer.h-6.bg-\\[\\#2D4A3E\\] :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid-cols-\\[1fr_72px_72px\\].py-3:nth-child(2) > .justify-center.flex:nth-child(3) > .bg-gray-200.opacity-40.cursor-not-allowed :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid-cols-\\[1fr_72px_72px\\].py-3:nth-child(3) > .justify-center.flex:nth-child(2) > .cursor-pointer.h-6.bg-\\[\\#2D4A3E\\] :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 13,
+    "sample": [
+     ".border-dashed :: Element has insufficient color contrast of 3.44 (foreground color: #f54900, background color: #f9fafb, font si",
+     ".uppercase > span:nth-child(1) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".text-center:nth-child(2) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "label",
+    "n": 5,
+    "sample": [
+     ".rounded-l-none :: Element does not have an implicit (wrapped) <label>",
+     "input[value=\"Accra\"] :: Element does not have an implicit (wrapped) <label>",
+     "input[type=\"email\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   },
+   {
+    "id": "select-name",
+    "n": 2,
+    "sample": [
+     ".grid-cols-2.gap-4.grid:nth-child(2) > div:nth-child(1) > select :: Element does not have an implicit (wrapped) <label>",
+     ".grid-cols-2.gap-4.grid:nth-child(5) > div:nth-child(1) > select :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-whatsapp-1280",
+  "url": "/admin/settings/whatsapp",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-google-1280",
+  "url": "/admin/settings/google",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-google-reviews-1280",
+  "url": "/admin/settings/google-reviews",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-momo-1280",
+  "url": "/admin/settings/momo",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 2,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si",
+     ".text-gray-400 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-paystack-1280",
+  "url": "/admin/settings/paystack",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".text-yellow-600 :: Element has insufficient color contrast of 2.81 (foreground color: #d08700, background color: #f9fafb, font si"
+    ]
+   },
+   {
+    "id": "select-name",
+    "n": 1,
+    "sample": [
+     "select :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "settings-notifications-1280",
+  "url": "/admin/settings/notifications",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "button-name",
+    "n": 12,
+    "sample": [
+     ".border-gray-50.grid.grid-cols-\\[1fr_72px_72px\\]:nth-child(2) > .justify-center.flex:nth-child(2) > .bg-\\[\\#2D4A3E\\].cursor-pointer.w-10 :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid.grid-cols-\\[1fr_72px_72px\\]:nth-child(2) > .justify-center.flex:nth-child(3) > .bg-gray-200.opacity-40.cursor-not-allowed :: Element does not have inner text that is visible to screen readers",
+     ".border-gray-50.grid.grid-cols-\\[1fr_72px_72px\\]:nth-child(3) > .justify-center.flex:nth-child(2) > .bg-\\[\\#2D4A3E\\].cursor-pointer.w-10 :: Element does not have inner text that is visible to screen readers"
+    ]
+   },
+   {
+    "id": "color-contrast",
+    "n": 5,
+    "sample": [
+     ".uppercase > span:nth-child(1) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".text-center:nth-child(2) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".text-center:nth-child(3) :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "partners-1280",
+  "url": "/admin/influencers",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "simulator-1280",
+  "url": "/admin/simulator",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "onboarding-1280",
+  "url": "/admin/onboarding",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 1,
+    "sample": [
+     ".ml-2 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   },
+   {
+    "id": "label",
+    "n": 2,
+    "sample": [
+     "input[value=\"14:00\"] :: Element does not have an implicit (wrapped) <label>",
+     "input[value=\"11:00\"] :: Element does not have an implicit (wrapped) <label>"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ },
+ {
+  "name": "platform-1280",
+  "url": "/admin/platform",
+  "overflow": {
+   "doc": 0,
+   "main": 0,
+   "wide": []
+  },
+  "axe": [
+   {
+    "id": "color-contrast",
+    "n": 4,
+    "sample": [
+     ".bg-white.rounded-xl.p-5:nth-child(1) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(2) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz",
+     ".bg-white.rounded-xl.p-5:nth-child(4) > .items-start.justify-between.flex > div > .text-gray-400.text-xs.mt-1 :: Element has insufficient color contrast of 2.6 (foreground color: #99a1af, background color: #ffffff, font siz"
+    ]
+   }
+  ],
+  "bad": [],
+  "errors": []
+ }
+]

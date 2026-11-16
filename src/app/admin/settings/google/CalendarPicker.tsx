@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiRequest } from "@/lib/admin/api-client";
+import { FormStatus, type FormMessage } from "../../useAdminAction";
 
 interface CalendarEntry {
   id: string;
@@ -13,12 +15,18 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
   const [selected, setSelected] = useState(currentCalendarId || "primary");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<FormMessage>(null);
 
   useEffect(() => {
-    fetch("/api/admin/calendar")
-      .then((res) => res.json())
-      .then((data) => {
+    apiRequest<{ calendars?: CalendarEntry[] }>("/api/admin/calendar", {
+      fallbackError: "We couldn't load your Google calendars. Try reconnecting Google Calendar.",
+    })
+      .then((r) => {
+        if (!r.ok) {
+          setMsg({ kind: "error", text: r.error });
+          return;
+        }
+        const data = r.data;
         setCalendars(data.calendars || []);
         // If we have a current selection that matches, keep it. Otherwise default to primary.
         if (currentCalendarId) {
@@ -28,23 +36,20 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
           if (primary) setSelected(primary.id);
         }
       })
-      .catch(() => setMsg("Failed to load calendars"))
       .finally(() => setLoading(false));
   }, [currentCalendarId]);
 
   async function handleSave() {
+    if (saving) return;
     setSaving(true);
-    setMsg("");
+    setMsg(null);
     try {
-      const res = await fetch("/api/admin/calendar", {
+      const r = await apiRequest("/api/admin/calendar", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calendarId: selected }),
+        json: { calendarId: selected },
+        fallbackError: "We couldn't save the calendar choice. Please try again.",
       });
-      if (!res.ok) throw new Error();
-      setMsg("Calendar saved");
-    } catch {
-      setMsg("Failed to save");
+      setMsg(r.ok ? { kind: "ok", text: "Calendar saved." } : { kind: "error", text: r.error });
     } finally {
       setSaving(false);
     }
@@ -53,16 +58,16 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
   const selectedName = calendars.find((c) => c.id === selected)?.summary || selected;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="admin-card">
       <h3 className="text-lg font-semibold text-gray-900 mb-1">Booking Calendar</h3>
       <p className="text-sm text-gray-500 mb-4">
         Choose which Google Calendar to use for booking events.
       </p>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading calendars...</p>
+        <p className="text-sm text-gray-500">Loading calendars...</p>
       ) : calendars.length === 0 ? (
-        <p className="text-sm text-gray-400">No calendars found. Try re-authorizing above.</p>
+        <p className="text-sm text-gray-500">No calendars found. Try re-authorizing above.</p>
       ) : (
         <div className="space-y-3">
           {calendars.map((cal) => (
@@ -86,10 +91,10 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
                 <p className="text-sm font-medium text-gray-900">
                   {cal.summary}
                   {cal.primary && (
-                    <span className="ml-2 text-xs text-gray-400 font-normal">(primary)</span>
+                    <span className="ml-2 text-xs text-gray-500 font-normal">(primary)</span>
                   )}
                 </p>
-                <p className="text-xs text-gray-400">{cal.id}</p>
+                <p className="text-xs text-gray-500">{cal.id}</p>
               </div>
             </label>
           ))}
@@ -98,15 +103,11 @@ export function CalendarPicker({ currentCalendarId }: { currentCalendarId: strin
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-5 py-2.5 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+              className="admin-btn-primary"
             >
               {saving ? "Saving..." : "Save Calendar"}
             </button>
-            {msg && (
-              <span className={`text-sm ${msg.includes("saved") ? "text-green-600" : "text-red-600"}`}>
-                {msg}
-              </span>
-            )}
+            <FormStatus message={msg} />
           </div>
         </div>
       )}

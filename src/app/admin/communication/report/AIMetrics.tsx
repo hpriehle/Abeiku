@@ -15,7 +15,7 @@ export function AIMetrics({
 
   if (total === 0) {
     return (
-      <p className="text-sm text-gray-400 text-center py-8">
+      <p className="text-sm text-gray-500 text-center py-8">
         No AI interactions yet. Data will appear when guests send free-text messages.
       </p>
     );

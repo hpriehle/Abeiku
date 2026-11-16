@@ -2,8 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { markAsRead } from "@/lib/whatsapp/client";
 import { handleMessage } from "@/lib/whatsapp/state-machine";
 import { WhatsAppWebhookPayload } from "@/lib/whatsapp/types";
-import { getHotelByWhatsAppPhoneNumberId } from "@/lib/db";
+import {
+  getHotelByWhatsAppPhoneNumberId,
+  determineGuestState,
+  getConversation,
+  upsertConversation,
+} from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
+import { recordMessage } from "@/lib/whatsapp/chat-logger";
+import { processInbound, type InboundDeps } from "@/lib/whatsapp/inbound";
+
+const inboundDeps: InboundDeps = {
+  determineGuestState,
+  getConversation,
+  upsertConversation,
+  recordMessage,
+  handleMessage,
+  markAsRead,
+};
 
 /**
  * GET — Webhook verification (Meta sends this when you register the webhook URL)
@@ -71,16 +87,10 @@ export async function POST(request: NextRequest) {
             const senderPhone = message.from;
             const senderName = contacts?.[0]?.profile?.name;
 
-            // Mark as read immediately
+            // Booking bot only if switched on for this hotel (default off);
+            // otherwise the message is just stored for the inbox (F2).
             try {
-              await markAsRead(message.id);
-            } catch {
-              // Non-critical, continue processing
-            }
-
-            // Process the message
-            try {
-              await handleMessage(message, senderPhone, senderName);
+              await processInbound(inboundDeps, hotel, message, senderPhone, senderName);
             } catch (error) {
               console.error(`Error handling message from ${senderPhone} (hotel: ${hotel.slug}):`, error);
             }

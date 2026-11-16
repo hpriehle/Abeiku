@@ -45,7 +45,7 @@ export function FunnelChart({ funnel }: { funnel: Record<string, number> }) {
                 )}
               </div>
             </div>
-            <span className="text-xs text-gray-400 w-12 shrink-0">
+            <span className="text-xs text-gray-500 w-12 shrink-0">
               {i > 0 && prevCount > 0 ? `${dropOff}%` : ""}
             </span>
           </div>
@@ -53,7 +53,7 @@ export function FunnelChart({ funnel }: { funnel: Record<string, number> }) {
       })}
 
       {maxCount <= 1 && FUNNEL_STEPS.every((s) => (funnel[s.key] ?? 0) === 0) && (
-        <p className="text-sm text-gray-400 text-center py-4">
+        <p className="text-sm text-gray-500 text-center py-4">
           No funnel data yet. Data will appear as guests interact with your WhatsApp bot.
         </p>
       )}

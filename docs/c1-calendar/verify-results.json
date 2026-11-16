@@ -1,0 +1,294 @@
+[
+ {
+  "name": "calendar-timeline",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "kwame": "Kwame Asante, Google calendar, 15 Nov – 18 Nov, 3 nights, 1 room",
+   "fullNights": 8
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "calendar-cancelled-shown",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "tomHart": 1
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "calendar-month",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "dayButtons": 31
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "drawer-website",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "readOnly": true
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "drawer-whatsapp",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "wa": "https://wa.me/233240000000"
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "drawer-grouped",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "note": true
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "arrivals",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "ok": true
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "dashboard",
+  "width": 375,
+  "path": "/admin/dashboard",
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "state-empty",
+  "width": 375,
+  "path": "/admin/calendar",
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "state-error",
+  "width": 375,
+  "path": "/admin/calendar",
+  "detail": {
+   "alert": "We couldn't load the calendar. Please try again."
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "state-loading",
+  "width": 375,
+  "path": "/admin/calendar",
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "calendar-timeline",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "kwame": "Kwame Asante, Google calendar, 15 Nov – 18 Nov, 3 nights, 1 room",
+   "fullNights": 8
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "calendar-cancelled-shown",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "tomHart": 1
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "calendar-month",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "dayButtons": 31
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "drawer-website",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "readOnly": true
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "drawer-whatsapp",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "wa": "https://wa.me/233240000000"
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "drawer-grouped",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "note": true
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "arrivals",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "ok": true
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "dashboard",
+  "width": 1280,
+  "path": "/admin/dashboard",
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "state-empty",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "state-error",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "detail": {
+   "alert": "We couldn't load the calendar. Please try again."
+  },
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ },
+ {
+  "name": "state-loading",
+  "width": 1280,
+  "path": "/admin/calendar",
+  "overflow": 0,
+  "axe": [],
+  "bad": [],
+  "ok": true,
+  "errors": [],
+  "writes": []
+ }
+]

@@ -3,6 +3,9 @@
 import { useState, useRef } from "react";
 import { COMMON_AMENITIES, BED_TYPES } from "@/lib/constants";
 import type { HotelRoom, RoomType } from "@/lib/db";
+import { apiRequest } from "@/lib/admin/api-client";
+import { basePriceTier, parsePrice, withBasePrice } from "@/lib/rooms/pricing";
+import { ErrorNotice } from "../useAdminAction";
 
 interface RoomFormModalProps {
   room?: HotelRoom | null;
@@ -27,24 +30,27 @@ function ImageUploadArea({
   onRemoved: (url: string) => void;
   multiple?: boolean;
 }) {
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   async function handleFiles(files: FileList) {
+    if (uploading) return;
     setUploading(true);
+    setUploadError(null);
+    const failed: string[] = [];
     for (const file of Array.from(files)) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("roomId", roomId);
-      try {
-        const res = await fetch("/api/admin/rooms/upload", { method: "POST", body: formData });
-        if (res.ok) {
-          const { url, path } = await res.json();
-          onUploaded(url, path);
-        }
-      } catch {
-        // Silently skip failed uploads
-      }
+      const r = await apiRequest<{ url: string; path: string }>("/api/admin/rooms/upload", { method: "POST", body: formData });
+      if (r.ok) onUploaded(r.data.url, r.data.path);
+      else failed.push(`${file.name}: ${r.error}`);
+    }
+    if (failed.length) {
+      setUploadError(
+        `${failed.length === 1 ? "1 image" : `${failed.length} images`} could not be uploaded. ${failed.join(" ")}`
+      );
     }
     setUploading(false);
   }
@@ -91,6 +97,7 @@ function ImageUploadArea({
         className="hidden"
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
       />
+      <ErrorNotice message={uploadError} onDismiss={() => setUploadError(null)} className="mt-2" />
     </div>
   );
 }
@@ -109,7 +116,7 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
     amenities: room?.amenities || [],
     description: room?.description || "",
     tagline: room?.tagline || "",
-    price: room?.pricing_tiers?.[0]?.price || 0,
+    price: basePriceTier(room?.pricing_tiers)?.price ? String(basePriceTier(room?.pricing_tiers)?.price) : "",
     room_type: (room?.room_type || "standard") as RoomType,
     group_id: room?.group_id || "",
   });
@@ -157,17 +164,28 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
         gallery: isHero ? galleryImages : galleryImages.filter((u) => u !== url),
       };
       if (!newImages.gallery.length) delete (newImages as Record<string, unknown>).gallery;
-      await fetch(`/api/admin/rooms/${room.id}`, {
+      const r = await apiRequest(`/api/admin/rooms/${room.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: newImages }),
+        json: { images: newImages },
+        fallbackError: "We couldn't remove the image from this room. Press Save to try again.",
       });
+      if (!r.ok) setError(r.error);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return; // no double submit
     setError("");
+    const price = parsePrice(form.price);
+    if (price === null) {
+      setError("Enter a price per night greater than 0.");
+      return;
+    }
+    if (!form.name.trim()) {
+      setError("Enter a room name.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -188,36 +206,33 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
             amenities: form.amenities,
             description: form.description || null,
             tagline: form.tagline || null,
-            pricing_tiers: [{
-              rooms: 1,
-              price: Number(form.price),
-              label: form.room_type === "group" ? "Entire House" : "1 Room",
-            }],
+            // Keep multi-room tiers; only the single-room price is edited here (audit B6).
+            pricing_tiers: withBasePrice(room.pricing_tiers, price, form.room_type),
             room_type: form.room_type,
             group_id: form.room_type === "individual" ? (form.group_id || null) : null,
             images,
           }
         : {
             ...form,
+            price,
             room_type: form.room_type,
             group_id: form.room_type === "individual" ? (form.group_id || null) : null,
             images,
           };
 
-      const res = await fetch(url, {
+      const r = await apiRequest(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        json: body,
+        fallbackError: isEdit
+          ? "We couldn't save your changes to this room. Please try again."
+          : "We couldn't add this room. Please try again.",
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save room");
+      if (!r.ok) {
+        setError(r.error);
+        return;
       }
 
       onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -230,15 +245,15 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
   const uploadRoomId = room?.id || "new";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
             {isEdit ? "Edit Room" : "Add Room"}
           </h3>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5">
           {/* Room Type Selector */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Room Type</label>
@@ -272,11 +287,12 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
           {/* Group Assignment (only for individual rooms) */}
           {isIndividual && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Belongs to Group</label>
+              <label htmlFor="roomformmo-belongs-to-group" className="admin-label">Belongs to Group</label>
               <select
+                id="roomformmo-belongs-to-group"
                 value={form.group_id}
                 onChange={(e) => setForm((f) => ({ ...f, group_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="admin-input"
               >
                 <option value="">None (standalone)</option>
                 {groups.map((g) => (
@@ -288,23 +304,25 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Room Name</label>
+              <label htmlFor="roomformmo-room-name" className="admin-label">Room Name</label>
               <input
+                id="roomformmo-room-name"
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder={isGroup ? "Aracuya House" : "Queen Room 1"}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="admin-input"
               />
             </div>
             {!isGroup && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bed Type</label>
+                <label htmlFor="roomformmo-bed-type" className="admin-label">Bed Type</label>
                 <select
+                  id="roomformmo-bed-type"
                   value={form.bed_type}
                   onChange={(e) => setForm((f) => ({ ...f, bed_type: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                  className="admin-input"
                 >
                   {BED_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -316,77 +334,83 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
 
           <div className={`grid gap-4 ${isIndividual ? "grid-cols-2" : "grid-cols-3"}`}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Occupancy</label>
+              <label htmlFor="roomformmo-max-occupancy" className="admin-label">Max Occupancy</label>
               <input
+                id="roomformmo-max-occupancy"
                 type="number"
                 min={1}
                 value={form.occupancy}
                 onChange={(e) => setForm((f) => ({ ...f, occupancy: Number(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="admin-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+              <label htmlFor="roomformmo-size" className="admin-label">Size</label>
               <input
+                id="roomformmo-size"
                 type="text"
                 value={form.size}
                 onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
                 placeholder="45 m2"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+                className="admin-input"
               />
             </div>
             {/* Hide "Rooms of This Type" for individual rooms (always 1) */}
             {!isIndividual && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="roomformmo-units" className="admin-label">
                   {isGroup ? "Units Available" : "Rooms of This Type"}
                 </label>
                 <input
+                  id="roomformmo-units"
                   type="number"
                   min={1}
                   value={isGroup ? 1 : form.total_rooms}
                   onChange={(e) => setForm((f) => ({ ...f, total_rooms: Number(e.target.value) }))}
                   disabled={isGroup}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+                  className="admin-input"
                 />
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="roomformmo-price" className="admin-label">
               Price per Night ({currency})
             </label>
             <input
+              id="roomformmo-price"
               type="number"
               min={0}
               step="0.01"
               value={form.price}
-              onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+              onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+              className="admin-input"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
+            <label htmlFor="roomformmo-tagline" className="admin-label">Tagline</label>
             <input
+              id="roomformmo-tagline"
               type="text"
               value={form.tagline}
               onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))}
               placeholder="Where comfort meets luxury"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+              className="admin-input"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label htmlFor="roomformmo-description" className="admin-label">Description</label>
             <textarea
+              id="roomformmo-description"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               placeholder="A brief description of the room..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent resize-none"
+              className="admin-input resize-none"
             />
           </div>
 
@@ -424,7 +448,7 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
                     type="checkbox"
                     checked={form.amenities.includes(amenity)}
                     onChange={() => toggleAmenity(amenity)}
-                    className="rounded border-gray-300 text-[#2D4A3E] focus:ring-[#2D4A3E]"
+                    className="rounded border-[#868e9c] text-[#2D4A3E] focus:ring-[#2D4A3E]"
                   />
                   {amenity}
                 </label>
@@ -432,20 +456,20 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
             </div>
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <ErrorNotice message={error} onDismiss={() => setError("")} />
 
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="admin-btn-secondary flex-1"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2.5 bg-[#2D4A3E] text-white rounded-lg text-sm font-medium hover:bg-[#1E3329] transition-colors disabled:opacity-50"
+              className="admin-btn-primary flex-1"
             >
               {loading ? "Saving..." : isEdit ? "Save Changes" : "Add Room"}
             </button>

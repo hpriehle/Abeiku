@@ -1,0 +1,25 @@
+src/app/admin/communication/report/page.tsx:113:21  warning  'pct' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/app/admin/reviews/ReviewsList.tsx:205:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+src/app/admin/rooms/RoomFormModal.tsx:67:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+src/app/admin/settings/google/CalendarPicker.tsx:58:9  warning  'selectedName' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/app/api/admin/calendar/route.ts:3:10  warning  'getOAuthToken' is defined but never used  @typescript-eslint/no-unused-vars
+src/app/api/admin/chats/conversations/[id]/messages/route.ts:3:38  warning  'getConversation' is defined but never used  @typescript-eslint/no-unused-vars
+src/app/api/admin/chats/reply/route.ts:3:10  warning  'getConversation' is defined but never used  @typescript-eslint/no-unused-vars
+src/app/api/cron/lifecycle/route.ts:5:30  warning  'getHotelById' is defined but never used  @typescript-eslint/no-unused-vars
+src/components/BookingCalendar.tsx:36:3  warning  'activeField' is defined but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:2:33  warning  'ConversationContext' is defined but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:456:15  warning  '_id' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:456:32  warning  '_ca' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:456:49  warning  '_ua' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:610:15  warning  '_id' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:610:32  warning  '_ca' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:610:49  warning  '_ua' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:1515:23  warning  '_' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:1639:15  warning  '_id' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:1639:32  warning  '_ca' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/db/index.ts:1639:49  warning  '_ua' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/whatsapp/state-machine.ts:742:46  warning  '_roomSlug' is defined but never used  @typescript-eslint/no-unused-vars
+src/lib/whatsapp/state-machine.ts:1105:9  warning  'context' is assigned a value but never used  @typescript-eslint/no-unused-vars
+src/lib/whatsapp/state-machine.ts:2132:3  warning  '_ai' is defined but never used  @typescript-eslint/no-unused-vars
+src/lib/whatsapp/state-machine.ts:2172:10  warning  'formatDateForInput' is defined but never used  @typescript-eslint/no-unused-vars
+src/lib/whatsapp/state-machine.ts:✖ 24 problems (0 errors, 24 warnings)
