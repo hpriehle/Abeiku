@@ -12,11 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* The app is designed light-only. A dark-mode override here made typed text
+   near-white on white inputs for anyone whose device is in dark mode. */
+:root {
+  color-scheme: light;
 }
 
 body {
