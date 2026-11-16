@@ -3,15 +3,15 @@ import { NextRequest } from "next/server";
 import { signBody } from "@/lib/whatsapp/signature";
 
 const hotel = { id: "h1", slug: "aracuya", name: "Aracuya", whatsapp_booking_bot_enabled: false };
-const recordMessage = vi.fn(async () => true);
+const recordMessage = vi.fn<(p: unknown) => Promise<boolean>>(async () => true);
 const handleMessage = vi.fn(async () => {});
-const markAsRead = vi.fn(async () => ({}));
+const markAsRead = vi.fn<(id: string) => Promise<object>>(async () => ({}));
 const conv = { id: "c1", phone: "233200000001", guest_state: "lead", step: "idle", guest_name: null };
 
 vi.mock("@/lib/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/lib/whatsapp/client", () => ({ markAsRead: (id: string) => markAsRead(id) }));
 vi.mock("@/lib/whatsapp/state-machine", () => ({ handleMessage: () => handleMessage() }));
-vi.mock("@/lib/whatsapp/chat-logger", () => ({ recordMessage: (p: unknown) => recordMessage(p as never) }));
+vi.mock("@/lib/whatsapp/chat-logger", () => ({ recordMessage: (p: unknown) => recordMessage(p) }));
 vi.mock("@/lib/db", () => ({
   getHotelByWhatsAppPhoneNumberId: vi.fn(async (id: string) => (id === "PNID" ? hotel : null)),
   determineGuestState: vi.fn(async () => "lead"),
