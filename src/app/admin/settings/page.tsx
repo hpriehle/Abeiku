@@ -9,6 +9,8 @@ import { getHotelById, getOAuthToken, getNotificationPreferences, getNotificatio
 import { SettingsForm } from "./SettingsForm";
 import { AlertEmailForm } from "./AlertEmailForm";
 import { alertEmailOf } from "@/lib/db/alert-email";
+import { AlertWhatsAppForm } from "./AlertWhatsAppForm";
+import { alertWhatsAppOf } from "@/lib/db/alert-whatsapp";
 import { NotificationSettings } from "./notifications/NotificationSettings";
 
 function WhatsAppLogo({ className }: { className?: string }) {
@@ -192,6 +194,7 @@ export default async function SettingsPage({
         <div className="space-y-6">
           <SettingsForm hotel={hotelView(hotel)} />
           <AlertEmailForm {...alertEmailOf(hotel as unknown as Record<string, unknown>)} />
+          <AlertWhatsAppForm {...alertWhatsAppOf(hotel as unknown as Record<string, unknown>)} />
           <NotificationSettings hotel={hotelView(hotel)} preferences={preferences} recentLog={recentLog} />
         </div>
 

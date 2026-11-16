@@ -1808,6 +1808,9 @@ export interface ChatMessage {
   guest_state: string | null;
   step: string | null;
   created_at: string;
+  /** Delivery status from Meta's status webhooks (docs/go-live-whatsapp.sql). */
+  wa_status?: "sent" | "delivered" | "read" | "failed" | string | null;
+  wa_error?: string | null;
 }
 
 export interface ConversationListItem {

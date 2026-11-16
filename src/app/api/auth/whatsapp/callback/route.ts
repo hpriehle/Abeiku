@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     let { error: dbError } = await supabase.from("hotels").update(extended).eq("id", session.hotelId);
     if (dbError?.code === "PGRST204") {
-      // Columns from supabase-migration-whatsapp-templates.sql not added yet; save the essentials.
+      // Columns from docs/go-live-whatsapp.sql not added yet; save the essentials.
       console.warn("WhatsApp migration not applied; saving base credentials only:", dbError.message);
       ({ error: dbError } = await supabase.from("hotels").update(base).eq("id", session.hotelId));
     }

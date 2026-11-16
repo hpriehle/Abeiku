@@ -3,6 +3,9 @@
 
 import { sendEmail } from "@/lib/notifications/email";
 import { supabaseAlertStore } from "@/lib/db/booking-alerts";
+import { getHotelById } from "@/lib/db";
+import { hotelStorage } from "@/lib/hotel-context";
+import { sendTemplate } from "@/lib/whatsapp/client";
 import {
   alertBookingsNow,
   logSkip,
@@ -10,9 +13,28 @@ import {
   sendArrivalsDigest,
   silenceBackfill,
   type Mailer,
+  type WhatsAppAlerter,
 } from "./booking-alerts";
 
 export const resendMailer: Mailer = (msg) => sendEmail(msg);
+
+/** Approved Meta template for manager alerts (body: "Booking alert for {{1}}: {{2}}. …"). */
+export const BOOKING_ALERT_TEMPLATE = process.env.WHATSAPP_ALERT_TEMPLATE || "booking_alert";
+export const BOOKING_ALERT_LANGUAGE = process.env.WHATSAPP_ALERT_TEMPLATE_LANG || "en";
+
+/** Sends from the hotel's own connected WhatsApp number (a template, so it works outside the 24h window). */
+export const metaWhatsAppAlerter: WhatsAppAlerter = async ({ hotelId, hotelName, to, summary }) => {
+  const hotel = await getHotelById(hotelId);
+  if (!hotel?.whatsapp_access_token || !hotel.whatsapp_phone_number_id) return { success: false, error: "WhatsApp not connected" };
+  try {
+    await hotelStorage.run({ hotelId, hotel }, () =>
+      sendTemplate(to, { name: BOOKING_ALERT_TEMPLATE, language: BOOKING_ALERT_LANGUAGE, bodyParams: [hotelName, summary] })
+    );
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: (err as Error)?.message ?? String(err) };
+  }
+};
 
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
@@ -44,7 +66,7 @@ export async function alertsAfterSync(input: {
     // Couldn't mark the backfill: don't sweep, or the backfill would be emailed.
     return { silencedBackfill: 0, skipped: logSkip("backfill", err) };
   }
-  const counts = await runBookingAlerts({ store: supabaseAlertStore, mailer: resendMailer, today: todayUtc() });
+  const counts = await runBookingAlerts({ store: supabaseAlertStore, mailer: resendMailer, whatsapp: metaWhatsAppAlerter, today: todayUtc() });
   return { silencedBackfill, ...counts };
 }
 
@@ -69,13 +91,13 @@ export async function alertsAfterSyncs(inputs: { hotelId: string; loadedFeeds: s
       skipped = logSkip("backfill", err);
     }
   }
-  const counts = await runBookingAlerts({ store: supabaseAlertStore, mailer: resendMailer, today: todayUtc(), skipHotelIds });
+  const counts = await runBookingAlerts({ store: supabaseAlertStore, mailer: resendMailer, whatsapp: metaWhatsAppAlerter, today: todayUtc(), skipHotelIds });
   return { silencedBackfill, ...counts, ...(skipHotelIds.length ? { backfillFailedHotels: skipHotelIds.length, skipped: counts.skipped ?? skipped } : {}) };
 }
 
 /** Right after a known write (website report, admin cancel). */
 export async function alertBookingIds(hotelId: string, ids: string[]) {
-  return alertBookingsNow({ store: supabaseAlertStore, mailer: resendMailer, hotelId, ids, today: todayUtc() });
+  return alertBookingsNow({ store: supabaseAlertStore, mailer: resendMailer, whatsapp: metaWhatsAppAlerter, hotelId, ids, today: todayUtc() });
 }
 
 export async function arrivalsDigestFor(tomorrow: string) {

@@ -61,7 +61,7 @@ export function ReplyBox({
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a reply..."
           disabled={sending}
-          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]/20 focus:border-[#2D4A3E] disabled:opacity-50"
+          className="admin-input flex-1"
         />
         <button
           type="submit"

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { getConversation, getLastInboundMessageTime, getHotelById } from "@/lib/db";
-import { logMessage } from "@/lib/whatsapp/chat-logger";
+import { recordMessage } from "@/lib/whatsapp/chat-logger";
 import { hotelStorage } from "@/lib/hotel-context";
 import { sendText } from "@/lib/whatsapp/client";
 
@@ -60,18 +60,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Send via WhatsApp (must run in hotel context)
-    await hotelStorage.run({ hotelId: hotel.id, hotel }, async () => {
-      await sendText(conv.phone, message);
-    });
+    const sent = await hotelStorage.run({ hotelId: hotel.id, hotel }, () => sendText(conv.phone, message));
+    const waMessageId: string | undefined = sent?.messages?.[0]?.id;
 
-    // Log admin message
-    logMessage({
+    // Store the reply (awaited: a serverless function may stop right after the response).
+    // The WhatsApp message id lets delivery statuses from the webhook attach to it.
+    await recordMessage({
       hotelId: session.hotelId,
       conversationId,
       phone: conv.phone,
       direction: "outbound",
       messageType: "admin_reply",
       body: message,
+      waMessageId,
       senderType: "admin",
       senderName: session.email,
       guestState: conv.guest_state,
