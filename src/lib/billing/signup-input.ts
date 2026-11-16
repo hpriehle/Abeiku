@@ -12,6 +12,8 @@ export function cleanEmail(v: unknown): string | null {
   return e.length <= 254 && EMAIL_RE.test(e) ? e : null;
 }
 
+export const TERMS_REQUIRED_ERROR = "Tick the box to agree to the Terms and Privacy Policy.";
+
 export function parseAccount(body: Record<string, unknown>): Result<{ hotelName: string; email: string; password: string }> {
   const hotelName = typeof body.hotelName === "string" ? body.hotelName.trim() : "";
   if (hotelName.length < 2 || hotelName.length > 100) return { ok: false, error: "Enter your hotel's name." };
@@ -20,6 +22,8 @@ export function parseAccount(body: Record<string, unknown>): Result<{ hotelName:
   const password = typeof body.password === "string" ? body.password : "";
   if (password.length < 8) return { ok: false, error: "Use a password of at least 8 characters." };
   if (password.length > 200) return { ok: false, error: "That password is too long." };
+  // Only a real `true` counts: "true", 1 or "on" from a hand-made request do not.
+  if (body.acceptTerms !== true) return { ok: false, error: TERMS_REQUIRED_ERROR };
   return { ok: true, value: { hotelName, email, password } };
 }
 

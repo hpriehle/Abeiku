@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LEGAL_LINKS } from "@/lib/site";
 
 /** Navy page with one white card, same look as the admin login and the L1 placeholder. */
 export function SignupShell({ children, footer = true }: { children: React.ReactNode; footer?: boolean }) {
@@ -18,6 +19,11 @@ export function SignupShell({ children, footer = true }: { children: React.React
             <a href="/admin/login" className="font-semibold text-white underline underline-offset-4">Log in</a>
           </p>
         )}
+        <nav aria-label="Legal" className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-200">
+          {LEGAL_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="underline underline-offset-4 hover:text-white">{l.label}</a>
+          ))}
+        </nav>
       </div>
     </div>
   );
