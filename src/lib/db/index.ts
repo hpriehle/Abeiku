@@ -173,6 +173,17 @@ export async function getAdminUserByEmail(email: string): Promise<AdminUser | nu
   return data;
 }
 
+export async function getAdminUserById(id: string): Promise<AdminUser | null> {
+  const { data, error } = await supabase.from("admin_users").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function setAdminUserPassword(id: string, passwordHash: string): Promise<void> {
+  const { error } = await supabase.from("admin_users").update({ password_hash: passwordHash }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function createAdminUser(user: {
   hotel_id: string;
   email: string;

@@ -25,6 +25,14 @@ export interface Limit {
 export const LOGIN_LIMIT: Limit = { max: 10, windowMs: 15 * 60 * 1000 };
 export const MOMO_CONFIRM_LIMIT: Limit = { max: 5, windowMs: 30 * 60 * 1000 };
 
+/** "Forgot password" emails: every request counts (not only failures). */
+export const RESET_REQUEST_IP_LIMIT: Limit = { max: 10, windowMs: 15 * 60 * 1000 };
+export const RESET_REQUEST_ACCOUNT_LIMIT: Limit = { max: 3, windowMs: 60 * 60 * 1000 };
+
+export function resetRequestKeys(ip: string, account: string): { ip: string; account: string } {
+  return { ip: `admin-reset:ip:${ip}`, account: `admin-reset:acct:${hashKey(account)}` };
+}
+
 export function hashKey(value: string): string {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex").slice(0, 32);
 }
