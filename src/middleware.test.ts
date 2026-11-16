@@ -29,6 +29,16 @@ describe("middleware: billing gate (L2)", () => {
     expect((await hit("/admin/dashboard")).headers.get("location")).toBe("http://localhost/admin/login");
     expect((await hit("/api/admin/rooms")).status).toBe(200);
   });
+  it("no session: login, forgot-password and reset-password pages stay open", async () => {
+    for (const p of ["/admin/login", "/admin/forgot-password", "/admin/reset-password"]) {
+      expect((await hit(p)).headers.get("location")).toBeNull();
+    }
+    expect((await hit("/admin/reset-password-x")).headers.get("location")).toBe("http://localhost/admin/login");
+  });
+  it("signed up without a card: forgot/reset password API still answers", async () => {
+    expect((await hit("/api/admin/auth/forgot", { ...base, billing: "blocked" })).status).toBe(200);
+    expect((await hit("/api/admin/auth/reset", { ...base, billing: "blocked" })).status).toBe(200);
+  });
   it("a partner session does not open /admin", async () => {
     const cookie = `admin_session=${await signSession("partner", { influencerId: "p1" })}`;
     const res = await middleware(new NextRequest("http://localhost/admin/dashboard", { headers: { cookie } }));

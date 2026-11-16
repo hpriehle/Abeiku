@@ -6,6 +6,8 @@ const COOKIE_NAME = "admin_session";
 
 type AdminClaims = { billing?: string };
 
+const PUBLIC_ADMIN_PAGES = new Set(["/admin/login", "/admin/forgot-password", "/admin/reset-password"]);
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const cookie = request.cookies.get(COOKIE_NAME)?.value;
@@ -21,8 +23,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Only protect /admin routes (except /admin/login)
-  if (!pathname.startsWith("/admin") || pathname === "/admin/login") {
+  // Only protect /admin routes (except the signed-out pages: login and forgot/reset password)
+  if (!pathname.startsWith("/admin") || PUBLIC_ADMIN_PAGES.has(pathname)) {
     return NextResponse.next();
   }
 
