@@ -14,6 +14,7 @@ import { billingView } from "@/lib/billing/access";
 import { setAdminSession } from "@/lib/billing/session";
 import { isMissingColumnError } from "@/lib/billing/store";
 import { parseAccount, slugify } from "@/lib/billing/signup-input";
+import { recordTermsAccepted } from "@/lib/billing/terms";
 import { checkLimit, clientIp, getAttemptStore, hashKey, recordFailure, tooManyMessage } from "@/lib/auth/rate-limit";
 
 const SIGNUP_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 };
@@ -73,6 +74,9 @@ export async function POST(request: NextRequest) {
       role: "admin",
     });
     await recordFailure(store, keys); // counts successful sign-ups toward the hourly limit
+
+    // parseAccount refused the request unless the Terms box was ticked; keep when.
+    await recordTermsAccepted(hotel.id, new Date());
 
     try {
       await seedDefaultNotificationPreferences(hotel.id);

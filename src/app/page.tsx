@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bell, CalendarDays, Check, MessageCircle, Users } from "lucide-react";
 import { CONTACT_EMAIL, PLANS, SITE_URL, TRIAL_DAYS } from "@/lib/site";
+import { SiteFooter } from "@/components/SiteFooter";
 
 // Landing page for hotels and guesthouses in Ghana (L1).
 // Only describes what is built. The WhatsApp booking bot is hidden on purpose.
@@ -266,17 +267,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#1a1a2e] text-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-sm">
-          <span>&copy; {new Date().getFullYear()} Abeiku</span>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
-            <a href="/signup" className="underline underline-offset-4 hover:text-white">Start free trial</a>
-            <a href="/admin/login" className="underline underline-offset-4 hover:text-white">Hotel log in</a>
-            <a href="/partner/login" className="underline underline-offset-4 hover:text-white">Partner log in</a>
-            <a href={`mailto:${CONTACT_EMAIL}`} className="underline underline-offset-4 hover:text-white">{CONTACT_EMAIL}</a>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

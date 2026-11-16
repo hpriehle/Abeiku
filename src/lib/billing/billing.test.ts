@@ -4,7 +4,7 @@ import { billingView, blockedAdminApiAllowed, sessionBillingClaim } from "./acce
 import { cancelBilling, changeRoomCount, completePaystackSetup, completeStripeSetup, resumePendingSetup, startCardSetup, BillingError } from "./flow";
 import { makeDeps, NOW, PLAN_IDS } from "./fakes.test-helper";
 import { isMissingColumnError } from "./store";
-import { parseAccount, parseCalendarLinks, parseHotelDetails, slugify } from "./signup-input";
+import { parseAccount, parseCalendarLinks, parseHotelDetails, slugify, TERMS_REQUIRED_ERROR } from "./signup-input";
 
 describe("tier choice", () => {
   it("up to 5 rooms is small, 6 or more is large", () => {
@@ -273,13 +273,22 @@ describe("room count changes the tier from the next charge", () => {
 
 describe("sign-up form checks", () => {
   it("account", () => {
-    expect(parseAccount({ hotelName: " Busua Inn ", email: "A@B.com", password: "longenough" })).toEqual({
+    expect(parseAccount({ hotelName: " Busua Inn ", email: "A@B.com", password: "longenough", acceptTerms: true })).toEqual({
       ok: true,
       value: { hotelName: "Busua Inn", email: "a@b.com", password: "longenough" },
     });
-    expect(parseAccount({ hotelName: "X", email: "a@b.com", password: "longenough" }).ok).toBe(false);
-    expect(parseAccount({ hotelName: "Inn", email: "nope", password: "longenough" }).ok).toBe(false);
-    expect(parseAccount({ hotelName: "Inn", email: "a@b.com", password: "short" }).ok).toBe(false);
+    expect(parseAccount({ hotelName: "X", email: "a@b.com", password: "longenough", acceptTerms: true }).ok).toBe(false);
+    expect(parseAccount({ hotelName: "Inn", email: "nope", password: "longenough", acceptTerms: true }).ok).toBe(false);
+    expect(parseAccount({ hotelName: "Inn", email: "a@b.com", password: "short", acceptTerms: true }).ok).toBe(false);
+  });
+  it("account: the Terms box must be ticked (a real true only)", () => {
+    const base = { hotelName: "Inn", email: "a@b.com", password: "longenough" };
+    for (const acceptTerms of [undefined, null, false, "true", "yes", "on", 1]) {
+      expect(parseAccount({ ...base, acceptTerms })).toEqual({ ok: false, error: TERMS_REQUIRED_ERROR });
+    }
+    // Field errors come first, so the owner fixes the form top to bottom.
+    expect(parseAccount({ ...base, email: "nope" })).toEqual({ ok: false, error: "Enter a valid email address." });
+    expect(parseAccount({ ...base, acceptTerms: true }).ok).toBe(true);
   });
   it("hotel details", () => {
     expect(parseHotelDetails({ town: "Busua", rooms: "6", contactEmail: "info@inn.gh" })).toEqual({

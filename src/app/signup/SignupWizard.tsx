@@ -168,13 +168,18 @@ export function SignupWizard() {
   );
 }
 
-function AccountStep({ busy, onSubmit }: { busy: boolean; onSubmit: (v: Record<string, string>) => void }) {
+function AccountStep({ busy, onSubmit }: { busy: boolean; onSubmit: (v: Record<string, string | boolean>) => void }) {
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
-        onSubmit({ hotelName: String(f.get("hotelName")), email: String(f.get("email")), password: String(f.get("password")) });
+        onSubmit({
+          hotelName: String(f.get("hotelName")),
+          email: String(f.get("email")),
+          password: String(f.get("password")),
+          acceptTerms: f.get("acceptTerms") === "yes",
+        });
       }}
     >
       <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={H1_FONT}>Start your free trial</h1>
@@ -183,6 +188,15 @@ function AccountStep({ busy, onSubmit }: { busy: boolean; onSubmit: (v: Record<s
         <Field id="hotelName" label="Hotel name" autoComplete="organization" required minLength={2} maxLength={100} />
         <Field id="email" label="Your email" type="email" autoComplete="email" required hint="You log in with this." />
         <Field id="password" label="Password" type="password" autoComplete="new-password" required minLength={8} hint="At least 8 characters." />
+        <label htmlFor="acceptTerms" className="flex items-start gap-3 text-base text-gray-900">
+          <input id="acceptTerms" name="acceptTerms" type="checkbox" value="yes" required className="mt-1 size-5 shrink-0 accent-[#2D4A3E]" />
+          <span>
+            I agree to the{" "}
+            <a href="/terms" target="_blank" className="font-semibold text-[#2D4A3E] underline underline-offset-4">Terms</a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" className="font-semibold text-[#2D4A3E] underline underline-offset-4">Privacy Policy</a>
+          </span>
+        </label>
       </div>
       <button type="submit" className={`${primary} mt-6`} disabled={busy}>{busy ? "Creating your account..." : "Create account"}</button>
     </form>
