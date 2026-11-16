@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="admin@hotel.com"
             required
-            className="w-full px-4 py-3 border border-[#868e9c] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent mb-4"
+            className="w-full px-4 py-3 border border-[#868e9c] rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent mb-4"
           />
 
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
@@ -72,7 +72,7 @@ export default function AdminLoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password"
             required
-            className="w-full px-4 py-3 border border-[#868e9c] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
+            className="w-full px-4 py-3 border border-[#868e9c] rounded-lg text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2D4A3E] focus:border-transparent"
           />
 
           {error && (
