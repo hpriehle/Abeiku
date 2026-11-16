@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/admin/communication/inbox", label: "Inbox" },
   { href: "/admin/communication/report", label: "Report" },
-  { href: "/admin/communication/templates", label: "Templates" },
+  { href: "/admin/communication/whatsapp", label: "WhatsApp Templates" },
+  { href: "/admin/communication/templates", label: "Bot Messages" },
 ];
 
 export default function CommunicationLayout({ children }: { children: React.ReactNode }) {

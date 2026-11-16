@@ -105,7 +105,9 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
               >
                 {/* Sender label for admin messages */}
                 {isAdmin && (
-                  <p className="text-[10px] font-medium text-blue-600 mb-0.5">You</p>
+                  <p className="text-[10px] font-medium text-blue-700 mb-0.5">
+                    {msg.sender_name === "WhatsApp Business app" ? "From the WhatsApp Business app" : "You"}
+                  </p>
                 )}
 
                 {/* Message body */}
@@ -133,9 +135,13 @@ export function MessageThread({ messages }: { messages: ChatMessage[] }) {
                   )}
 
                 {/* Timestamp */}
-                <p className={`text-[10px] mt-1 ${isInbound ? "text-gray-600" : "text-gray-600"}`}>
+                <p className="text-[10px] mt-1 text-gray-600">
                   {formatTime(msg.created_at)}
+                  {!isInbound && msg.wa_status && msg.wa_status !== "failed" && <> · {msg.wa_status}</>}
                 </p>
+                {!isInbound && msg.wa_status === "failed" && (
+                  <p className="text-[10px] mt-0.5 text-red-700">Not delivered{msg.wa_error ? `: ${msg.wa_error}` : ""}</p>
+                )}
               </div>
             </div>
           </div>

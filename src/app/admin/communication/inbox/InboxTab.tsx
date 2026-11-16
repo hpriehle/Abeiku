@@ -127,6 +127,31 @@ export function InboxTab({
     };
   }, [selectedId]);
 
+  // New WhatsApp messages arrive through the webhook: refresh the list and the open
+  // thread every 15 seconds while the tab is visible (no reload needed).
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      loadConversations(0).then((r) => {
+        if (!r.ok) return;
+        const fresh = r.data.conversations;
+        const ids = new Set(fresh.map((c) => c.id));
+        setConversations((prev) =>
+          [...fresh, ...prev.filter((c) => !ids.has(c.id))].map((c) => (c.id === selectedId ? { ...c, unread_count: 0 } : c))
+        );
+        setTotal(r.data.total);
+      });
+      if (selectedId) {
+        apiRequest<{ messages?: ChatMessage[] }>(`/api/admin/chats/conversations/${selectedId}/messages`, {
+          fallbackError: "",
+        }).then((r) => {
+          if (r.ok && r.data.messages) setMessages(r.data.messages);
+        });
+      }
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [loadConversations, selectedId]);
+
   // Handle sending a reply
   const handleSendReply = async (message: string) => {
     if (!selectedId) return;

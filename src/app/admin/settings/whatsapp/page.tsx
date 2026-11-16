@@ -49,7 +49,8 @@ export default async function WhatsAppSettingsPage() {
               <div>
                 <p className="text-sm font-medium text-green-800">WhatsApp is connected</p>
                 <p className="text-xs text-green-700">
-                  Guests can message your hotel and receive automated replies, booking confirmations, and reminders.
+                  Guest messages arrive in Communication → Inbox, where you reply.
+                  {hotel.whatsapp_is_on_biz_app && " You can keep using the WhatsApp Business app on your phone too."}
                 </p>
               </div>
             </div>
@@ -61,20 +62,20 @@ export default async function WhatsAppSettingsPage() {
         <div className="space-y-6">
           <div className="admin-card">
             <p className="text-sm text-gray-600 mb-4">
-              Connect WhatsApp to let guests message your hotel directly. Abeiku handles automated replies, booking flow, and guest messaging.
+              Connect your hotel&apos;s WhatsApp number to see guest messages in Abeiku and reply from here. Already using the WhatsApp Business app? You can keep it: the number works in both.
             </p>
-            <ul className="text-sm text-gray-500 space-y-1.5">
+            <ul className="text-sm text-gray-600 space-y-1.5">
               <li className="flex items-start gap-2">
                 <span className="text-green-700 mt-0.5">&#10003;</span>
-                Guests book rooms via WhatsApp chat
+                Guest chats in one inbox, with replies from your team
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-700 mt-0.5">&#10003;</span>
-                Automated check-in/checkout reminders
+                Booking alerts to the manager on WhatsApp
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-green-700 mt-0.5">&#10003;</span>
-                Review requests and return offers
+                Approved message templates to reach guests after 24 hours
               </li>
             </ul>
           </div>

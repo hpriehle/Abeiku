@@ -39,6 +39,9 @@ export interface Hotel extends HotelBilling {
   whatsapp_waba_id: string | null;
   whatsapp_display_phone: string | null;
   whatsapp_verify_token: string | null;
+  /** Number is shared with the WhatsApp Business app (coexistence). */
+  whatsapp_is_on_biz_app?: boolean | null;
+  whatsapp_business_id?: string | null;
   stripe_secret_key: string | null;
   stripe_webhook_secret: string | null;
   paystack_subaccount_code: string | null;
@@ -1805,6 +1808,9 @@ export interface ChatMessage {
   guest_state: string | null;
   step: string | null;
   created_at: string;
+  /** Delivery status from Meta's status webhooks (docs/go-live-whatsapp.sql). */
+  wa_status?: "sent" | "delivered" | "read" | "failed" | string | null;
+  wa_error?: string | null;
 }
 
 export interface ConversationListItem {

@@ -18,6 +18,10 @@ function chunks<T>(xs: T[], size = ID_CHUNK): T[][] {
   return out;
 }
 
+function isMissingAlertWhatsApp(err: { code?: string; message?: string }): boolean {
+  return /alert_whatsapp/.test(err.message ?? "") && /does not exist|could not find|schema cache/i.test(err.message ?? "");
+}
+
 function withAlerts(r: Record<string, unknown>) {
   return {
     ...toCalendarRow(r),
@@ -30,13 +34,16 @@ function withAlerts(r: Record<string, unknown>) {
 
 export const supabaseAlertStore: AlertStore = {
   async listAlertHotels() {
-    const { data, error } = await supabase
-      .from("hotels")
-      .select("id, name, slug, alert_email")
-      .eq("active", true)
-      .not("alert_email", "is", null);
+    // alert_whatsapp comes from docs/go-live-whatsapp.sql. Until that runs, fall back to
+    // the columns email alerts need, so a missing WhatsApp column never stops the emails.
+    const base = "id, name, slug, alert_email, whatsapp_access_token, whatsapp_phone_number_id";
+    const query = (cols: string) =>
+      supabase.from("hotels").select(cols).eq("active", true).not("alert_email", "is", null);
+    let { data, error } = await query(`${base}, alert_whatsapp`);
+    if (error && isMissingAlertWhatsApp(error)) ({ data, error } = await query(base));
     if (error) throw error;
-    return (data ?? [])
+    const rows = (data ?? []) as unknown as Record<string, unknown>[];
+    return rows
       .filter((h) => typeof h.alert_email === "string" && h.alert_email.includes("@"))
       .map((h) => ({
         id: h.id as string,
@@ -44,6 +51,8 @@ export const supabaseAlertStore: AlertStore = {
         slug: h.slug as string,
         alert_email: (h.alert_email as string).trim(),
         totalRooms: listingFor(h.slug as string).totalRooms,
+        alert_whatsapp: typeof h.alert_whatsapp === "string" && h.alert_whatsapp.trim() ? h.alert_whatsapp.trim() : null,
+        whatsappConnected: Boolean(h.whatsapp_access_token && h.whatsapp_phone_number_id),
       }));
   },
 
