@@ -3,6 +3,7 @@ import { getPartnerSession } from "@/lib/partner/auth";
 import { getTotalClicks, listBookingsForInfluencer } from "@/lib/db/influencers";
 import { supabaseAccountStore } from "@/lib/db/partner-accounts";
 import { getHotelById } from "@/lib/db";
+import { supabasePayoutStore } from "@/lib/db/partner-payouts";
 import { handlePartnerStats } from "@/lib/partner/dashboard";
 
 // ?hotel=<slug> picks one of the account's hotels (P2); default is the hotel the session opened on.
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
     },
     listBookings: listBookingsForInfluencer,
     countClicks: getTotalClicks,
+    listPayouts: supabasePayoutStore.listForPartner,
   });
   return NextResponse.json(result.body, { status: result.status });
 }

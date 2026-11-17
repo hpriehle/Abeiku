@@ -8,7 +8,10 @@ import {
   verifyPassword,
   createPartnerSessionToken,
   getPartnerSessionCookieOptions,
+  sessionPayloadFor,
 } from "@/lib/partner/auth";
+import { supabaseSignupStore } from "@/lib/db/partner-signup";
+import { CONFIRM } from "@/lib/partner/p2-copy";
 import {
   getAttemptStore,
   checkLimit,
@@ -43,29 +46,36 @@ export async function POST(request: NextRequest) {
     }
 
     // One account per person (P2); before the P2 SQL runs, one login per hotel row as before.
-    const result = await authenticate(login, password, supabaseAccountStore, verifyPassword);
+    const result = await authenticate(
+      login,
+      password,
+      supabaseAccountStore,
+      verifyPassword,
+      supabaseSignupStore.confirmPending
+    );
     if (!result) {
       await recordFailure(store, keys);
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
-    const { account, membership: influencer } = result;
     await clearKeys(store, [keys[1]]);
+    if (result.unconfirmed) {
+      // Signed up (P2 step 2) but the confirm link is not used yet: no session.
+      return NextResponse.json(
+        { error: CONFIRM.loginUnconfirmed, reason: "unconfirmed", email: result.account.email },
+        { status: 403 }
+      );
+    }
+    const { account, membership: influencer } = result;
 
-    const hotel = await getHotelById(influencer.hotel_id);
-    if (!hotel) {
+    // No membership: a signed-up account no hotel has added yet.
+    const hotel = influencer ? await getHotelById(influencer.hotel_id) : null;
+    if (influencer && !hotel) {
       return NextResponse.json({ error: "Hotel not found" }, { status: 500 });
     }
 
-    const token = await createPartnerSessionToken({
-      ...(account ? { accountId: account.id } : {}),
-      influencerId: influencer.id,
-      hotelId: influencer.hotel_id,
-      hotelSlug: hotel.slug,
-      email: account?.email ?? account?.whatsapp ?? influencer.email ?? influencer.whatsapp ?? "",
-      name: account?.name ?? influencer.name,
-    });
+    const token = await createPartnerSessionToken(sessionPayloadFor(account, influencer, hotel?.slug ?? ""));
 
-    await markInfluencerLogin(influencer.id);
+    if (influencer) await markInfluencerLogin(influencer.id);
     if (account) await supabaseAccountStore.markAccountLogin(account.id);
 
     const { name, options } = getPartnerSessionCookieOptions();

@@ -27,7 +27,7 @@ describe("authenticate", () => {
     const { store } = twoHotelAccount();
     const r = await authenticate("AMA@x.com", "secret1", store, fakeVerify);
     expect(r?.account?.id).toBe(AMA.id);
-    expect(r?.membership.id).toBe("m-a");
+    expect(r?.membership?.id).toBe("m-a");
   });
 
   it("logs in by WhatsApp number in local format", async () => {
@@ -65,7 +65,7 @@ describe("authenticate", () => {
         membership({ id: "m2", hotel_id: "hotel-b", whatsapp: "+233242222222", password_hash: "hash:two" }),
       ],
     });
-    expect((await authenticate("+233242222222", "two", store, fakeVerify))?.membership.id).toBe("m2");
+    expect((await authenticate("+233242222222", "two", store, fakeVerify))?.membership?.id).toBe("m2");
   });
 
   it("after the SQL: a row made in between (no account yet) logs in and gets its account", async () => {

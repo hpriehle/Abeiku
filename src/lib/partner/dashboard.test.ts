@@ -119,3 +119,56 @@ describe("partner dashboard", () => {
     expect((await handlePartnerStats({ influencerId: "gone" }, null, deps(store))).status).toBe(404);
   });
 });
+
+describe("partner dashboard: P2 sign-up and payouts", () => {
+  const payout = (id: string, influencer_id: string, hotel_id: string, amount: number) => ({
+    id,
+    hotel_id,
+    influencer_id,
+    amount,
+    currency: "GHS" as const,
+    paid_on: "2026-11-10",
+    method: "Bank transfer",
+    reference: `REF-${id}`,
+    created_at: "2026-11-10T00:00:00Z",
+  });
+  const PAYOUTS = [payout("p1", "m-a", "hotel-a", 450), payout("p2", "m-b", "hotel-b", 999), payout("p3", "m-z", "hotel-a", 77)];
+  const withPayouts = (store: DashboardDeps["store"]): DashboardDeps => ({
+    ...deps(store),
+    listPayouts: async (id) => PAYOUTS.filter((p) => p.influencer_id === id),
+  });
+
+  it("signed-up account with no hotels: says so (200, no_hotels), no hotel data", async () => {
+    const NEW = { id: "acc-new", email: "new@x.com", whatsapp: "+233241234567", name: "Kwame", password_hash: "hash:pw" };
+    const { store } = memoryAccountStore({ accounts: [NEW], memberships: [mA] });
+    const r = await handlePartnerStats({ accountId: "acc-new", influencerId: "" }, null, withPayouts(store));
+    expect(r).toEqual({ status: 200, body: { no_hotels: true, name: "Kwame", email: "new@x.com", hotels: [] } });
+  });
+
+  it("shows only the payouts of the hotel shown, to this partner", async () => {
+    const { store } = memoryAccountStore({ accounts: [ACC], memberships: [mA, mB] });
+    const a = (await handlePartnerStats({ accountId: "acc", influencerId: "m-a" }, "aracuya", withPayouts(store))).body as Record<string, unknown>;
+    expect(a.payouts).toEqual([{ amount: 450, currency: "GHS", paid_on: "2026-11-10", method: "Bank transfer", reference: "REF-p1" }]);
+    const b = (await handlePartnerStats({ accountId: "acc", influencerId: "m-a" }, "other", withPayouts(store))).body as Record<string, unknown>;
+    expect(b.payouts).toEqual([expect.objectContaining({ amount: 999, reference: "REF-p2" })]);
+  });
+
+  it("cannot see another partner's payouts, even at the same hotel", async () => {
+    const other = membership({ id: "m-z", hotel_id: "hotel-a", slug: "zed", email: "zed@x.com", account_id: "acc-z" });
+    const { store } = memoryAccountStore({ accounts: [ACC], memberships: [mA, mB, other] });
+    for (const hotel of ["aracuya", "other", null]) {
+      const body = (await handlePartnerStats({ accountId: "acc", influencerId: "m-a" }, hotel, withPayouts(store))).body as {
+        payouts: { reference: string }[];
+      };
+      expect(body.payouts.map((p) => p.reference)).not.toContain("REF-p3");
+    }
+  });
+
+  it("before the SQL: the dashboard works, payouts list is empty", async () => {
+    const own = membership({ id: "m-a", hotel_id: "hotel-a", slug: "ama", email: "ama@x.com" });
+    const { store } = memoryAccountStore({ ready: false, memberships: [own] });
+    const r = await handlePartnerStats({ influencerId: "m-a" }, null, { ...deps(store), listPayouts: async () => [] });
+    expect(r.status).toBe(200);
+    expect((r.body as { payouts: unknown[] }).payouts).toEqual([]);
+  });
+});

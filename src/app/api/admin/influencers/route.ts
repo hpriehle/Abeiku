@@ -12,6 +12,7 @@ import {
 import { normalizeEmail, normalizeWhatsapp } from "@/lib/partner/codes";
 import { getHotelById } from "@/lib/db";
 import { supabaseAccountStore } from "@/lib/db/partner-accounts";
+import { listAdminPayouts } from "@/lib/db/partner-payouts";
 import { sendEmail } from "@/lib/notifications/email";
 import { handleAddPartner } from "@/lib/partner/add-partner";
 import {
@@ -31,7 +32,10 @@ export async function GET() {
     listInfluencersForHotel(session.hotelId),
     listBookingsForHotel(session.hotelId),
   ]);
-  return NextResponse.json(buildAdminView(partners, bookings, await adminSiteUrl(session.hotelId)));
+  return NextResponse.json({
+    ...buildAdminView(partners, bookings, await adminSiteUrl(session.hotelId)),
+    payouts: await listAdminPayouts(session.hotelId, partners),
+  });
 }
 
 // Adds a partner. New partner: returns the setup link for the admin to copy (no email sent).

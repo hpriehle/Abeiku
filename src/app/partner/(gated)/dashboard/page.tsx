@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
 import { BUTTON_PRIMARY, FONT_HEADING } from "@/components/partner/ui";
-import { DASHBOARD } from "@/lib/partner/p2-copy";
+import { DASHBOARD, NO_HOTELS, PAYOUT_ADMIN, PAYOUT_PARTNER } from "@/lib/partner/p2-copy";
 
 interface Booking {
   id: string;
@@ -28,9 +28,26 @@ interface Stats {
   clicks: number;
   totals: { pending: number; owed: number; paid: number };
   bookings: Booking[];
+  /** Payouts this hotel recorded for the partner (P2 step 5), newest first. */
+  payouts?: Payout[];
   hotel: Hotel;
   /** Every hotel of the partner's account (P2): a switcher shows when there are 2+. */
   hotels: Hotel[];
+}
+
+/** Signed-up account no hotel has added yet (P2 step 2). */
+interface NoHotels {
+  no_hotels: true;
+  name: string;
+  hotels: [];
+}
+
+interface Payout {
+  amount: number;
+  currency: "GHS" | "USD";
+  paid_on: string;
+  method: string;
+  reference: string | null;
 }
 
 interface Hotel {
@@ -50,7 +67,7 @@ const CARD = "bg-white rounded-xl border border-gray-200 shadow-sm";
 const LABEL = "text-xs font-semibold text-gray-600 uppercase tracking-wide";
 
 export default function PartnerDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<Stats | NoHotels | null>(null);
   const [error, setError] = useState("");
   // Null: the hotel the session opened on.
   const [hotel, setHotel] = useState<string | null>(null);
@@ -90,6 +107,19 @@ export default function PartnerDashboardPage() {
     );
   }
   if (!stats) return <DashboardSkeleton />;
+  if ("no_hotels" in stats) {
+    return (
+      <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <h1 className="text-2xl font-bold text-gray-900 break-words" style={FONT_HEADING}>
+          Welcome, {stats.name}
+        </h1>
+        <section className={`${CARD} p-6`}>
+          <p className="text-gray-900 font-medium">{NO_HOTELS.title}</p>
+          <p className="text-sm text-gray-700 mt-1 max-w-2xl">{NO_HOTELS.message}</p>
+        </section>
+      </div>
+    );
+  }
 
   const money = (n: number) => formatMoney(n, stats.currency);
 
@@ -190,7 +220,45 @@ export default function PartnerDashboardPage() {
           </>
         )}
       </section>
+
+      <PayoutList hotel={stats.hotel.name} payouts={stats.payouts ?? []} />
     </div>
+  );
+}
+
+function PayoutList({ hotel, payouts }: { hotel: string; payouts: Payout[] }) {
+  return (
+    <section className={`${CARD} p-4 sm:p-6`}>
+      <h2 className={`${LABEL} mb-4`}>{PAYOUT_PARTNER.title(hotel)}</h2>
+      {payouts.length === 0 ? (
+        <p className="py-4 text-center text-sm text-gray-700">{PAYOUT_PARTNER.empty(hotel)}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wide border-b border-gray-200">
+                <th className="py-2 pr-4">{PAYOUT_ADMIN.colDate}</th>
+                <th className="py-2 pr-4 text-right">{PAYOUT_ADMIN.colAmount}</th>
+                <th className="py-2 pr-4">{PAYOUT_ADMIN.colMethod}</th>
+                <th className="py-2">{PAYOUT_ADMIN.colReference}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payouts.map((p, i) => (
+                <tr key={i} className="border-b border-gray-100 last:border-0">
+                  <td className="py-3 pr-4 text-gray-800 whitespace-nowrap">{formatDate(p.paid_on)}</td>
+                  <td className="py-3 pr-4 text-right font-semibold text-gray-900 whitespace-nowrap">
+                    {formatMoney(p.amount, p.currency)}
+                  </td>
+                  <td className="py-3 pr-4 text-gray-800">{p.method}</td>
+                  <td className="py-3 text-gray-800 break-words">{p.reference ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

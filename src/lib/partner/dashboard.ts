@@ -6,6 +6,7 @@ import { membershipsForSession, type AccountStore, type Membership, type Session
 import { todayInGhana, totalsFor } from "./commission";
 import { bookingView, partnerLink, partnerSiteUrl } from "./views";
 import type { HandlerResult } from "./bulk";
+import { partnerPayoutView, type PayoutRow } from "./payouts";
 
 export interface HotelRef {
   id: string;
@@ -18,6 +19,8 @@ export interface DashboardDeps {
   getHotel(id: string): Promise<HotelRef | null>;
   listBookings(influencerId: string): Promise<ReferralBookingRow[]>;
   countClicks(influencerId: string): Promise<number>;
+  /** Payouts the hotel recorded for this membership, newest first. Empty before the SQL. */
+  listPayouts?(influencerId: string): Promise<PayoutRow[]>;
   now?: Date;
 }
 
@@ -38,7 +41,16 @@ export async function handlePartnerStats(
       })
     )
   ).filter((x): x is { m: Membership; hotel: HotelRef } => Boolean(x));
-  if (withHotel.length === 0) return { status: 404, body: { error: "Not found" } };
+  if (withHotel.length === 0) {
+    // A signed-up account (P2 step 2) that no hotel has added yet: the dashboard says so.
+    if (session.accountId && (await deps.store.ready())) {
+      const account = await deps.store.getAccount(session.accountId);
+      if (account) {
+        return { status: 200, body: { no_hotels: true, name: account.name, email: account.email, hotels: [] } };
+      }
+    }
+    return { status: 404, body: { error: "Not found" } };
+  }
 
   const picked =
     (hotelSlug ? withHotel.find((x) => x.hotel.slug === hotelSlug) : undefined) ??
@@ -46,7 +58,12 @@ export async function handlePartnerStats(
     withHotel[0];
   const { m: partner, hotel } = picked;
 
-  const [rows, clicks] = await Promise.all([deps.listBookings(partner.id), deps.countClicks(partner.id)]);
+  const [rows, clicks, payouts] = await Promise.all([
+    deps.listBookings(partner.id),
+    deps.countClicks(partner.id),
+    // Only this membership's payouts: from this hotel, to this partner (P2 step 5).
+    deps.listPayouts ? deps.listPayouts(partner.id) : Promise.resolve([]),
+  ]);
   const today = todayInGhana(deps.now);
 
   return {
@@ -76,6 +93,7 @@ export async function handlePartnerStats(
           payout_paid_at: v.payout_paid_at,
         };
       }),
+      payouts: payouts.map(partnerPayoutView),
       hotel: { slug: hotel.slug, name: hotel.name },
       /** Every hotel of the account; the dashboard shows a switcher when there are 2+. */
       hotels: withHotel.map((x) => ({ slug: x.hotel.slug, name: x.hotel.name })),

@@ -58,24 +58,30 @@ export async function ensureAccount(m: Membership, store: AccountStore): Promise
   return account;
 }
 
-export interface LoginResult {
-  /** Null before the P2 SQL (or for a row that could not get an account). */
-  account: PartnerAccount | null;
-  /** The hotel the dashboard opens on. */
-  membership: Membership;
-}
+export type LoginResult =
+  | {
+      /** Null before the P2 SQL (or for a row that could not get an account). */
+      account: PartnerAccount | null;
+      /** The hotel the dashboard opens on; null for a signed-up account no hotel has added yet. */
+      membership: Membership | null;
+      unconfirmed?: false;
+    }
+  /** Right password, but a self-signed-up account whose email is not confirmed yet: refuse. */
+  | { account: PartnerAccount; membership: null; unconfirmed: true };
 
 type Verify = (password: string, hash: string) => Promise<boolean>;
 
 /**
  * Login by email or WhatsApp number. Accounts first; then memberships without an account (rows
  * created before the SQL, or the whole table before it runs), as before P2.
+ * `confirmPending` (P2 sign-up) tells a signed-up account that has not confirmed its email yet.
  */
 export async function authenticate(
   login: string,
   password: string,
   store: AccountStore,
-  verify: Verify
+  verify: Verify,
+  confirmPending: (accountId: string) => Promise<boolean> = async () => false
 ): Promise<LoginResult | null> {
   const byEmail = login.includes("@");
   const email = login.toLowerCase();
@@ -89,8 +95,11 @@ export async function authenticate(
       : await store.findAccountsByWhatsapp(whatsapp!);
     for (const a of accounts) {
       if (!a.password_hash || !(await verify(password, a.password_hash))) continue;
+      if (await confirmPending(a.id)) return { account: a, membership: null, unconfirmed: true };
       const [first] = await store.listMemberships(a.id);
       if (first) return { account: a, membership: first };
+      // Signed up on its own (P2 step 2) and no hotel has added it yet: the dashboard says so.
+      if (a.email && (await store.findMembershipsByEmail(a.email)).length === 0) return { account: a, membership: null };
     }
   }
 
