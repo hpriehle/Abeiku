@@ -213,13 +213,19 @@ describe("bulk upsert", () => {
     expect(partners[0]).toMatchObject({ town: "Accra", email: "carmen@example.com" });
   });
 
-  it("issues a new setup link only after the old one expired, none once set up", async () => {
+  it("setup links never expire; an old dated one that expired is replaced; none once set up", async () => {
     const { store, partners } = memoryStore();
     const first = (await bulk(store, [carmen])).body as Body;
-    const later = new Date(NOW.getTime() + 15 * 24 * 3600 * 1000);
+    expect(partners[0].invite_expires_at).toBeNull();
+    const later = new Date(NOW.getTime() + 365 * 24 * 3600 * 1000);
+    const kept = (await bulk(store, [carmen], later)).body as Body;
+    expect(kept.results[0].setup_link).toBe(first.results[0].setup_link);
+
+    partners[0].invite_expires_at = "2026-11-01T00:00:00Z"; // link issued before the no-expiry change
     const renewed = (await bulk(store, [carmen], later)).body as Body;
     expect(renewed.results[0].setup_link).not.toBe(first.results[0].setup_link);
     expect(renewed.results[0].setup_link).toBeTruthy();
+    expect(partners[0].invite_expires_at).toBeNull();
 
     partners[0].password_hash = "hash";
     const done = (await bulk(store, [carmen], later)).body as Body;
@@ -323,6 +329,17 @@ describe("list partners", () => {
     expect(list[0].setup_link).toMatch(/token=/);
     expect(list[1]).toMatchObject({ code: "kofi", set_up: true, setup_link: null });
 
+    expect(list[0].setup_expires_at).toBeNull();
+    const muchLater = await handleListPartners({
+      authHeader: AUTH,
+      secret: SECRET,
+      hotelSlug: "aracuya",
+      store,
+      now: new Date(NOW.getTime() + 365 * 24 * 3600 * 1000),
+    });
+    expect((muchLater.body as { partners: Array<Record<string, unknown>> }).partners[0].setup_link).toMatch(/token=/);
+
+    partners.find((x) => x.slug === "carmen-travels")!.invite_expires_at = "2026-11-20T00:00:00Z";
     const expired = await handleListPartners({
       authHeader: AUTH,
       secret: SECRET,

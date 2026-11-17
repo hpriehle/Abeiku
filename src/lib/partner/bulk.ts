@@ -20,7 +20,7 @@ import {
   type Totals,
 } from "./commission";
 import { codeFromName, dedupeCode, normalizeEmail, normalizeWhatsapp } from "./codes";
-import { INVITE_TTL_MS, partnerLink, partnerSiteUrl, setupUrl } from "./views";
+import { inviteStillValid, partnerLink, partnerSiteUrl, setupUrl } from "./views";
 
 export const MAX_BULK_ITEMS = 200;
 
@@ -175,7 +175,7 @@ export interface BulkResult {
   error?: string;
 }
 
-interface Ctx {
+export interface Ctx {
   hotelId: string;
   siteUrl: string | null;
   partners: PartnerRecord[];
@@ -184,15 +184,18 @@ interface Ctx {
   newToken: () => string;
 }
 
-/** Keeps a still-valid invite token; issues a new one only if missing or expired. Null once set up. */
-function inviteFor(p: Pick<PartnerRecord, "password_hash" | "invite_token" | "invite_expires_at">, ctx: Ctx) {
+/**
+ * Keeps a still-valid invite token; issues a new one (no expiry) only if missing or expired.
+ * Null once set up.
+ */
+export function inviteFor(
+  p: Pick<PartnerRecord, "password_hash" | "invite_token" | "invite_expires_at">,
+  ctx: Pick<Ctx, "now" | "newToken">
+): { link: string | null; patch: { invite_token?: string; invite_expires_at?: null } } {
   if (p.password_hash) return { link: null, patch: {} };
-  if (p.invite_token && p.invite_expires_at && new Date(p.invite_expires_at) > ctx.now) {
-    return { link: setupUrl(p.invite_token), patch: {} };
-  }
+  if (inviteStillValid(p, ctx.now)) return { link: setupUrl(p.invite_token!), patch: {} };
   const invite_token = ctx.newToken();
-  const invite_expires_at = new Date(ctx.now.getTime() + INVITE_TTL_MS).toISOString();
-  return { link: setupUrl(invite_token), patch: { invite_token, invite_expires_at } };
+  return { link: setupUrl(invite_token), patch: { invite_token, invite_expires_at: null } };
 }
 
 function errorResult(name: string | null, error: string, code: string | null = null): BulkResult {
@@ -202,6 +205,54 @@ function errorResult(name: string | null, error: string, code: string | null = n
 async function emailTakenElsewhere(email: string, selfId: string | null, ctx: Ctx): Promise<boolean> {
   const hit = await ctx.store.findByEmail(email);
   return Boolean(hit && hit.id !== selfId);
+}
+
+export type CreateOutcome =
+  | { ok: true; partner: PartnerRecord; link: string | null }
+  | { ok: false; error: string; conflict: boolean };
+
+/** Creates a new partner in ctx.hotelId (code from the name unless given, default rule by type). */
+export async function createPartner(item: BulkItem, ctx: Ctx): Promise<CreateOutcome> {
+  if (item.email && (await emailTakenElsewhere(item.email, null, ctx))) {
+    return { ok: false, error: "email is already used by a partner of another hotel", conflict: true };
+  }
+  const currency = currencyForCountry(item.country);
+  const taken = ctx.partners.map((p) => p.slug);
+  let code: string;
+  if (item.code) {
+    if (taken.includes(item.code)) return { ok: false, error: `code "${item.code}" is already in use`, conflict: true };
+    code = item.code;
+  } else {
+    code = dedupeCode(codeFromName(item.name), taken);
+  }
+  const rule = item.rule ?? defaultRule(item.type, currency);
+  if (!rule) {
+    return {
+      ok: false,
+      error: `rule is required for type ${item.type}${currency === "USD" ? " outside Ghana" : ""} (no default)`,
+      conflict: false,
+    };
+  }
+  const invite = inviteFor({ password_hash: null, invite_token: null, invite_expires_at: null }, ctx);
+  const created = await ctx.store.insertPartner({
+    hotel_id: ctx.hotelId,
+    slug: code,
+    name: item.name,
+    email: item.email,
+    whatsapp: item.whatsapp,
+    town: item.town,
+    ghl_contact_id: item.ghl_contact_id,
+    partner_type: item.type,
+    country: item.country,
+    currency,
+    commission_kind: rule.kind,
+    commission_value: rule.value,
+    commission_currency: currency,
+    invite_token: invite.patch.invite_token ?? null,
+    invite_expires_at: null,
+  });
+  ctx.partners.push(created);
+  return { ok: true, partner: created, link: invite.link };
 }
 
 async function upsertOne(item: BulkItem, ctx: Ctx): Promise<BulkResult> {
@@ -216,43 +267,15 @@ async function upsertOne(item: BulkItem, ctx: Ctx): Promise<BulkResult> {
   const existing = byWhatsapp ?? byEmail;
   const currency = currencyForCountry(item.country);
 
-  if (item.email && item.email !== existing?.email && (await emailTakenElsewhere(item.email, existing?.id ?? null, ctx))) {
-    return errorResult(item.name, "email is already used by a partner of another hotel");
+  if (!existing) {
+    const made = await createPartner(item, ctx);
+    if (!made.ok) return errorResult(item.name, made.error);
+    const created = made.partner;
+    return { name: created.name, code: created.slug, ref_link: partnerLink(created.slug, ctx.siteUrl), setup_link: made.link, status: "created" };
   }
 
-  if (!existing) {
-    const taken = ctx.partners.map((p) => p.slug);
-    let code: string;
-    if (item.code) {
-      if (taken.includes(item.code)) return errorResult(item.name, `code "${item.code}" is already in use`);
-      code = item.code;
-    } else {
-      code = dedupeCode(codeFromName(item.name), taken);
-    }
-    const rule = item.rule ?? defaultRule(item.type, currency);
-    if (!rule) {
-      return errorResult(item.name, `rule is required for type ${item.type}${currency === "USD" ? " outside Ghana" : ""} (no default)`);
-    }
-    const invite = inviteFor({ password_hash: null, invite_token: null, invite_expires_at: null }, ctx);
-    const created = await ctx.store.insertPartner({
-      hotel_id: ctx.hotelId,
-      slug: code,
-      name: item.name,
-      email: item.email,
-      whatsapp: item.whatsapp,
-      town: item.town,
-      ghl_contact_id: item.ghl_contact_id,
-      partner_type: item.type,
-      country: item.country,
-      currency,
-      commission_kind: rule.kind,
-      commission_value: rule.value,
-      commission_currency: currency,
-      invite_token: invite.patch.invite_token ?? null,
-      invite_expires_at: invite.patch.invite_expires_at ?? null,
-    });
-    ctx.partners.push(created);
-    return { name: created.name, code: created.slug, ref_link: partnerLink(created.slug, ctx.siteUrl), setup_link: invite.link, status: "created" };
+  if (item.email && item.email !== existing.email && (await emailTakenElsewhere(item.email, existing.id, ctx))) {
+    return errorResult(item.name, "email is already used by a partner of another hotel");
   }
 
   // Update. The ref code never changes here: links may already be out.
@@ -293,7 +316,7 @@ async function upsertOne(item: BulkItem, ctx: Ctx): Promise<BulkResult> {
   return { name: updated.name, code: updated.slug, ref_link: partnerLink(updated.slug, ctx.siteUrl), setup_link: invite.link, status: "updated" };
 }
 
-function dbErrorMessage(err: unknown): string {
+export function dbErrorMessage(err: unknown): string {
   const e = err as { code?: string; message?: string };
   if (e?.code === "23505") return "conflicts with an existing partner (duplicate code, email or whatsapp)";
   if (e?.code === "23514") return "rejected by a database check";
@@ -366,6 +389,7 @@ export interface PartnerListItem {
   ref_link: string | null;
   /** Only while the partner has not set a password and the link is still valid. */
   setup_link: string | null;
+  /** Null for a link that is valid until used (and when there is no link). */
   setup_expires_at: string | null;
   set_up: boolean;
   whatsapp: string | null;
@@ -410,8 +434,7 @@ export async function handleListPartners(input: {
 
   const items: PartnerListItem[] = partners.map((p) => {
     const rows = byPartner.get(p.id) ?? [];
-    const linkValid =
-      !p.password_hash && p.invite_token && p.invite_expires_at && new Date(p.invite_expires_at) > now;
+    const linkValid = inviteStillValid(p, now);
     return {
       id: p.id,
       name: p.name,
