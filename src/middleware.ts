@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth/session";
-import { blockedAdminApiAllowed } from "@/lib/billing/access";
+import { ADMIN_PATH_HEADER, blockedAdminApiAllowed } from "@/lib/billing/access";
 
 const COOKIE_NAME = "admin_session";
 
@@ -32,7 +32,10 @@ export async function middleware(request: NextRequest) {
   const session = cookie ? await verifySession<AdminClaims>(cookie, "admin") : null;
   if (session) {
     if (session.billing === "blocked") return NextResponse.redirect(new URL("/signup", request.url));
-    return NextResponse.next();
+    // The admin layout needs the path to lock a past-due hotel to /admin/plan.
+    const headers = new Headers(request.headers);
+    headers.set(ADMIN_PATH_HEADER, pathname);
+    return NextResponse.next({ request: { headers } });
   }
   return NextResponse.redirect(new URL("/admin/login", request.url));
 }

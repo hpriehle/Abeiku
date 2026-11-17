@@ -4,6 +4,7 @@ import { getSession } from "@/lib/admin/auth";
 import { loadBillingView } from "@/lib/billing";
 import { formatPrice, tierLabel, tierForRooms } from "@/lib/billing/plans";
 import { CONTACT_EMAIL } from "@/lib/site";
+import { LEGAL_LINE } from "@/lib/billing/emails";
 import { formatDay } from "../BillingBanner";
 import { PlanActions } from "./PlanActions";
 
@@ -26,7 +27,8 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default async function PlanPage() {
+export default async function PlanPage({ searchParams }: { searchParams: Promise<{ card?: string }> }) {
+  const { card } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/admin/login");
   const v = await loadBillingView(session.hotelId);
@@ -73,8 +75,28 @@ export default async function PlanPage() {
 
       {v.status === "past_due" && (
         <div className="admin-error mt-4" role="alert">
-          Your last payment did not go through. Make sure your card has money on it and has not expired. To use
-          a new card, email {CONTACT_EMAIL}.
+          {v.access === "locked"
+            ? "Your account is locked because your last payment failed. Update your card and the payment is tried again; your account opens as soon as it goes through."
+            : `Your last payment did not go through. Make sure your card has money on it and has not expired, or add a new card${v.lockAt ? ` by ${formatDay(v.lockAt)} to keep access` : ""}.`}
+        </div>
+      )}
+
+      {card === "error" && (
+        <div className="admin-error mt-4" role="alert">
+          We could not open the card page. Please try again in a moment, or email {CONTACT_EMAIL}.
+        </div>
+      )}
+
+      {(v.status === "trialing" || v.status === "active" || v.status === "past_due") && (
+        <div className="admin-card mt-6">
+          <h2 className="admin-h2">Card</h2>
+          <p className="mt-1 text-sm text-gray-700">
+            Change the card you pay with on {v.provider === "paystack" ? "Paystack" : "Stripe"}&apos;s secure page.
+          </p>
+          {/* A plain link: the route redirects to Stripe or Paystack. */}
+          <a href="/api/admin/billing/card" className={`${v.status === "past_due" ? "admin-btn-primary" : "admin-btn-secondary"} mt-4 inline-flex`}>
+            Update card
+          </a>
         </div>
       )}
 
@@ -83,7 +105,12 @@ export default async function PlanPage() {
         roomCount={v.roomCount}
         currency={v.currency}
         trialEndsAt={v.trialEndsAt ? formatDay(v.trialEndsAt) : null}
+        periodEnd={v.periodEnd ? formatDay(v.periodEnd) : null}
       />
+
+      <p className="mt-8 text-xs text-gray-600">
+        {LEGAL_LINE}. Cancel any time: your plan stays on until the end of the month you paid for. No refunds for part of a month.
+      </p>
     </div>
   );
 }

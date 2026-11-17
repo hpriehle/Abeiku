@@ -10,8 +10,15 @@ export function BillingBanner({ banner }: { banner: NonNullable<Banner> }) {
   if (banner.kind === "past_due") {
     return (
       <div role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 sm:px-6">
-        <strong>Your last payment did not go through.</strong> Please check your card so your account stays open.{" "}
-        <Link href="/admin/plan" className="font-semibold underline underline-offset-4">See your plan</Link>
+        {banner.locked ? (
+          <><strong>Your account is locked because your last payment failed.</strong> Update your card to open it again.</>
+        ) : banner.lockAt ? (
+          <><strong>Your last payment failed.</strong> Update your card by {formatDay(banner.lockAt)} to keep access.</>
+        ) : (
+          <><strong>Your last payment failed.</strong> Update your card soon to keep access.</>
+        )}{" "}
+        {/* A plain link: the route redirects to Stripe or Paystack. */}
+        <a href="/api/admin/billing/card" className="font-semibold underline underline-offset-4">Update card</a>
       </div>
     );
   }
