@@ -1,5 +1,8 @@
-// Fire-and-forget chat message + event logging
-// These functions never block the WhatsApp message processing flow.
+// Chat message + event logging.
+// Every function here returns a Promise that resolves once the database
+// writes have finished, and never throws (errors are logged). Callers must
+// await them: on serverless hosts (Netlify) the function is frozen as soon as
+// the response is returned, so un-awaited writes can be lost.
 
 import { supabase } from "@/lib/supabase/client";
 
@@ -20,14 +23,13 @@ export interface LogMessageParams {
   step?: string;
 }
 
-export function logMessage(params: LogMessageParams): void {
-  void recordMessage(params);
+export async function logMessage(params: LogMessageParams): Promise<void> {
+  await recordMessage(params);
 }
 
 /**
- * Same writes as logMessage, but the caller can await them. Used when storing
- * the message is the whole job (WhatsApp bot off), so a serverless function
- * must not return before the row is written. Never throws.
+ * Same writes as logMessage, but also reports whether the chat_messages row
+ * was stored. Never throws.
  */
 export async function recordMessage(params: LogMessageParams): Promise<boolean> {
   const insert = supabase
@@ -100,24 +102,26 @@ export interface LogEventParams {
   metadata?: Record<string, unknown>;
 }
 
-export function logEvent(params: LogEventParams): void {
-  supabase
-    .from("conversation_events")
-    .insert({
-      hotel_id: params.hotelId,
-      conversation_id: params.conversationId,
-      phone: params.phone,
-      event_type: params.eventType,
-      funnel_step: params.funnelStep,
-      from_state: params.fromState,
-      to_state: params.toState,
-      ai_intent: params.aiIntent,
-      ai_confidence: params.aiConfidence,
-      ai_input_text: params.aiInputText,
-      ai_response_time_ms: params.aiResponseTimeMs,
-      metadata: params.metadata ?? {},
-    })
-    .then(({ error }) => {
-      if (error) console.error("[ChatLogger] logEvent error:", error.message);
-    });
+export async function logEvent(params: LogEventParams): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from("conversation_events")
+      .insert({
+        hotel_id: params.hotelId,
+        conversation_id: params.conversationId,
+        phone: params.phone,
+        event_type: params.eventType,
+        funnel_step: params.funnelStep,
+        from_state: params.fromState,
+        to_state: params.toState,
+        ai_intent: params.aiIntent,
+        ai_confidence: params.aiConfidence,
+        ai_input_text: params.aiInputText,
+        ai_response_time_ms: params.aiResponseTimeMs,
+        metadata: params.metadata ?? {},
+      });
+    if (error) console.error("[ChatLogger] logEvent error:", error.message);
+  } catch (err) {
+    console.error("[ChatLogger] logEvent failed:", err);
+  }
 }

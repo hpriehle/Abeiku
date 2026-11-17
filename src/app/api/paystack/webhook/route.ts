@@ -170,8 +170,8 @@ export async function POST(request: NextRequest) {
       if (payment.phone) {
         const conv = await getConversation(hotel.id, payment.phone);
         if (conv) {
-          logEvent({ hotelId: hotel.id, conversationId: conv.id, phone: payment.phone, eventType: "funnel_step", funnelStep: "booked", metadata: { booking_id: payment.booking_id, provider: "paystack" } });
-          logEvent({ hotelId: hotel.id, conversationId: conv.id, phone: payment.phone, eventType: "payment_completed", metadata: { payment_id: payment.id, provider: "paystack" } });
+          await logEvent({ hotelId: hotel.id, conversationId: conv.id, phone: payment.phone, eventType: "funnel_step", funnelStep: "booked", metadata: { booking_id: payment.booking_id, provider: "paystack" } });
+          await logEvent({ hotelId: hotel.id, conversationId: conv.id, phone: payment.phone, eventType: "payment_completed", metadata: { payment_id: payment.id, provider: "paystack" } });
         }
       }
 
