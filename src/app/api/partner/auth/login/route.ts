@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHotelById } from "@/lib/db";
-import {
-  getInfluencerByEmail,
-  getInfluencersByWhatsapp,
-  markInfluencerLogin,
-  type Influencer,
-} from "@/lib/db/influencers";
+import { markInfluencerLogin } from "@/lib/db/influencers";
+import { supabaseAccountStore } from "@/lib/db/partner-accounts";
+import { authenticate } from "@/lib/partner/accounts";
 import { normalizeWhatsapp } from "@/lib/partner/codes";
 import {
   verifyPassword,
   createPartnerSessionToken,
   getPartnerSessionCookieOptions,
+  sessionPayloadFor,
 } from "@/lib/partner/auth";
+import { supabaseSignupStore } from "@/lib/db/partner-signup";
+import { CONFIRM } from "@/lib/partner/p2-copy";
 import {
   getAttemptStore,
   checkLimit,
@@ -45,41 +45,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let influencer: Influencer | null = null;
-    if (login.includes("@")) {
-      const found = await getInfluencerByEmail(login);
-      if (found?.password_hash && (await verifyPassword(password, found.password_hash))) influencer = found;
-    } else {
-      const whatsapp = normalizeWhatsapp(login);
-      // A number is unique per hotel, so it can match one partner per hotel: take the one
-      // whose password matches.
-      for (const found of whatsapp ? await getInfluencersByWhatsapp(whatsapp) : []) {
-        if (found.password_hash && (await verifyPassword(password, found.password_hash))) {
-          influencer = found;
-          break;
-        }
-      }
-    }
-    if (!influencer) {
+    // One account per person (P2); before the P2 SQL runs, one login per hotel row as before.
+    const result = await authenticate(
+      login,
+      password,
+      supabaseAccountStore,
+      verifyPassword,
+      supabaseSignupStore.confirmPending
+    );
+    if (!result) {
       await recordFailure(store, keys);
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
     await clearKeys(store, [keys[1]]);
+    if (result.unconfirmed) {
+      // Signed up (P2 step 2) but the confirm link is not used yet: no session.
+      return NextResponse.json(
+        { error: CONFIRM.loginUnconfirmed, reason: "unconfirmed", email: result.account.email },
+        { status: 403 }
+      );
+    }
+    const { account, membership: influencer } = result;
 
-    const hotel = await getHotelById(influencer.hotel_id);
-    if (!hotel) {
+    // No membership: a signed-up account no hotel has added yet.
+    const hotel = influencer ? await getHotelById(influencer.hotel_id) : null;
+    if (influencer && !hotel) {
       return NextResponse.json({ error: "Hotel not found" }, { status: 500 });
     }
 
-    const token = await createPartnerSessionToken({
-      influencerId: influencer.id,
-      hotelId: influencer.hotel_id,
-      hotelSlug: hotel.slug,
-      email: influencer.email ?? influencer.whatsapp ?? "",
-      name: influencer.name,
-    });
+    const token = await createPartnerSessionToken(sessionPayloadFor(account, influencer, hotel?.slug ?? ""));
 
-    await markInfluencerLogin(influencer.id);
+    if (influencer) await markInfluencerLogin(influencer.id);
+    if (account) await supabaseAccountStore.markAccountLogin(account.id);
 
     const { name, options } = getPartnerSessionCookieOptions();
     const response = NextResponse.json({ success: true });

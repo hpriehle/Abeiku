@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthShell, BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, INPUT, NETWORK_ERROR, apiError } from "@/components/partner/ui";
 import { INVITE_MESSAGES, type InviteCheck } from "@/lib/partner/invite";
+import { HAS_ACCOUNT } from "@/lib/partner/p2-copy";
 
 export default function PartnerSetupPage() {
   // useSearchParams needs a Suspense boundary for the static build.
@@ -29,6 +30,8 @@ function PartnerSetup() {
   const [check, setCheck] = useState<InviteCheck | null>(
     token ? null : { valid: false, reason: "missing", message: INVITE_MESSAGES.missing }
   );
+  // P2: the link's email already had an account; the hotel was added to it.
+  const [hasAccount, setHasAccount] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -50,6 +53,19 @@ function PartnerSetup() {
     );
   }
 
+  if (hasAccount) {
+    return (
+      <AuthShell title={HAS_ACCOUNT.title}>
+        <p className="text-sm text-gray-800 leading-relaxed" role="status">
+          {HAS_ACCOUNT.message}
+        </p>
+        <Link href="/partner/login" className={`${BUTTON_PRIMARY} w-full mt-6`}>
+          Go to sign in
+        </Link>
+      </AuthShell>
+    );
+  }
+
   if (!check.valid) {
     return (
       <AuthShell
@@ -66,7 +82,15 @@ function PartnerSetup() {
     );
   }
 
-  return <SetupForm token={token} name={check.name} reset={check.reset} onInvalid={setCheck} />;
+  return (
+    <SetupForm
+      token={token}
+      name={check.name}
+      reset={check.reset}
+      onInvalid={setCheck}
+      onHasAccount={() => setHasAccount(true)}
+    />
+  );
 }
 
 function SetupForm({
@@ -74,11 +98,13 @@ function SetupForm({
   name,
   reset,
   onInvalid,
+  onHasAccount,
 }: {
   token: string;
   name: string;
   reset: boolean;
   onInvalid: (c: InviteCheck) => void;
+  onHasAccount: () => void;
 }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -112,6 +138,10 @@ function SetupForm({
         return;
       }
       const body = await res.json().catch(() => null);
+      if (body?.reason === "has_account") {
+        onHasAccount();
+        return;
+      }
       if (body?.reason === "expired" || body?.reason === "invalid") {
         onInvalid({ valid: false, reason: body.reason, message: INVITE_MESSAGES[body.reason as "expired" | "invalid"] });
         return;

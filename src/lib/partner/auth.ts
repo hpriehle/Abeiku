@@ -4,7 +4,13 @@ import bcrypt from "bcryptjs";
 
 const COOKIE_NAME = "partner_session";
 
+/**
+ * One session per partner account (P2). influencerId/hotelId/hotelSlug are the hotel the dashboard
+ * opens on; the account can switch to its other hotels. accountId is missing for sessions made
+ * before the P2 SQL ran: the dashboard then finds the account through influencerId.
+ */
 export interface PartnerSessionPayload {
+  accountId?: string;
   influencerId: string;
   hotelId: string;
   hotelSlug: string;
@@ -50,3 +56,22 @@ export function getPartnerSessionCookieOptions() {
 }
 
 export { COOKIE_NAME };
+
+/**
+ * Session for an account and the hotel the dashboard opens on. A signed-up account no hotel has
+ * added yet (P2 step 2) has no membership: the hotel fields are empty and the dashboard says so.
+ */
+export function sessionPayloadFor(
+  account: { id: string; email: string | null; whatsapp: string | null; name: string } | null,
+  membership: { id: string; hotel_id: string; email: string | null; whatsapp: string | null; name: string } | null,
+  hotelSlug: string
+): PartnerSessionPayload {
+  return {
+    ...(account ? { accountId: account.id } : {}),
+    influencerId: membership?.id ?? "",
+    hotelId: membership?.hotel_id ?? "",
+    hotelSlug: membership ? hotelSlug : "",
+    email: account?.email ?? account?.whatsapp ?? membership?.email ?? membership?.whatsapp ?? "",
+    name: account?.name ?? membership?.name ?? "",
+  };
+}

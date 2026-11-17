@@ -13,13 +13,16 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/db", () => ({
   getPaymentsForHotel: vi.fn(async () => []),
   getPaymentStats: vi.fn(async () => ({})),
+  getHotelById: vi.fn(async () => null),
 }));
 vi.mock("@/lib/db/influencers", () => ({
   getBookingById: vi.fn(async () => null),
   setBookingPayout: vi.fn(),
   getInfluencerById: vi.fn(async () => null),
   listBookingsForInfluencer: vi.fn(async () => []),
+  getTotalClicks: vi.fn(async () => 0),
 }));
+vi.mock("@/lib/db/partner-accounts", () => ({ supabaseAccountStore: {} }));
 
 import { sessionKindOf, signSession, verifySession } from "./session";
 import { createSessionToken, getSession } from "@/lib/admin/auth";
@@ -107,7 +110,7 @@ describe("admin APIs refuse partner sessions", () => {
 describe("partner APIs refuse admin sessions", () => {
   it("admin token in the partner cookie gets 401 on /api/partner/stats", async () => {
     jar.set("partner_session", await createSessionToken(ADMIN));
-    expect((await partnerStatsGET()).status).toBe(401);
+    expect((await partnerStatsGET(new NextRequest("http://x/api/partner/stats"))).status).toBe(401);
     expect(await getPartnerSession()).toBeNull();
   });
 });

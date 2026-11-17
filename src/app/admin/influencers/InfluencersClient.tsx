@@ -12,11 +12,15 @@ import { codeFromName } from "@/lib/partner/codes";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, NETWORK_ERROR, apiError } from "@/components/partner/ui";
+import { ADMIN_ADDED, PAYOUT_ADMIN } from "@/lib/partner/p2-copy";
+import { commissionTotal, type AdminPayoutView } from "@/lib/partner/payouts";
 
 interface AdminData {
   site_url: string | null;
   partners: PartnerView[];
   bookings: BookingView[];
+  /** P2 step 5: payouts the hotel recorded; empty before the SQL. */
+  payouts: AdminPayoutView[];
 }
 
 interface IssuedLink {
@@ -25,6 +29,16 @@ interface IssuedLink {
   /** Null: valid until used. */
   expiresAt: string | null;
   reset: boolean;
+}
+
+/** P2: the partner already had an Abeiku account and was added right away (no setup link). */
+interface AddedExisting {
+  added: true;
+  name: string;
+  code: string;
+  emailed: boolean;
+  /** wa.me link with the message filled in; null without a WhatsApp number. */
+  whatsappUrl: string | null;
 }
 
 const INPUT =
@@ -51,8 +65,11 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
   const [data, setData] = useState<AdminData>(initial);
   const [showForm, setShowForm] = useState(false);
   const [issued, setIssued] = useState<IssuedLink | null>(null);
+  const [added, setAdded] = useState<AddedExisting | null>(null);
   const [filter, setFilter] = useState<Filter>("owed");
   const [error, setError] = useState("");
+  const [paying, setPaying] = useState<PartnerView | null>(null);
+  const [paidNotice, setPaidNotice] = useState("");
 
   async function refresh() {
     try {
@@ -84,6 +101,12 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
     } catch {
       setError(NETWORK_ERROR);
     }
+  }
+
+  function startPayout(p: PartnerView) {
+    setPaidNotice("");
+    setPaying(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   const owedTotals = sumByCurrency(data.partners, "owed");
@@ -131,13 +154,42 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
         </div>
       )}
 
+      {paidNotice && (
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3" role="status">
+          <p className="text-sm text-green-900">{paidNotice}</p>
+          <button onClick={() => setPaidNotice("")} className="text-sm font-medium text-green-900 underline shrink-0">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {paying && (
+        <RecordPayoutForm
+          partner={paying}
+          owed={data.bookings.filter((b) => b.partner_id === paying.id && b.status === "owed")}
+          onCancel={() => setPaying(null)}
+          onSaved={async (marked) => {
+            setPaidNotice(PAYOUT_ADMIN.saved(paying.name, marked));
+            setPaying(null);
+            await refresh();
+          }}
+        />
+      )}
+
       {issued && <SetupLinkNotice link={issued} onClose={() => setIssued(null)} />}
+      {added && <AddedExistingNotice added={added} onClose={() => setAdded(null)} />}
 
       {showForm && (
         <CreatePartnerForm
           siteUrl={data.site_url}
-          onCreated={async (link) => {
-            setIssued(link);
+          onCreated={async (result) => {
+            if ("added" in result) {
+              setIssued(null);
+              setAdded(result);
+            } else {
+              setAdded(null);
+              setIssued(result);
+            }
             setShowForm(false);
             await refresh();
           }}
@@ -176,6 +228,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     <CopyLinkButton link={p.link} />
                     <AccountCell p={p} onNewLink={newSetupLink} />
+                    <RecordPayoutButton p={p} onClick={startPayout} />
                   </div>
                 </li>
               ))}
@@ -209,6 +262,9 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
                         {formatMoney(p.totals.owed, p.currency)}
+                        <div>
+                          <RecordPayoutButton p={p} onClick={startPayout} />
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right text-gray-800 whitespace-nowrap">
                         {formatMoney(p.totals.paid, p.currency)}
@@ -318,7 +374,230 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
           </>
         )}
       </section>
+
+      <PayoutHistory payouts={data.payouts ?? []} />
     </div>
+  );
+}
+
+function RecordPayoutButton({ p, onClick }: { p: PartnerView; onClick: (p: PartnerView) => void }) {
+  if (!(p.totals.owed > 0)) return null;
+  return (
+    <button onClick={() => onClick(p)} className={LINK_BUTTON}>
+      {PAYOUT_ADMIN.recordButton}
+    </button>
+  );
+}
+
+function RecordPayoutForm({
+  partner,
+  owed,
+  onCancel,
+  onSaved,
+}: {
+  partner: PartnerView;
+  owed: BookingView[];
+  onCancel: () => void;
+  onSaved: (marked: number) => Promise<void>;
+}) {
+  const [ticked, setTicked] = useState<Set<string>>(() => new Set(owed.map((b) => b.id)));
+  const [amount, setAmount] = useState(() => commissionTotal(owed, owed.map((b) => b.id)).toFixed(2));
+  const [amountEdited, setAmountEdited] = useState(false);
+  const [currency, setCurrency] = useState<"GHS" | "USD">(partner.currency);
+  const [date, setDate] = useState(today());
+  const [method, setMethod] = useState("");
+  const [reference, setReference] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const total = commissionTotal(owed, ticked);
+  const differs = currency !== partner.currency || Math.abs(Number(amount) - total) >= 0.005;
+
+  function toggle(id: string) {
+    const next = new Set(ticked);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setTicked(next);
+    if (!amountEdited) setAmount(commissionTotal(owed, next).toFixed(2));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (ticked.size === 0) return setError(PAYOUT_ADMIN.errBookings);
+    if (!(Number(amount) > 0)) return setError(PAYOUT_ADMIN.errAmount);
+    if (!date) return setError(PAYOUT_ADMIN.errDate);
+    if (!method.trim()) return setError(PAYOUT_ADMIN.errMethod);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/influencers/${partner.id}/payouts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          booking_ids: [...ticked],
+          amount: Number(amount),
+          currency,
+          paid_on: date,
+          method: method.trim(),
+          reference: reference.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        setError(await apiError(res, PAYOUT_ADMIN.saveFailed));
+        setBusy(false);
+        return;
+      }
+      const body = await res.json();
+      await onSaved(Number(body.marked) || ticked.size);
+    } catch {
+      setError(NETWORK_ERROR);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={`${CARD} p-4 sm:p-6 space-y-4`} aria-labelledby="payout-heading">
+      <div>
+        <h2 id="payout-heading" className="text-base font-semibold text-gray-900">
+          {PAYOUT_ADMIN.formTitle(partner.name)}
+        </h2>
+        <p className="text-sm text-gray-700 mt-1">{PAYOUT_ADMIN.intro(partner.name)}</p>
+      </div>
+
+      <fieldset>
+        <legend className="text-sm font-medium text-gray-800 mb-2">{PAYOUT_ADMIN.bookingsLabel}</legend>
+        <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg">
+          {owed.map((b) => (
+            <li key={b.id}>
+              <label className="flex items-center gap-3 px-3 py-2 min-h-11 text-sm text-gray-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={ticked.has(b.id)}
+                  onChange={() => toggle(b.id)}
+                  className="h-4 w-4 accent-[#2D4A3E]"
+                />
+                <span className="font-mono text-xs">{b.booking_ref}</span>
+                <span className="text-gray-700">
+                  {formatDate(b.check_in)} → {formatDate(b.check_out)}
+                </span>
+                <span className="ml-auto font-semibold whitespace-nowrap">
+                  {formatMoney(b.commission, b.commission_currency ?? partner.currency)}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </fieldset>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={PAYOUT_ADMIN.amountLabel} htmlFor="payout-amount">
+          <input
+            id="payout-amount"
+            type="number"
+            inputMode="decimal"
+            min="0.01"
+            step="0.01"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setAmountEdited(true);
+            }}
+            required
+            className={INPUT}
+          />
+        </Field>
+        <Field label={PAYOUT_ADMIN.currencyLabel} htmlFor="payout-currency">
+          <select
+            id="payout-currency"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as "GHS" | "USD")}
+            className={INPUT}
+          >
+            <option value="GHS">GH₵ (GHS)</option>
+            <option value="USD">$ (USD)</option>
+          </select>
+        </Field>
+        <Field label={PAYOUT_ADMIN.dateLabel} htmlFor="payout-date">
+          <input id="payout-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={INPUT} />
+        </Field>
+        <Field label={PAYOUT_ADMIN.methodLabel} htmlFor="payout-method">
+          <input
+            id="payout-method"
+            type="text"
+            maxLength={100}
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            placeholder={PAYOUT_ADMIN.methodPlaceholder}
+            required
+            className={INPUT}
+          />
+        </Field>
+        <Field label={PAYOUT_ADMIN.referenceLabel} htmlFor="payout-reference">
+          <input
+            id="payout-reference"
+            type="text"
+            maxLength={100}
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder={PAYOUT_ADMIN.referencePlaceholder}
+            className={INPUT}
+          />
+        </Field>
+      </div>
+      {ticked.size > 0 && differs && (
+        <p className="text-sm text-amber-900">{PAYOUT_ADMIN.amountDiffers(formatMoney(total, partner.currency))}</p>
+      )}
+
+      <ErrorMessage>{error}</ErrorMessage>
+      <div className="flex flex-wrap gap-3">
+        <button type="submit" disabled={busy} className={BUTTON_PRIMARY}>
+          {busy ? PAYOUT_ADMIN.saving : PAYOUT_ADMIN.save}
+        </button>
+        <button type="button" onClick={onCancel} className={BUTTON_SECONDARY}>
+          {PAYOUT_ADMIN.cancel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PayoutHistory({ payouts }: { payouts: AdminPayoutView[] }) {
+  return (
+    <section className={CARD} aria-labelledby="payouts-heading">
+      <h2 id="payouts-heading" className="px-4 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">
+        {PAYOUT_ADMIN.historyTitle}
+      </h2>
+      {payouts.length === 0 ? (
+        <p className="p-6 text-center text-gray-900 font-medium">{PAYOUT_ADMIN.historyEmpty}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className={`${TH} text-left`}>{PAYOUT_ADMIN.colDate}</th>
+                <th className={`${TH} text-left`}>{PAYOUT_ADMIN.colPartner}</th>
+                <th className={`${TH} text-right`}>{PAYOUT_ADMIN.colAmount}</th>
+                <th className={`${TH} text-left`}>{PAYOUT_ADMIN.colMethod}</th>
+                <th className={`${TH} text-left`}>{PAYOUT_ADMIN.colReference}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payouts.map((p) => (
+                <tr key={p.id} className="border-t border-gray-200">
+                  <td className="px-4 py-3 whitespace-nowrap text-gray-800">{formatDate(p.paid_on)}</td>
+                  <td className="px-4 py-3 text-gray-900">{p.partner_name ?? "—"}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
+                    {formatMoney(p.amount, p.currency)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-800">{p.method}</td>
+                  <td className="px-4 py-3 text-gray-800 break-words">{p.reference ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -432,12 +711,41 @@ function SetupLinkNotice({ link, onClose }: { link: IssuedLink; onClose: () => v
   );
 }
 
+function AddedExistingNotice({ added, onClose }: { added: AddedExisting; onClose: () => void }) {
+  return (
+    <div className="rounded-xl bg-green-50 border border-green-300 text-green-950 p-4 text-sm space-y-3" role="status">
+      <div className="flex items-start justify-between gap-3">
+        <p>
+          {ADMIN_ADDED.title(added.name, added.code)} {added.emailed ? ADMIN_ADDED.emailed : ADMIN_ADDED.notEmailed}
+        </p>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="shrink-0 px-2 text-lg leading-none text-green-900 hover:text-black"
+        >
+          ✕
+        </button>
+      </div>
+      {added.whatsappUrl && (
+        <a
+          href={added.whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${BUTTON_PRIMARY} ${SMALL_BUTTON} inline-flex`}
+        >
+          {ADMIN_ADDED.whatsappButton}
+        </a>
+      )}
+    </div>
+  );
+}
+
 function CreatePartnerForm({
   siteUrl,
   onCreated,
 }: {
   siteUrl: string | null;
-  onCreated: (link: IssuedLink) => Promise<void>;
+  onCreated: (result: IssuedLink | AddedExisting) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -496,6 +804,16 @@ function CreatePartnerForm({
         return;
       }
       const data = await res.json();
+      if (data.existing_account && !data.setup_url) {
+        await onCreated({
+          added: true,
+          name: data.partner.name,
+          code: data.partner.code,
+          emailed: Boolean(data.emailed),
+          whatsappUrl: data.whatsapp_url ?? null,
+        });
+        return;
+      }
       await onCreated({
         name: `${name} (code ${data.partner.code})`,
         url: data.setup_url,
