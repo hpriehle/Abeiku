@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { billingDeps } from "@/lib/billing";
 import { handleStripeEvent, verifyStripeSignature } from "@/lib/billing/webhooks";
+import { opsAlert } from "@/lib/ops/alerts";
 
 export async function POST(request: NextRequest) {
   const raw = await request.text();
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     // 500 so Stripe retries later (e.g. the database was down).
     console.error(`[billing] stripe ${evt.type} failed:`, err);
+    await opsAlert("stripe-webhook", `Stripe webhook ${evt.type} failed`, err);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

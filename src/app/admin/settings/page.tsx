@@ -12,6 +12,7 @@ import { alertEmailOf } from "@/lib/db/alert-email";
 import { AlertWhatsAppForm } from "./AlertWhatsAppForm";
 import { alertWhatsAppOf } from "@/lib/db/alert-whatsapp";
 import { NotificationSettings } from "./notifications/NotificationSettings";
+import { adminFeatures } from "@/lib/admin/features";
 
 function WhatsAppLogo({ className }: { className?: string }) {
   return (
@@ -174,13 +175,15 @@ export default async function SettingsPage({
     <div className="admin-page">
       <div className="flex items-center justify-between mb-6">
         <h1 className="admin-h1">Settings</h1>
-        {/* TODO: Remove this dev button before production */}
+        {/* L3: platform admins and exempt hotels only */}
+        {adminFeatures(hotel, session.role).devTools && (
         <a
           href="/admin/onboarding"
           className="px-4 py-2 border border-dashed border-orange-300 text-orange-700 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
         >
           Dev: Run Onboarding
         </a>
+        )}
       </div>
 
       {calendarNotice && (

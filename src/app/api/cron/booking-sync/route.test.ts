@@ -13,6 +13,8 @@ const syncFeedHotels = vi.fn();
 const alertsAfterSync = vi.fn();
 const alertsAfterSyncs = vi.fn();
 const syncedFeedsBefore = vi.fn();
+const alertFeedFailures = vi.fn();
+const opsAlert = vi.fn();
 
 vi.mock("@/lib/db/influencers", () => ({ supabaseBookingReportStore: { findHotelId: async () => ARACUYA } }));
 vi.mock("@/lib/db/hotel-bookings", () => ({ supabaseHotelBookingsStore: { name: "bookings-store" } }));
@@ -24,6 +26,10 @@ vi.mock("@/lib/alerts", () => ({
   alertsAfterSync: (...a: unknown[]) => alertsAfterSync(...a),
   alertsAfterSyncs: (...a: unknown[]) => alertsAfterSyncs(...a),
   syncedFeedsBefore: (...a: unknown[]) => syncedFeedsBefore(...a),
+}));
+vi.mock("@/lib/ops/alerts", () => ({
+  alertFeedFailures: (...a: unknown[]) => alertFeedFailures(...a),
+  opsAlert: (...a: unknown[]) => opsAlert(...a),
 }));
 vi.mock("@/lib/bookings/feeds", async (orig) => ({
   ...(await orig<typeof import("@/lib/bookings/feeds")>()),
@@ -45,6 +51,7 @@ const emptyOthers = (over: Partial<FeedSyncSummary> = {}): FeedSyncSummary => ({
   updated: 0,
   cancelled: 0,
   failedHotels: [],
+  feedErrors: [],
   alertInputs: [],
   ...over,
 });
@@ -63,6 +70,27 @@ beforeEach(() => {
 });
 
 describe("POST /api/cron/booking-sync", () => {
+  it("L3: feed failures of Aracuya and other hotels go to the ops alert, not into the response", async () => {
+    syncFeedHotels.mockResolvedValue(emptyOthers({ feedsFailed: 1, feedErrors: [{ slug: "lakeside", errors: ["ical: HTTP 404"] }] }));
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(alertFeedFailures).toHaveBeenCalledWith([
+      { slug: "aracuya", errors: ["google_calendar: not configured"] },
+      { slug: "lakeside", errors: ["ical: HTTP 404"] },
+    ]);
+    const body = await res.json();
+    expect(body.otherHotels.feedErrors).toBeUndefined();
+    expect(opsAlert).not.toHaveBeenCalled();
+  });
+
+  it("L3: a crash of the whole sync emails Harrison", async () => {
+    syncFeedHotels.mockResolvedValue(emptyOthers());
+    syncHotelBookings.mockRejectedValue(new Error("db down"));
+    const res = await call();
+    expect(res.status).toBe(500);
+    expect(opsAlert).toHaveBeenCalledWith("booking-sync", "Booking sync failed", expect.any(Error));
+  });
+
   it("refuses without the secret", async () => {
     const res = await POST(new NextRequest("http://localhost/api/cron/booking-sync", { method: "POST" }));
     expect(res.status).toBe(401);

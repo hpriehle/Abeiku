@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isBookingBotEnabled } from "@/lib/whatsapp/inbound";
 import { getSession } from "@/lib/admin/auth";
+import { adminFeatures } from "@/lib/admin/features";
 import { getHotelById, getConversation } from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
 import { simulatorStorage, SimulatorContext } from "@/lib/whatsapp/simulator-context";
@@ -60,6 +61,8 @@ export async function POST(request: NextRequest) {
 
   const hotel = await getHotelById(session.hotelId);
   if (!hotel) return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
+  // L3: the Simulator is for platform admins and exempt hotels only.
+  if (!adminFeatures(hotel, session.role).simulator) return NextResponse.json({ error: "Not available" }, { status: 403 });
 
   // F2: the simulator runs the real booking flow (it creates real booking rows),
   // so it only works for a hotel that has the WhatsApp booking bot switched on.

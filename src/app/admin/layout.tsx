@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/admin/auth";
 import { loadBillingView } from "@/lib/billing";
+import { loadAdminFeatures, NO_FEATURES } from "@/lib/admin/features";
 import { AdminNav } from "./AdminNav";
 import { BillingBanner } from "./BillingBanner";
 
@@ -16,6 +17,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Never throws: missing columns or exempt hotels give full access.
   const billing = session ? await loadBillingView(session.hotelId) : null;
   if (billing && billing.access !== "full") redirect("/signup");
+  // L3: hide features that don't work for this hotel (WhatsApp inbox, Simulator).
+  const features = session ? await loadAdminFeatures(session) : NO_FEATURES;
 
   return (
     <div
@@ -28,6 +31,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         email={session?.email || "Hotel Admin"}
         platformAdmin={session?.role === "platform_admin"}
         showPlan={!!billing && !billing.legacy && !billing.exempt}
+        showCommunication={features.communication}
+        showSimulator={features.simulator}
       />
 
       <main className="flex-1 min-w-0 overflow-y-auto">
