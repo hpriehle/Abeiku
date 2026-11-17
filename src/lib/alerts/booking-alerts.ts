@@ -1,7 +1,8 @@
 // Booking alerts to the hotel (never to guests): new booking, cancellation, and a daily
 // "arriving tomorrow" digest, sent by email to the hotel's alert address (hotels.alert_email).
 // New-booking and cancellation alerts also go to the manager's WhatsApp (hotels.alert_whatsapp)
-// when the hotel has its own WhatsApp number connected; see whatsAppAlertTo().
+// when the hotel can send WhatsApp (its own number, or the platform sender from
+// WHATSAPP_ALERT_SENDER_HOTEL_ID, see alert-sender.ts); see whatsAppAlertTo().
 //
 // They run off the `bookings` table, whatever wrote the row (website report, calendar /
 // iCal sync, WhatsApp bot, admin). Each row remembers which alerts it has had
@@ -36,7 +37,10 @@ export interface AlertHotel {
   totalRooms: number;
   /** Manager's WhatsApp for booking alerts (hotels.alert_whatsapp), any format. */
   alert_whatsapp?: string | null;
-  /** The hotel has its own WhatsApp number connected (access token + phone number id). */
+  /**
+   * The hotel can send WhatsApp alerts: its own number is connected (access token + phone
+   * number id), or the platform sender (WHATSAPP_ALERT_SENDER_HOTEL_ID) is connected.
+   */
   whatsappConnected?: boolean;
 }
 
@@ -74,7 +78,7 @@ export type WhatsAppAlerter = (msg: { hotelId: string; hotelName: string; to: st
 
 /**
  * Where this hotel's WhatsApp booking alerts go, or null for none. Only when the hotel
- * has its own WhatsApp number connected and a manager number set. Never a guest: the
+ * can send WhatsApp (whatsappConnected) and has a manager number set. Never a guest: the
  * number comes from the hotel's settings, not from the booking.
  */
 export function whatsAppAlertTo(hotel: Pick<AlertHotel, "alert_whatsapp" | "whatsappConnected">): string | null {

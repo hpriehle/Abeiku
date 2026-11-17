@@ -50,6 +50,7 @@ Meta app: **Abeiku**, App ID `1416351276566026` (developers.facebook.com, curren
 | `NEXT_PUBLIC_WHATSAPP_CONFIG_ID` | Facebook Login for Business configuration ID | Built into the page: redeploy after setting. |
 | `WHATSAPP_ALERT_TEMPLATE` | optional, default `booking_alert` | Template used for manager alerts. |
 | `WHATSAPP_ALERT_TEMPLATE_LANG` | optional, default `en` | |
+| `WHATSAPP_ALERT_SENDER_HOTEL_ID` | optional, a hotel id, e.g. `013b60e4-e55f-46f9-966b-70e0773f42e4` (Test Hotel, Meta test number) | Platform alert sender: hotels with a manager alert number but no WhatsApp number of their own send their booking alerts from this hotel's connected number. The text still names the alerting hotel ("Booking alert for Aracuya: …"). A hotel with its own number always uses its own. The `booking_alert` template must be approved on the sender's WhatsApp Business Account; with Meta's test number, the manager number must also be on the test number's recipient list. Unset it once the hotel connects its own number (not required: its own number wins anyway). |
 
 Hotels' own access tokens and phone number IDs are stored per hotel in the database
 (Embedded Signup writes them), not in env.
@@ -147,7 +148,8 @@ manual credentials to try the dashboard end to end. The token expires in 24h.
   and shown under outbound messages in the thread.
 - **Manager booking alerts on WhatsApp**: every new-booking and cancellation email alert
   (src/lib/alerts) is also sent as the `booking_alert` template to `hotels.alert_whatsapp`,
-  but only when that hotel has its own WhatsApp number connected. It is sent after the email
+  from that hotel's own connected WhatsApp number or, if it has none, from the platform
+  sender (`WHATSAPP_ALERT_SENDER_HOTEL_ID`, src/lib/alerts/alert-sender.ts). It is sent after the email
   succeeds; a WhatsApp failure is logged and not retried, so the manager never gets it twice.
   It never goes to a guest. The arrivals digest stays email only.
 - Imported bookings (Airbnb, VRBO, Booking.com, Google calendar, aracuya.com) still never get
