@@ -12,6 +12,7 @@ import { codeFromName } from "@/lib/partner/codes";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, ErrorMessage, NETWORK_ERROR, apiError } from "@/components/partner/ui";
+import { ADMIN_ADDED } from "@/lib/partner/p2-copy";
 
 interface AdminData {
   site_url: string | null;
@@ -25,6 +26,16 @@ interface IssuedLink {
   /** Null: valid until used. */
   expiresAt: string | null;
   reset: boolean;
+}
+
+/** P2: the partner already had an Abeiku account and was added right away (no setup link). */
+interface AddedExisting {
+  added: true;
+  name: string;
+  code: string;
+  emailed: boolean;
+  /** wa.me link with the message filled in; null without a WhatsApp number. */
+  whatsappUrl: string | null;
 }
 
 const INPUT =
@@ -51,6 +62,7 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
   const [data, setData] = useState<AdminData>(initial);
   const [showForm, setShowForm] = useState(false);
   const [issued, setIssued] = useState<IssuedLink | null>(null);
+  const [added, setAdded] = useState<AddedExisting | null>(null);
   const [filter, setFilter] = useState<Filter>("owed");
   const [error, setError] = useState("");
 
@@ -132,12 +144,19 @@ export function InfluencersClient({ initial }: { initial: AdminData }) {
       )}
 
       {issued && <SetupLinkNotice link={issued} onClose={() => setIssued(null)} />}
+      {added && <AddedExistingNotice added={added} onClose={() => setAdded(null)} />}
 
       {showForm && (
         <CreatePartnerForm
           siteUrl={data.site_url}
-          onCreated={async (link) => {
-            setIssued(link);
+          onCreated={async (result) => {
+            if ("added" in result) {
+              setIssued(null);
+              setAdded(result);
+            } else {
+              setAdded(null);
+              setIssued(result);
+            }
             setShowForm(false);
             await refresh();
           }}
@@ -432,12 +451,41 @@ function SetupLinkNotice({ link, onClose }: { link: IssuedLink; onClose: () => v
   );
 }
 
+function AddedExistingNotice({ added, onClose }: { added: AddedExisting; onClose: () => void }) {
+  return (
+    <div className="rounded-xl bg-green-50 border border-green-300 text-green-950 p-4 text-sm space-y-3" role="status">
+      <div className="flex items-start justify-between gap-3">
+        <p>
+          {ADMIN_ADDED.title(added.name, added.code)} {added.emailed ? ADMIN_ADDED.emailed : ADMIN_ADDED.notEmailed}
+        </p>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="shrink-0 px-2 text-lg leading-none text-green-900 hover:text-black"
+        >
+          ✕
+        </button>
+      </div>
+      {added.whatsappUrl && (
+        <a
+          href={added.whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${BUTTON_PRIMARY} ${SMALL_BUTTON} inline-flex`}
+        >
+          {ADMIN_ADDED.whatsappButton}
+        </a>
+      )}
+    </div>
+  );
+}
+
 function CreatePartnerForm({
   siteUrl,
   onCreated,
 }: {
   siteUrl: string | null;
-  onCreated: (link: IssuedLink) => Promise<void>;
+  onCreated: (result: IssuedLink | AddedExisting) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -496,6 +544,16 @@ function CreatePartnerForm({
         return;
       }
       const data = await res.json();
+      if (data.existing_account && !data.setup_url) {
+        await onCreated({
+          added: true,
+          name: data.partner.name,
+          code: data.partner.code,
+          emailed: Boolean(data.emailed),
+          whatsappUrl: data.whatsapp_url ?? null,
+        });
+        return;
+      }
       await onCreated({
         name: `${name} (code ${data.partner.code})`,
         url: data.setup_url,

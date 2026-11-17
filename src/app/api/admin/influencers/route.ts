@@ -9,16 +9,19 @@ import {
   getInfluencerByEmail,
   getInfluencerByWhatsapp,
 } from "@/lib/db/influencers";
-import { codeFromName, dedupeCode, normalizeEmail, normalizeWhatsapp } from "@/lib/partner/codes";
+import { normalizeEmail, normalizeWhatsapp } from "@/lib/partner/codes";
+import { getHotelById } from "@/lib/db";
+import { supabaseAccountStore } from "@/lib/db/partner-accounts";
+import { sendEmail } from "@/lib/notifications/email";
+import { handleAddPartner } from "@/lib/partner/add-partner";
 import {
   PARTNER_TYPES,
-  currencyForCountry,
   isValidRefCode,
   normalizeRefCode,
   type CommissionKind,
   type PartnerType,
 } from "@/lib/partner/commission";
-import { adminSiteUrl, buildAdminView, setupUrl } from "@/lib/partner/views";
+import { adminSiteUrl, buildAdminView, partnerSiteUrl } from "@/lib/partner/views";
 
 export async function GET() {
   const session = await getSession();
@@ -31,7 +34,9 @@ export async function GET() {
   return NextResponse.json(buildAdminView(partners, bookings, await adminSiteUrl(session.hotelId)));
 }
 
-// Creates a partner. Sends no email: returns the setup link for the admin to copy.
+// Adds a partner. New partner: returns the setup link for the admin to copy (no email sent).
+// Existing Abeiku partner account (P2): added right away, the partner is emailed, and the admin gets
+// a WhatsApp tap link to send.
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -82,55 +87,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Percent must be 100 or less" }, { status: 400 });
     }
 
-    const [codeClash, emailClash, whatsappClash] = await Promise.all([
-      givenCode ? getInfluencerBySlug(session.hotelId, givenCode) : null,
-      email ? getInfluencerByEmail(email) : null,
-      whatsapp ? getInfluencerByWhatsapp(session.hotelId, whatsapp) : null,
-    ]);
-    if (codeClash) return NextResponse.json({ error: "Code already in use" }, { status: 409 });
-    if (emailClash) return NextResponse.json({ error: "Email already registered" }, { status: 409 });
-    if (whatsappClash) {
-      return NextResponse.json({ error: "WhatsApp number already registered" }, { status: 409 });
-    }
+    const hotel = await getHotelById(session.hotelId);
+    if (!hotel) return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
 
-    // No code given: Abeiku issues one from the name (carmen-travels, carmen-travels-2, ...).
-    const code =
-      givenCode ||
-      dedupeCode(
-        codeFromName(name),
-        (await listInfluencersForHotel(session.hotelId)).map((p) => p.slug)
-      );
-
-    const currency = currencyForCountry(country);
-    const invite_token = randomBytes(32).toString("hex");
-    const invite_expires_at = null; // valid until used
-
-    const partner = await createInfluencer({
-      hotel_id: session.hotelId,
-      slug: code,
-      name,
-      email,
-      whatsapp,
-      town,
-      invite_token,
-      invite_expires_at,
-      partner_type,
-      country,
-      currency,
-      commission_kind,
-      commission_value: Math.round(commission_value * 100) / 100,
-      commission_currency: currency,
-    });
-
-    return NextResponse.json(
+    // Existing Abeiku partner account → added right away and told by email; else a setup link.
+    const result = await handleAddPartner(
       {
-        success: true,
-        partner: { id: partner.id, code: partner.slug, name: partner.name, email: partner.email, whatsapp: partner.whatsapp, currency },
-        setup_url: setupUrl(invite_token),
-        setup_expires_at: invite_expires_at,
+        name,
+        email,
+        whatsapp,
+        town,
+        partner_type,
+        country,
+        code: givenCode,
+        commission_kind,
+        commission_value,
       },
-      { status: 201 }
+      {
+        store: supabaseAccountStore,
+        hotel: { id: hotel.id, name: hotel.name },
+        siteUrl: partnerSiteUrl(hotel.slug),
+        getBySlug: getInfluencerBySlug,
+        getByEmail: getInfluencerByEmail,
+        getByWhatsapp: getInfluencerByWhatsapp,
+        listCodes: async (hotelId) => (await listInfluencersForHotel(hotelId)).map((p) => p.slug),
+        create: createInfluencer,
+        sendEmail,
+        newToken: () => randomBytes(32).toString("hex"),
+      }
     );
+    return NextResponse.json(result.body, { status: result.status });
   } catch (err) {
     console.error("Create partner error:", err);
     return NextResponse.json({ error: "Failed to create partner" }, { status: 500 });
