@@ -4,7 +4,13 @@ import bcrypt from "bcryptjs";
 
 const COOKIE_NAME = "partner_session";
 
+/**
+ * One session per partner account (P2). influencerId/hotelId/hotelSlug are the hotel the dashboard
+ * opens on; the account can switch to its other hotels. accountId is missing for sessions made
+ * before the P2 SQL ran: the dashboard then finds the account through influencerId.
+ */
 export interface PartnerSessionPayload {
+  accountId?: string;
   influencerId: string;
   hotelId: string;
   hotelSlug: string;

@@ -31,6 +31,8 @@ export interface Influencer {
   commission_kind: CommissionKind;
   commission_value: number;
   commission_currency: PartnerCurrency;
+  /** P2 partner account (see lib/partner/accounts.ts). Missing before docs/go-live-p2-accounts.sql. */
+  account_id?: string | null;
 }
 
 export interface InfluencerClick {
@@ -68,7 +70,7 @@ export async function createInfluencer(input: {
   email: string | null;
   whatsapp?: string | null;
   town?: string | null;
-  invite_token: string;
+  invite_token: string | null;
   invite_expires_at: string | null;
   redirect_url?: string;
   partner_type: PartnerType;
@@ -77,6 +79,9 @@ export async function createInfluencer(input: {
   commission_kind: CommissionKind;
   commission_value: number;
   commission_currency: PartnerCurrency;
+  /** Only after the P2 SQL: a membership of an existing account (no setup link needed). */
+  account_id?: string;
+  password_hash?: string | null;
 }): Promise<Influencer> {
   const { data, error } = await supabase
     .from("influencers")
@@ -96,6 +101,7 @@ export async function createInfluencer(input: {
       commission_kind: input.commission_kind,
       commission_value: input.commission_value,
       commission_currency: input.commission_currency,
+      ...(input.account_id ? { account_id: input.account_id, password_hash: input.password_hash ?? null } : {}),
     })
     .select()
     .single();
@@ -124,14 +130,16 @@ export async function getInfluencerBySlug(hotelId: string, slug: string): Promis
   return data;
 }
 
+/** Oldest partner with this email in any hotel (after P2 one person may be in several hotels). */
 export async function getInfluencerByEmail(email: string): Promise<Influencer | null> {
   const { data, error } = await supabase
     .from("influencers")
     .select("*")
     .eq("email", email.toLowerCase())
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
   if (error) throw error;
-  return data;
+  return data?.[0] ?? null;
 }
 
 /** Partners with this WhatsApp number (unique per hotel, so possibly one per hotel). */
@@ -427,9 +435,10 @@ export const supabasePartnerAdminStore: PartnerAdminStore = {
       .from("influencers")
       .select("id, hotel_id")
       .eq("email", email.toLowerCase())
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
     if (error) throw error;
-    return data;
+    return data?.[0] ?? null;
   },
 
   async insertPartner(row) {
