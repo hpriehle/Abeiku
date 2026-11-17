@@ -119,7 +119,7 @@ export async function handleMessage(message: WhatsAppMessage, senderPhone: strin
   }
 
   // Log inbound message
-  logMessage({
+  await logMessage({
     hotelId,
     conversationId: conversation.id,
     phone: senderPhone,
@@ -834,7 +834,7 @@ async function handleRoomSelected(phone: string, action: string) {
     );
 
     // Funnel: room selected
-    if (conversation) logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "room_selected" });
+    if (conversation) await logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "room_selected" });
   } else {
     // Path B: room picked first → send CTA URL date picker
     await upsertConversation(hotelId, phone, {
@@ -937,7 +937,7 @@ async function handleDateInput(phone: string, text: string) {
   });
 
   // Funnel: dates entered
-  if (conversation) logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "dates_entered" });
+  if (conversation) await logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "dates_entered" });
 
   await sendText(
     phone,
@@ -968,7 +968,7 @@ async function handleGuestNameInput(phone: string, text: string) {
   });
 
   // Funnel: guest info provided
-  if (conversation) logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "guest_info" });
+  if (conversation) await logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "guest_info" });
 
   // Show booking summary with confirm/cancel buttons
   const room = await getHotelRoomBySlug(hotelId, context.selected_room ?? "");
@@ -1301,8 +1301,8 @@ async function handleConfirmBooking(phone: string) {
   });
 
   // Funnel: booking confirmed
-  logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "confirmed" });
-  logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "booking_created", metadata: { booking_id: booking.id, room_slug: context.selected_room, total_price: finalPrice } });
+  await logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "funnel_step", funnelStep: "confirmed" });
+  await logEvent({ hotelId, conversationId: conversation.id, phone, eventType: "booking_created", metadata: { booking_id: booking.id, room_slug: context.selected_room, total_price: finalPrice } });
 
   // Notify hotel owner (fire-and-forget)
   notifyOwner(hotelId, "new_booking", {
@@ -1666,7 +1666,7 @@ async function handleConfirmCancel(phone: string) {
 
   // Funnel: booking cancelled
   const convCancel = await getConversation(hotelId, phone);
-  if (convCancel) logEvent({ hotelId, conversationId: convCancel.id, phone, eventType: "booking_cancelled", metadata: { booking_id: booking.id } });
+  if (convCancel) await logEvent({ hotelId, conversationId: convCancel.id, phone, eventType: "booking_cancelled", metadata: { booking_id: booking.id } });
 
   // Update conversation state
   const newState = await determineGuestState(hotelId, phone);
@@ -1767,7 +1767,7 @@ async function handleMoMoPayment(phone: string, bookingId: string) {
 
   // Funnel: payment initiated
   const convMomo = await getConversation(hotelId, phone);
-  if (convMomo) logEvent({ hotelId, conversationId: convMomo.id, phone, eventType: "funnel_step", funnelStep: "payment_initiated", metadata: { provider: "momo", booking_id: bookingId } });
+  if (convMomo) await logEvent({ hotelId, conversationId: convMomo.id, phone, eventType: "funnel_step", funnelStep: "payment_initiated", metadata: { provider: "momo", booking_id: bookingId } });
 
   // Step 1: Ask guest to select their network
   await upsertConversation(hotelId, phone, {
@@ -1980,7 +1980,7 @@ async function handleCardPayment(phone: string, bookingId: string) {
 
   // Funnel: payment initiated (card)
   const convCard = await getConversation(hotelId, phone);
-  if (convCard) logEvent({ hotelId, conversationId: convCard.id, phone, eventType: "funnel_step", funnelStep: "payment_initiated", metadata: { provider: "paystack", booking_id: bookingId } });
+  if (convCard) await logEvent({ hotelId, conversationId: convCard.id, phone, eventType: "funnel_step", funnelStep: "payment_initiated", metadata: { provider: "paystack", booking_id: bookingId } });
 
   if (!hotel.paystack_subaccount_code) {
     await sendText(
@@ -2055,7 +2055,7 @@ async function handleFreeText(
     // Log AI parse result
     if (conversation) {
       const hotelId = getHotelId();
-      logEvent({
+      await logEvent({
         hotelId,
         conversationId: conversation.id,
         phone,
@@ -2111,7 +2111,7 @@ async function handleFreeText(
     // Log AI fallback
     if (conversation) {
       const hotelId = getHotelId();
-      logEvent({
+      await logEvent({
         hotelId,
         conversationId: conversation.id,
         phone,

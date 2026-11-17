@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Record it in the inbox so replies land in the same thread.
     const conv = await upsertConversation(hotel.id, phone, guestName?.trim() ? { guest_name: guestName.trim() } : {});
-    logMessage({
+    await logMessage({
       hotelId: hotel.id,
       conversationId: conv.id,
       phone,
