@@ -174,6 +174,9 @@ export default async function SettingsPage({
     <div className="admin-page">
       <div className="flex items-center justify-between mb-6">
         <h1 className="admin-h1">Settings</h1>
+        <Link href="/admin/settings/account" className="admin-btn-secondary text-sm ml-auto mr-3">
+          Login email and password
+        </Link>
         {/* TODO: Remove this dev button before production */}
         <a
           href="/admin/onboarding"
