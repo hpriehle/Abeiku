@@ -6,6 +6,7 @@ import { supabaseAlertStore } from "@/lib/db/booking-alerts";
 import { getHotelById } from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
 import { sendTemplate } from "@/lib/whatsapp/client";
+import { pickAlertSender } from "./alert-sender";
 import {
   alertBookingsNow,
   logSkip,
@@ -22,12 +23,17 @@ export const resendMailer: Mailer = (msg) => sendEmail(msg);
 export const BOOKING_ALERT_TEMPLATE = process.env.WHATSAPP_ALERT_TEMPLATE || "booking_alert";
 export const BOOKING_ALERT_LANGUAGE = process.env.WHATSAPP_ALERT_TEMPLATE_LANG || "en";
 
-/** Sends from the hotel's own connected WhatsApp number (a template, so it works outside the 24h window). */
+/**
+ * Sends a template (works outside the 24h window) from the hotel's own connected number,
+ * or, if it has none, from the platform sender hotel (WHATSAPP_ALERT_SENDER_HOTEL_ID).
+ * The text always names the alerting hotel.
+ */
 export const metaWhatsAppAlerter: WhatsAppAlerter = async ({ hotelId, hotelName, to, summary }) => {
-  const hotel = await getHotelById(hotelId);
-  if (!hotel?.whatsapp_access_token || !hotel.whatsapp_phone_number_id) return { success: false, error: "WhatsApp not connected" };
   try {
-    await hotelStorage.run({ hotelId, hotel }, () =>
+    const hotel = await getHotelById(hotelId);
+    const sender = hotel ? await pickAlertSender(hotel, getHotelById) : null;
+    if (!sender) return { success: false, error: "WhatsApp not connected" };
+    await hotelStorage.run({ hotelId: sender.id, hotel: sender }, () =>
       sendTemplate(to, { name: BOOKING_ALERT_TEMPLATE, language: BOOKING_ALERT_LANGUAGE, bodyParams: [hotelName, summary] })
     );
     return { success: true };

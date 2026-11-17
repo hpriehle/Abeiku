@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import { toCalendarRow } from "@/lib/bookings/calendar-view";
 import { listingFor } from "@/lib/bookings/hotel-bookings";
 import type { AlertField, AlertStore } from "@/lib/alerts/booking-alerts";
+import { alertSenderHotelId, hasOwnWhatsApp } from "@/lib/alerts/alert-sender";
 
 const MAX_PENDING = 500;
 const PAGE = 1000;
@@ -20,6 +21,25 @@ function chunks<T>(xs: T[], size = ID_CHUNK): T[][] {
 
 function isMissingAlertWhatsApp(err: { code?: string; message?: string }): boolean {
   return /alert_whatsapp/.test(err.message ?? "") && /does not exist|could not find|schema cache/i.test(err.message ?? "");
+}
+
+/**
+ * True when WHATSAPP_ALERT_SENDER_HOTEL_ID names a hotel with its own connected number,
+ * so hotels without one can send alerts from it. A lookup error only turns the fallback
+ * off (logged), never the email alerts.
+ */
+export async function alertSenderReady(senderId: string | null = alertSenderHotelId()): Promise<boolean> {
+  if (!senderId) return false;
+  const { data, error } = await supabase
+    .from("hotels")
+    .select("whatsapp_access_token, whatsapp_phone_number_id")
+    .eq("id", senderId)
+    .maybeSingle();
+  if (error) {
+    console.error("[booking-alerts] alert sender lookup failed:", error.message);
+    return false;
+  }
+  return hasOwnWhatsApp(data);
 }
 
 function withAlerts(r: Record<string, unknown>) {
@@ -43,6 +63,7 @@ export const supabaseAlertStore: AlertStore = {
     if (error && isMissingAlertWhatsApp(error)) ({ data, error } = await query(base));
     if (error) throw error;
     const rows = (data ?? []) as unknown as Record<string, unknown>[];
+    const senderReady = await alertSenderReady();
     return rows
       .filter((h) => typeof h.alert_email === "string" && h.alert_email.includes("@"))
       .map((h) => ({
@@ -52,7 +73,8 @@ export const supabaseAlertStore: AlertStore = {
         alert_email: (h.alert_email as string).trim(),
         totalRooms: listingFor(h.slug as string).totalRooms,
         alert_whatsapp: typeof h.alert_whatsapp === "string" && h.alert_whatsapp.trim() ? h.alert_whatsapp.trim() : null,
-        whatsappConnected: Boolean(h.whatsapp_access_token && h.whatsapp_phone_number_id),
+        // Can send WhatsApp alerts: from its own number, or from the platform sender's.
+        whatsappConnected: hasOwnWhatsApp(h) || senderReady,
       }));
   },
 
