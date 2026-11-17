@@ -11,6 +11,9 @@ import {
   getPartnerSessionCookieOptions,
 } from "@/lib/partner/auth";
 import { checkInvite, INVITE_MESSAGES } from "@/lib/partner/invite";
+import { supabaseAccountStore } from "@/lib/db/partner-accounts";
+import { completeSetup } from "@/lib/partner/accounts";
+import { HAS_ACCOUNT } from "@/lib/partner/p2-copy";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +43,12 @@ export async function POST(request: NextRequest) {
     }
 
     const hash = await hashPassword(password);
-    await setInfluencerPassword(influencer.id, hash);
+    // With P2 accounts the password is the account's, for all its hotels.
+    const outcome = await completeSetup(influencer, hash, supabaseAccountStore, setInfluencerPassword);
+    if (outcome.kind === "has_account") {
+      return NextResponse.json({ error: HAS_ACCOUNT.message, reason: "has_account" }, { status: 409 });
+    }
+    const account = outcome.account;
     await markInfluencerLogin(influencer.id);
 
     const hotel = await getHotelById(influencer.hotel_id);
@@ -49,11 +57,12 @@ export async function POST(request: NextRequest) {
     }
 
     const token = await createPartnerSessionToken({
+      ...(account ? { accountId: account.id } : {}),
       influencerId: influencer.id,
       hotelId: influencer.hotel_id,
       hotelSlug: hotel.slug,
-      email: influencer.email ?? influencer.whatsapp ?? "",
-      name: influencer.name,
+      email: account?.email ?? account?.whatsapp ?? influencer.email ?? influencer.whatsapp ?? "",
+      name: account?.name ?? influencer.name,
     });
 
     const { name, options } = getPartnerSessionCookieOptions();
