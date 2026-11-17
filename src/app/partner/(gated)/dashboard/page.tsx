@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
 import { BUTTON_PRIMARY, FONT_HEADING } from "@/components/partner/ui";
+import { DASHBOARD } from "@/lib/partner/p2-copy";
 
 interface Booking {
   id: string;
@@ -24,8 +25,17 @@ interface Stats {
   currency: "GHS" | "USD";
   commission_kind: "percent" | "per_night";
   commission_value: number;
+  clicks: number;
   totals: { pending: number; owed: number; paid: number };
   bookings: Booking[];
+  hotel: Hotel;
+  /** Every hotel of the partner's account (P2): a switcher shows when there are 2+. */
+  hotels: Hotel[];
+}
+
+interface Hotel {
+  slug: string;
+  name: string;
 }
 
 const STATUS_HELP: Record<string, string> = {
@@ -42,12 +52,15 @@ const LABEL = "text-xs font-semibold text-gray-600 uppercase tracking-wide";
 export default function PartnerDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState("");
+  // Null: the hotel the session opened on.
+  const [hotel, setHotel] = useState<string | null>(null);
   const router = useRouter();
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const r = await fetch("/api/partner/stats", { cache: "no-store" });
+      const query = hotel ? `?hotel=${encodeURIComponent(hotel)}` : "";
+      const r = await fetch(`/api/partner/stats${query}`, { cache: "no-store" });
       if (r.status === 401) {
         router.replace("/partner/login");
         return;
@@ -57,7 +70,7 @@ export default function PartnerDashboardPage() {
     } catch {
       setError("We couldn't load your bookings. Check your internet connection and try again.");
     }
-  }, [router]);
+  }, [router, hotel]);
 
   useEffect(() => {
     load();
@@ -82,6 +95,17 @@ export default function PartnerDashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8">
+      {stats.hotels.length > 1 && (
+        <HotelSwitcher
+          hotels={stats.hotels}
+          current={stats.hotel.slug}
+          onChange={(slug) => {
+            setStats(null);
+            setHotel(slug);
+          }}
+        />
+      )}
+
       <section>
         <h1 className="text-2xl font-bold text-gray-900 break-words" style={FONT_HEADING}>
           Welcome, {stats.name}
@@ -93,10 +117,11 @@ export default function PartnerDashboardPage() {
 
       <ReferralLink link={stats.link_url} code={stats.code} />
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4" aria-label="Your commission">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" aria-label="Your commission">
         <Total label="Owed to you" value={money(stats.totals.owed)} hint="Guest has stayed; payment due" highlight />
         <Total label="Pending" value={money(stats.totals.pending)} hint="Guest has not checked out yet" />
         <Total label="Paid" value={money(stats.totals.paid)} hint="Already paid to you" />
+        <Total label={DASHBOARD.clicksLabel} value={String(stats.clicks)} hint={DASHBOARD.clicksHint} />
       </section>
 
       <section className={`${CARD} p-4 sm:p-6`}>
@@ -165,6 +190,36 @@ export default function PartnerDashboardPage() {
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+function HotelSwitcher({
+  hotels,
+  current,
+  onChange,
+}: {
+  hotels: Hotel[];
+  current: string;
+  onChange: (slug: string) => void;
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+      <label htmlFor="hotel-switcher" className={LABEL}>
+        {DASHBOARD.hotelLabel}
+      </label>
+      <select
+        id="hotel-switcher"
+        value={current}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-11 px-3 py-2 border border-gray-400 rounded-lg text-base sm:text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D4A3E]"
+      >
+        {hotels.map((h) => (
+          <option key={h.slug} value={h.slug}>
+            {h.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -256,8 +311,8 @@ function DashboardSkeleton() {
         <div className={`${bar} h-3 w-32`} />
         <div className={`${bar} h-12 w-full`} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className={`${CARD} p-4 sm:p-5 space-y-2`}>
             <div className={`${bar} h-3 w-20`} />
             <div className={`${bar} h-8 w-32`} />
