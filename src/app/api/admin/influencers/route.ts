@@ -18,7 +18,7 @@ import {
   type CommissionKind,
   type PartnerType,
 } from "@/lib/partner/commission";
-import { adminSiteUrl, buildAdminView, INVITE_TTL_MS, setupUrl } from "@/lib/partner/views";
+import { adminSiteUrl, buildAdminView, setupUrl } from "@/lib/partner/views";
 
 export async function GET() {
   const session = await getSession();
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     const currency = currencyForCountry(country);
     const invite_token = randomBytes(32).toString("hex");
-    const invite_expires_at = new Date(Date.now() + INVITE_TTL_MS).toISOString();
+    const invite_expires_at = null; // valid until used
 
     const partner = await createInfluencer({
       hotel_id: session.hotelId,

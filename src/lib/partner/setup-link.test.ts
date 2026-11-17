@@ -28,14 +28,14 @@ beforeEach(async () => {
 });
 
 describe("POST /api/admin/influencers/[id]/setup-link", () => {
-  it("first setup link: 14 days", async () => {
+  it("first setup link: valid until used (no expiry)", async () => {
     db.partner = { id: "p1", hotel_id: "h1", password_hash: null };
     const res = await call();
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body).toMatchObject({ reset: false, setup_url: expect.stringContaining("/partner/setup?token=") });
-    expect(new Date(body.setup_expires_at).getTime() - Date.now()).toBeGreaterThan(13 * DAY);
-    expect(db.setInfluencerInvite).toHaveBeenCalledOnce();
+    expect(body.setup_expires_at).toBeNull();
+    expect(db.setInfluencerInvite).toHaveBeenCalledWith("p1", expect.any(String), null);
   });
 
   it("partner with a password gets a reset link (was 409), 3 days", async () => {

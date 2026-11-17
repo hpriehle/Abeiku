@@ -20,6 +20,7 @@ Run in the Supabase SQL editor, in this order (neither has been run yet):
 | --- | --- | --- |
 | `ABEIKU_REFERRAL_SECRET` | Abeiku (Netlify) and aracuya.com | Shared secret for the report API. If unset, the API rejects every call (401). |
 | `ABEIKU_ADMIN_API_SECRET` | Abeiku (Netlify) and the caller (aracuya desk) | Secret for the admin partner API (`/api/admin/partners*`). If unset, those endpoints reject every call (401). Use a different value from `ABEIKU_REFERRAL_SECRET`. |
+| `ABEIKU_PARTNER_API_KEY` | Abeiku (Netlify) and Siteboard | Key for `POST /api/partners/invite-link`. If unset, that endpoint refuses every call (503). Use its own value, not one of the secrets above. |
 | `ARACUYA_URL` | Abeiku, optional | Base for Aracuya's partner links, default `https://aracuya.com`. |
 | `PARTNER_SITE_URLS` | Abeiku, optional | JSON map of hotel slug to the site partner links point to, e.g. `{"other-hotel":"https://other-hotel.com"}`. A hotel that is not listed (other than Aracuya) gets no partner link. |
 
@@ -104,8 +105,9 @@ Status shown to partner and admin:
 1. Admin > **Partners** > **+ New partner**.
 2. Fill name, WhatsApp and/or email, town, type, Ghana/abroad (sets currency), ref code
    (optional: leave empty to have one made from the name), commission rule (prefilled from type).
-3. **No email is sent.** The page shows a setup link (`/partner/setup?token=…`, valid 14 days).
-   Copy it into your message to the partner. If it expires, click "new setup link" on their row.
+3. **No email is sent.** The page shows a setup link (`/partner/setup?token=…`, valid until used).
+   Copy it into your message to the partner. "New setup link" on their row replaces it (the old
+   link stops working).
 4. The partner sets a password and lands on `/partner/dashboard` with their link and bookings.
 
 ## Admin API: create partners in bulk
@@ -150,7 +152,9 @@ and the email another, the item fails.
 
 **Setup link.** Returned while the partner has not set a password. A link that is still valid
 is returned again unchanged (calling again never invalidates a link already sent); a new one
-is issued only when the old one expired (14 days). `null` once the partner is set up.
+is issued only when there is none (or an old dated one expired). Setup links have no expiry
+(`invite_expires_at` null) and stay valid until the partner sets a password. `null` once the
+partner is set up.
 
 Response 200 (also when some items failed):
 
@@ -186,9 +190,73 @@ Response 200 (also when some items failed):
 `GET https://abeiku.com/api/admin/partners?hotel_slug=aracuya` (same header). Read-only.
 
 Each partner: `id`, `name`, `code`, `ref_link`, `setup_link` + `setup_expires_at` (only while
-not set up and the link is still valid; re-POST the partner to get a fresh one), `set_up`,
+not set up and the link is still valid; `setup_expires_at` is `null` for a link valid until used), `set_up`,
 `whatsapp`, `email`, `town`, `type`, `country`, `currency`, `rule`, `ghl_contact_id`,
 `bookings`, `totals` `{pending, owed, paid}` in the partner's currency.
+
+## Siteboard API: a partner's setup link
+
+For Siteboard Campaigns: when a partner is marked Yes, Siteboard asks Abeiku for the partner's
+link and sends it by email and WhatsApp itself. **Abeiku sends nothing**; it only makes the link.
+
+`POST https://abeiku.com/api/partners/invite-link`
+
+Header: `Authorization: Bearer <ABEIKU_PARTNER_API_KEY>` (compared in constant time). If the env
+var is not set on Abeiku, every call gets 503.
+
+Body:
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `hotel` | yes | Hotel slug, e.g. `aracuya`. |
+| `name` | yes | Partner name. Used only when a new partner is created. |
+| `whatsapp` | one of these | International number; `+233 24 123 4567`, `00233241234567` work. |
+| `email` | one of these | Matched lowercased. |
+| `type` | no | `local` (default), `agency` or `influencer`. New partners only. |
+| `country` | no | Default `Ghana` (GH₵). Any other country = USD. New partners only. |
+| `rule` | no | `{"kind":"percent"\|"per_night","value":n}`. Default from type (local in Ghana GH₵150/night, agency 15%); required for `influencer` and for `local` abroad. |
+| `town` | no | New partners only. |
+
+What it does, in order:
+
+1. Finds the partner **in that hotel** by WhatsApp number, then by email. WhatsApp wins if the
+   two point at different partners. A partner that is found is not changed (name, type, rule
+   stay as the hotel set them).
+2. None found: creates one (code made from the name, like the admin bulk add). The email must
+   not belong to a partner of another hotel (409).
+3. Partner already set a password: returns the partner login URL (`status: "active"`).
+4. Otherwise returns the setup link (`status: "setup"`). A still-valid link is returned again
+   unchanged, so calling twice never breaks a link already sent. Setup links never expire;
+   they stop working once the partner sets a password.
+
+Response `201` (created) or `200` (found):
+
+```json
+{
+  "partnerId": "6f1c…",
+  "status": "setup",
+  "url": "https://abeiku.com/partner/setup?token=…",
+  "partnerLink": "https://aracuya.com/?ref=esi-shop",
+  "code": "esi-shop",
+  "created": true,
+  "type": "local",
+  "commission": { "kind": "per_night", "value": 150, "currency": "GHS" }
+}
+```
+
+`status: "active"` comes with `url: "https://abeiku.com/partner/login"`. `partnerLink` is `null`
+for a hotel with no partner site set up (see `PARTNER_SITE_URLS`).
+
+Errors (`{"error": "…"}`): `400` bad body (no `hotel`/`name`, neither `whatsapp` nor `email`,
+bad number/email/type/rule), `401` wrong key, `404` unknown hotel, `409` email used by another
+hotel's partner or a duplicate code/number, `503` key not configured, `500` other.
+
+```bash
+curl -sS -X POST https://abeiku.com/api/partners/invite-link \
+  -H "Authorization: Bearer $ABEIKU_PARTNER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"hotel":"aracuya","name":"Esi Shop","whatsapp":"+233245550000","email":"esi@example.com"}'
+```
 
 ## Pay a partner
 

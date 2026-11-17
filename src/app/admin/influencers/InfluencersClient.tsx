@@ -22,7 +22,8 @@ interface AdminData {
 interface IssuedLink {
   name: string;
   url: string;
-  expiresAt: string;
+  /** Null: valid until used. */
+  expiresAt: string | null;
   reset: boolean;
 }
 
@@ -398,7 +399,7 @@ function SetupLinkNotice({ link, onClose }: { link: IssuedLink; onClose: () => v
       <div className="flex items-start justify-between gap-3">
         <p>
           {link.reset ? "Password reset link" : "Setup link"} for <strong>{link.name}</strong>, valid until{" "}
-          <strong>{formatDate(link.expiresAt)}</strong>. No email or message was sent: paste it into your WhatsApp or
+          <strong>{link.expiresAt ? formatDate(link.expiresAt) : "used"}</strong>. No email or message was sent: paste it into your WhatsApp or
           email to them.
         </p>
         <button

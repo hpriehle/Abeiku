@@ -69,7 +69,7 @@ export async function createInfluencer(input: {
   whatsapp?: string | null;
   town?: string | null;
   invite_token: string;
-  invite_expires_at: string;
+  invite_expires_at: string | null;
   redirect_url?: string;
   partner_type: PartnerType;
   country: string;
@@ -183,7 +183,7 @@ export async function setInfluencerPassword(id: string, password_hash: string): 
 export async function setInfluencerInvite(
   id: string,
   invite_token: string,
-  invite_expires_at: string
+  invite_expires_at: string | null
 ): Promise<void> {
   const { error } = await supabase
     .from("influencers")

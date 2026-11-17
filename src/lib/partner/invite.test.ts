@@ -13,6 +13,12 @@ describe("checkInvite", () => {
       reason: "expired",
       message: expect.stringMatching(/ask your hotel/i),
     }));
+  it("no expiry: valid until used", () =>
+    expect(checkInvite("t", p({ invite_expires_at: null }), new Date("2030-01-01T00:00:00Z"))).toEqual({
+      valid: true,
+      name: "Kofi",
+      reset: false,
+    }));
   it("first setup", () => expect(checkInvite("t", p(), NOW)).toEqual({ valid: true, name: "Kofi", reset: false }));
   it("reset of an existing password", () =>
     expect(checkInvite("t", p({ password_hash: "$2b$..." }), NOW)).toEqual({ valid: true, name: "Kofi", reset: true }));

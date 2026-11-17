@@ -14,14 +14,28 @@ import { getHotelById } from "@/lib/db";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://abeiku.com").replace(/\/$/, "");
 
-/** Setup links are copied into a reply by hand, so they live longer than a typical invite. */
-export const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+/**
+ * A first setup link never expires (invite_expires_at null): it stays valid until the partner sets
+ * a password (which clears the token) or a newer link replaces it.
+ */
+export function inviteStillValid(
+  p: { password_hash: string | null; invite_token: string | null; invite_expires_at: string | null },
+  now: Date = new Date()
+): boolean {
+  if (p.password_hash || !p.invite_token) return false;
+  return p.invite_expires_at === null || new Date(p.invite_expires_at) > now;
+}
 
 /** A reset link opens an existing account, so it expires sooner than a first invite. */
 export const RESET_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 export function setupUrl(token: string): string {
   return `${APP_URL}/partner/setup?token=${token}`;
+}
+
+/** Where a partner who already set a password signs in. */
+export function partnerLoginUrl(): string {
+  return `${APP_URL}/partner/login`;
 }
 
 /**
