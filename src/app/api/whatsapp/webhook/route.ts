@@ -101,7 +101,7 @@ async function recordStatus(s: StatusUpdate) {
 /** Bot off: put the message in the inbox, don't reply. Staff answer from the inbox or the WhatsApp Business app. */
 async function logInboundOnly(hotel: Hotel, message: WhatsAppMessage, senderName?: string) {
   const conv = await upsertConversation(hotel.id, message.from, senderName ? { guest_name: senderName } : {});
-  logMessage({
+  await logMessage({
     hotelId: hotel.id,
     conversationId: conv.id,
     phone: message.from,
@@ -120,7 +120,7 @@ async function logInboundOnly(hotel: Hotel, message: WhatsAppMessage, senderName
 /** Coexistence: a message staff sent from the WhatsApp Business app on their phone. */
 async function logEcho(hotel: Hotel, echo: Loose) {
   const conv = await upsertConversation(hotel.id, echo.to, {});
-  logMessage({
+  await logMessage({
     hotelId: hotel.id,
     conversationId: conv.id,
     phone: echo.to,

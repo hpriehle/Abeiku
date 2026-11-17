@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log admin message
-    logMessage({
+    await logMessage({
       hotelId: session.hotelId,
       conversationId,
       phone: conv.phone,

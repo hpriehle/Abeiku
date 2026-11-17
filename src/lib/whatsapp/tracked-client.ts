@@ -29,30 +29,32 @@ export function clearTrackingContext() {
   _currentContext = null;
 }
 
-function logOutbound(messageType: string, body: string | null, rawPayload?: object) {
+async function logOutbound(messageType: string, body: string | null, rawPayload?: object): Promise<void> {
   if (!_currentContext) return;
+  let hotelId: string;
   try {
-    const hotelId = getHotelId();
-    logMessage({
-      hotelId,
-      conversationId: _currentContext.conversationId,
-      phone: _currentContext.phone,
-      direction: "outbound",
-      messageType,
-      body,
-      rawPayload,
-      senderType: "bot",
-      guestState: _currentContext.guestState,
-      step: _currentContext.step,
-    });
+    hotelId = getHotelId();
   } catch {
     // Hotel context may not be available in all scenarios — silently skip
+    return;
   }
+  await logMessage({
+    hotelId,
+    conversationId: _currentContext.conversationId,
+    phone: _currentContext.phone,
+    direction: "outbound",
+    messageType,
+    body,
+    rawPayload,
+    senderType: "bot",
+    guestState: _currentContext.guestState,
+    step: _currentContext.step,
+  });
 }
 
 export async function trackedSendText(to: string, text: string) {
   const result = await sendText(to, text);
-  logOutbound("text", text);
+  await logOutbound("text", text);
   return result;
 }
 
@@ -63,7 +65,7 @@ export async function trackedSendButtons(
   headerText?: string
 ) {
   const result = await sendButtons(to, bodyText, buttons, headerText);
-  logOutbound("interactive_buttons", bodyText, { buttons, headerText });
+  await logOutbound("interactive_buttons", bodyText, { buttons, headerText });
   return result;
 }
 
@@ -75,7 +77,7 @@ export async function trackedSendList(
   headerText?: string
 ) {
   const result = await sendList(to, bodyText, buttonLabel, sections, headerText);
-  logOutbound("interactive_list", bodyText, { buttonLabel, sections, headerText });
+  await logOutbound("interactive_list", bodyText, { buttonLabel, sections, headerText });
   return result;
 }
 
@@ -87,13 +89,13 @@ export async function trackedSendCtaUrlButton(
   headerText?: string
 ) {
   const result = await sendCtaUrlButton(to, bodyText, buttonText, url, headerText);
-  logOutbound("interactive_cta_url", bodyText, { buttonText, url, headerText });
+  await logOutbound("interactive_cta_url", bodyText, { buttonText, url, headerText });
   return result;
 }
 
 export async function trackedSendImage(to: string, imageUrl: string, caption?: string) {
   const result = await sendImage(to, imageUrl, caption);
-  logOutbound("image", caption ?? null, { imageUrl });
+  await logOutbound("image", caption ?? null, { imageUrl });
   return result;
 }
 
@@ -105,6 +107,6 @@ export async function trackedSendLocation(
   address: string
 ) {
   const result = await sendLocation(to, lat, lng, name, address);
-  logOutbound("location", `${name} - ${address}`, { lat, lng });
+  await logOutbound("location", `${name} - ${address}`, { lat, lng });
   return result;
 }

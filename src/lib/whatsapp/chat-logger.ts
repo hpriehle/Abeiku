@@ -1,7 +1,22 @@
-// Fire-and-forget chat message + event logging
-// These functions never block the WhatsApp message processing flow.
+// Chat message + event logging.
+// These functions never throw (errors are logged), but callers must await them:
+// on serverless hosts (Netlify) the function is frozen once the response is
+// returned, so unawaited writes are lost.
 
 import { supabase } from "@/lib/supabase/client";
+
+/** Run a Supabase write, log its error instead of throwing. */
+async function safeWrite(
+  label: string,
+  write: PromiseLike<{ error: { message: string } | null }>,
+): Promise<void> {
+  try {
+    const { error } = await write;
+    if (error) console.error(`[ChatLogger] ${label} error:`, error.message);
+  } catch (e) {
+    console.error(`[ChatLogger] ${label} error:`, e);
+  }
+}
 
 // --- Message Logging ---
 
@@ -20,9 +35,11 @@ export interface LogMessageParams {
   step?: string;
 }
 
-export function logMessage(params: LogMessageParams): void {
+export async function logMessage(params: LogMessageParams): Promise<void> {
+  const writes: Promise<void>[] = [];
+
   // Insert message record
-  supabase
+  writes.push(safeWrite("logMessage", supabase
     .from("chat_messages")
     .insert({
       hotel_id: params.hotelId,
@@ -37,32 +54,25 @@ export function logMessage(params: LogMessageParams): void {
       sender_name: params.senderName,
       guest_state: params.guestState,
       step: params.step,
-    })
-    .then(({ error }) => {
-      if (error) console.error("[ChatLogger] logMessage error:", error.message);
-    });
+    })));
 
   // Update conversation last_message_at + preview
-  supabase
+  writes.push(safeWrite("update conversation", supabase
     .from("conversations")
     .update({
       last_message_at: new Date().toISOString(),
       last_message_preview: params.body?.slice(0, 100) ?? null,
     })
     .eq("hotel_id", params.hotelId)
-    .eq("phone", params.phone)
-    .then(({ error }) => {
-      if (error) console.error("[ChatLogger] update conversation error:", error.message);
-    });
+    .eq("phone", params.phone)));
 
   // Increment unread count for inbound messages
   if (params.direction === "inbound") {
-    supabase
-      .rpc("increment_unread", { p_hotel_id: params.hotelId, p_phone: params.phone })
-      .then(({ error }) => {
-        if (error) console.error("[ChatLogger] increment_unread error:", error.message);
-      });
+    writes.push(safeWrite("increment_unread",
+      supabase.rpc("increment_unread", { p_hotel_id: params.hotelId, p_phone: params.phone })));
   }
+
+  await Promise.all(writes);
 }
 
 // --- Event Logging ---
@@ -82,8 +92,8 @@ export interface LogEventParams {
   metadata?: Record<string, unknown>;
 }
 
-export function logEvent(params: LogEventParams): void {
-  supabase
+export async function logEvent(params: LogEventParams): Promise<void> {
+  await safeWrite("logEvent", supabase
     .from("conversation_events")
     .insert({
       hotel_id: params.hotelId,
@@ -98,8 +108,5 @@ export function logEvent(params: LogEventParams): void {
       ai_input_text: params.aiInputText,
       ai_response_time_ms: params.aiResponseTimeMs,
       metadata: params.metadata ?? {},
-    })
-    .then(({ error }) => {
-      if (error) console.error("[ChatLogger] logEvent error:", error.message);
-    });
+    }));
 }
