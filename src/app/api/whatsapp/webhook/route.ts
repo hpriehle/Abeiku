@@ -13,6 +13,7 @@ import { recordMessage } from "@/lib/whatsapp/chat-logger";
 import { processInbound, storeEcho, type InboundDeps } from "@/lib/whatsapp/inbound";
 import { checkWebhookSignature } from "@/lib/whatsapp/signature";
 import { supabase } from "@/lib/supabase/client";
+import { opsAlert } from "@/lib/ops/alerts";
 
 const inboundDeps: InboundDeps = {
   determineGuestState,
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
               await processInbound(inboundDeps, hotel, message as WhatsAppMessage, message.from, senderName);
             } catch (error) {
               console.error(`Error handling message from ${message.from} (hotel: ${hotel.slug}):`, error);
+              await opsAlert("whatsapp-webhook", `WhatsApp message for ${hotel.slug} could not be handled`, error);
             }
           }
         });
@@ -171,6 +173,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "ok" });
   } catch (error) {
     console.error("Webhook processing error:", error);
+    await opsAlert("whatsapp-webhook", "WhatsApp webhook failed", error);
     // Still return 200 so Meta doesn't retry a payload we can't parse
     return NextResponse.json({ status: "ok" });
   }

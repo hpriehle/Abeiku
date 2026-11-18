@@ -17,6 +17,7 @@ import { alertsAfterSync, alertsAfterSyncs, syncedFeedsBefore } from "@/lib/aler
 import { syncFeedHotels, type FeedSyncSummary } from "@/lib/bookings/feed-sync";
 import { supabaseFeedSyncStore } from "@/lib/db/hotel-feeds";
 import { googleListerFromEnv } from "@/lib/bookings/google-lister";
+import { alertFeedFailures, opsAlert } from "@/lib/ops/alerts";
 
 /** No new feed of another hotel is started after this, nor a hotel saved after WRITE_MS. */
 const READ_MS = 9_000;
@@ -31,8 +32,9 @@ function otherHotels(excludeHotelIds: string[], today: string, started: number):
     excludeHotelIds,
     readDeadline: started + READ_MS,
     writeDeadline: started + WRITE_MS,
-  }).catch((err) => {
+  }).catch(async (err) => {
     console.error("[booking-sync] other hotels failed", (err as Error)?.message ?? err);
+    await opsAlert("booking-sync", "Booking sync of the hotels' own calendars failed", err);
     return null;
   });
 }
@@ -41,8 +43,9 @@ function otherHotels(excludeHotelIds: string[], today: string, started: number):
 function othersReport(o: FeedSyncSummary | null) {
   if (!o) return { error: "failed" };
   if (o.notSetUp) return { notSetUp: true };
-  const { alertInputs: _alertInputs, ...counts } = o;
+  const { alertInputs: _alertInputs, feedErrors: _feedErrors, ...counts } = o;
   void _alertInputs;
+  void _feedErrors;
   return counts;
 }
 
@@ -61,6 +64,7 @@ async function run(request: NextRequest) {
     const others = otherHotels(hotelId ? [hotelId] : [], today, started);
     if (!hotelId) {
       const o = await others;
+      await alertFeedFailures(o?.feedErrors ?? []);
       if (o?.alertInputs.length) await alertsAfterSyncs(o.alertInputs).catch(() => undefined);
       return NextResponse.json({ error: "Hotel not found", otherHotels: othersReport(o) }, { status: 404 });
     }
@@ -77,6 +81,8 @@ async function run(request: NextRequest) {
     });
     if (errors.length) console.error("[booking-sync] feed errors", errors);
     const o = await others;
+    // L3: email Harrison (hourly at most per hotel) about failed feeds.
+    await alertFeedFailures([{ slug: SYNC_HOTEL_SLUG, errors }, ...(o?.feedErrors ?? [])]);
     const aracuyaAlerts = {
       hotelId,
       loadedFeeds: feeds.filter((f) => f.bookings).map((f) => f.source),
@@ -90,6 +96,7 @@ async function run(request: NextRequest) {
     return NextResponse.json({ ok: true, hotel: SYNC_HOTEL_SLUG, ...summary, errors, alerts, otherHotels: othersReport(o) });
   } catch (err) {
     console.error("[booking-sync] failed", (err as Error).message);
+    await opsAlert("booking-sync", "Booking sync failed", err);
     return NextResponse.json({ error: "Sync failed" }, { status: 500 });
   }
 }

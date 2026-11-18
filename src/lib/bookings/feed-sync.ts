@@ -53,6 +53,8 @@ export interface FeedSyncSummary {
   updated: number;
   cancelled: number;
   failedHotels: string[];
+  /** L3: per hotel, why its feeds failed this run (for the ops alert; no links). */
+  feedErrors: { slug: string; errors: string[] }[];
   /** For the alert step: one entry per hotel whose bookings were saved this run. */
   alertInputs: AlertInput[];
   notSetUp?: true;
@@ -83,6 +85,7 @@ export async function syncFeedHotels(input: {
     updated: 0,
     cancelled: 0,
     failedHotels: [],
+    feedErrors: [],
     alertInputs: [],
   };
 
@@ -148,10 +151,12 @@ export async function syncFeedHotels(input: {
       input.store.recordStatus(feedId, s).catch((err) => console.error("[booking-sync] feed status not saved:", (err as Error)?.message ?? err));
 
     // Failed feeds: record the error now; their bookings are left as they are.
-    for (const m of mine.filter((m) => !m.read.status.ok)) {
+    const failed = mine.filter((m) => !m.read.status.ok);
+    for (const m of failed) {
       out.feedsFailed++;
       await record(m.f.id, m.read.status);
     }
+    if (failed.length) out.feedErrors.push({ slug: h.slug, errors: failed.map((m) => `${m.f.kind}: ${m.read.status.error ?? "failed"}`) });
     const loaded = mine.filter((m) => m.read.status.ok);
     if (!loaded.length) continue;
 
@@ -176,6 +181,7 @@ export async function syncFeedHotels(input: {
     } catch (err) {
       console.error(`[booking-sync] saving ${h.slug} failed:`, (err as Error)?.message ?? err);
       out.failedHotels.push(h.slug);
+      out.feedErrors.push({ slug: h.slug, errors: [`saving bookings: ${(err as Error)?.message ?? err}`] });
       for (const m of loaded) {
         out.feedsFailed++;
         await record(m.f.id, { ok: false, at: m.read.status.at, error: "We read the calendar but could not save the bookings. We will try again." });

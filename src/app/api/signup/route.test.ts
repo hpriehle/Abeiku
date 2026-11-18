@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { MemoryAttemptStore } from "@/lib/auth/rate-limit";
 import { verifySession } from "@/lib/auth/session";
+import { MemoryConfirmStore } from "@/lib/auth/email-confirm";
 
 let columnsError: { code: string; message: string } | null = null;
 let termsError: { code: string; message: string } | null = null;
@@ -38,6 +39,14 @@ vi.mock("@/lib/auth/rate-limit", async (orig) => ({
   getAttemptStore: async () => store,
 }));
 
+const confirmStore = new MemoryConfirmStore();
+vi.mock("@/lib/auth/email-confirm", async (orig) => ({
+  ...(await orig<typeof import("@/lib/auth/email-confirm")>()),
+  getConfirmStore: async () => confirmStore,
+}));
+const sendEmail = vi.fn<(m: { to: string; subject: string }) => Promise<{ success: boolean }>>(async () => ({ success: true }));
+vi.mock("@/lib/notifications/email", () => ({ sendEmail: (m: { to: string; subject: string }) => sendEmail(m) }));
+
 const { POST } = await import("./route");
 
 const good = { hotelName: "Busua Inn", email: "Owner@Inn.gh", password: "longenough", acceptTerms: true };
@@ -54,6 +63,22 @@ describe("POST /api/signup (L2)", () => {
     store = new MemoryAttemptStore();
     createHotel.mockClear();
     createAdminUser.mockClear();
+    sendEmail.mockClear();
+    confirmStore.rows = [];
+  });
+
+  it("L3: sends a confirm link to the login email; sign-up doesn't wait for it", async () => {
+    const res = await signup(good);
+    expect(res.status).toBe(200);
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "owner@inn.gh", subject: "Confirm your email for Abeiku" }));
+    expect(confirmStore.rows).toEqual([expect.objectContaining({ admin_user_id: "u9", email: "owner@inn.gh", purpose: "verify" })]);
+    const session = await verifySession<{ sv?: number }>(res.cookies.get("admin_session")?.value ?? "", "admin");
+    expect(session?.sv).toBe(0);
+  });
+
+  it("L3: a failing confirm email never fails sign-up", async () => {
+    sendEmail.mockResolvedValueOnce({ success: false });
+    expect((await signup(good)).status).toBe(200);
   });
 
   it("closed unless SIGNUP_OPEN=true: 404, nothing created", async () => {
