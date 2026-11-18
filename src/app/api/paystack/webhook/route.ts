@@ -28,6 +28,7 @@ import { initiateTransfer } from "@/lib/payments/paystack-transfer";
 import { billingDeps } from "@/lib/billing";
 import { planIdsFromEnv } from "@/lib/billing/plans";
 import { handlePaystackBillingEvent, isPaystackBillingEvent, verifyPaystackSignature } from "@/lib/billing/webhooks";
+import { opsAlert } from "@/lib/ops/alerts";
 
 function verifySignature(rawBody: string, signature: string): boolean {
   const secret = process.env.PAYSTACK_WEBHOOK_SECRET;
@@ -38,7 +39,18 @@ function verifySignature(rawBody: string, signature: string): boolean {
   return verifyPaystackSignature(rawBody, signature, secret);
 }
 
+/** L3: any handler error emails Harrison (at most hourly) and returns 500 so Paystack retries. */
 export async function POST(request: NextRequest) {
+  try {
+    return await handlePaystackWebhook(request);
+  } catch (err) {
+    console.error("Paystack webhook failed:", err);
+    await opsAlert("paystack-webhook", "Paystack webhook failed", err);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  }
+}
+
+async function handlePaystackWebhook(request: NextRequest) {
   const signature = request.headers.get("x-paystack-signature");
   if (!signature) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
@@ -68,6 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     } catch (err) {
       console.error(`[billing] paystack ${event} failed:`, err);
+      await opsAlert("paystack-webhook", `Paystack webhook ${event} failed`, err);
       return NextResponse.json({ error: "Failed" }, { status: 500 }); // Paystack retries
     }
   }

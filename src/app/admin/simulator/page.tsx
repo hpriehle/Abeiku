@@ -3,6 +3,7 @@ import { getHotelById } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { SimulatorChat } from "./SimulatorChat";
 import { isBookingBotEnabled } from "@/lib/whatsapp/inbound";
+import { adminFeatures } from "@/lib/admin/features";
 
 export default async function SimulatorPage() {
   const session = await getSession();
@@ -10,6 +11,8 @@ export default async function SimulatorPage() {
 
   const hotel = await getHotelById(session.hotelId);
   if (!hotel) redirect("/admin/login");
+  // L3: platform admins and exempt hotels only.
+  if (!adminFeatures(hotel, session.role).simulator) redirect("/admin/dashboard");
 
   return (
     <div className="h-full flex flex-col">
