@@ -1,6 +1,6 @@
 // Emails for the hotel-admin forgot-password flow. Sent with sendEmail (Resend).
 
-function appUrl(env: NodeJS.ProcessEnv = process.env): string {
+export function appUrl(env: NodeJS.ProcessEnv = process.env): string {
   return (env.NEXT_PUBLIC_APP_URL ?? "https://abeiku.com").trim().replace(/\/$/, "");
 }
 
