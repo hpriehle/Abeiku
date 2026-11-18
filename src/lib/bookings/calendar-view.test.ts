@@ -193,3 +193,32 @@ describe("movements", () => {
     expect(m.departures.week.map((s) => s.guest_name)).toEqual(["Today", "Tomorrow"]);
   });
 });
+
+describe("OTA calendar blocks", () => {
+  const base: CalendarBookingRow = {
+    id: "b1",
+    source: "airbnb",
+    guest_name: "Airbnb · Airbnb (Not available)",
+    phone: null,
+    room_slug: "aracuya",
+    rooms_count: 3,
+    check_in: "2026-11-19",
+    check_out: "2026-11-20",
+    total_price: 0,
+    currency: "GHS",
+    payment_status: "unpaid",
+    booking_status: "confirmed",
+  };
+
+  it("a block is labelled as a block, still takes the rooms, and is not an arrival", () => {
+    const stays = groupStays([base, { ...base, id: "b2", source: "airbnb", guest_name: "Airbnb · Reserved" }]);
+    const block = stays.find((s) => s.id === "b1")!;
+    const booking = stays.find((s) => s.id === "b2")!;
+    expect(block).toMatchObject({ block: true, guest_name: "Blocked · Airbnb" });
+    expect(booking).toMatchObject({ block: false, guest_name: "Airbnb · Reserved" });
+    expect(roomsBookedOn(stays, "2026-11-19")).toBe(6);
+    const mv = movements(stays, "2026-11-18");
+    expect(mv.arrivals.tomorrow.map((s) => s.id)).toEqual(["b2"]);
+    expect(mv.departures.week.map((s) => s.id)).toEqual(["b2"]);
+  });
+});

@@ -18,7 +18,7 @@
 //
 // Storage and the mailer are injected so this is tested without Supabase or Resend.
 
-import { addDays, groupStays, nightsBetween, type CalendarBookingRow, type Stay } from "@/lib/bookings/calendar-view";
+import { addDays, groupStays, isCalendarBlock, nightsBetween, type CalendarBookingRow, type Stay } from "@/lib/bookings/calendar-view";
 import type { BookingSource } from "@/lib/bookings/hotel-bookings";
 
 export const ADMIN_CALENDAR_URL = "https://abeiku.com/admin/calendar";
@@ -328,16 +328,19 @@ async function alertRows(
     if (n.whatsappSent) counts.whatsappSent = (counts.whatsappSent ?? 0) + n.whatsappSent;
   };
   // A row created and cancelled before its first alert: nothing to tell, mark both.
+  // OTA calendar blocks ("Airbnb (Not available)") are never news: mark both too, so a block
+  // that later disappears (cancelled by the sync) sends no cancellation either.
   const neverAnnounced = pendingCancel.filter((r) => !r.alert_new_sent_at).map((r) => r.id);
   const deadNew = pendingNew.filter((r) => r.booking_status === "cancelled").map((r) => r.id);
-  const silentIds = [...new Set([...neverAnnounced, ...deadNew])];
+  const blocks = [...pendingNew, ...pendingCancel].filter(isCalendarBlock).map((r) => r.id);
+  const silentIds = [...new Set([...neverAnnounced, ...deadNew, ...blocks])];
   if (silentIds.length) {
     const a = await store.claim(silentIds, "alert_new_sent_at");
     const b = await store.claim(silentIds, "alert_cancel_sent_at");
     counts.silenced += new Set([...a, ...b]).size;
   }
 
-  const live = pendingNew.filter((r) => r.booking_status !== "cancelled");
+  const live = pendingNew.filter((r) => r.booking_status !== "cancelled" && !isCalendarBlock(r));
   const stays = groupStays(live);
   if (stays.length > MAX_SEPARATE_EMAILS) {
     // Many at once: one summary email, all rows claimed together.
@@ -347,7 +350,7 @@ async function alertRows(
     tally(await sendForStays(store, mailer, hotel, stays, "alert_new_sent_at", newBookingEmail, whatsapp), "newSent");
   }
 
-  const cancels = pendingCancel.filter((r) => r.alert_new_sent_at);
+  const cancels = pendingCancel.filter((r) => r.alert_new_sent_at && !isCalendarBlock(r));
   tally(await sendForStays(store, mailer, hotel, groupStays(cancels), "alert_cancel_sent_at", cancellationEmail, whatsapp), "cancelSent");
 }
 
@@ -468,7 +471,7 @@ export async function sendArrivalsDigest(input: { store: AlertStore; mailer: Mai
     try {
       // Look back so a stay entered as one-night rows that began earlier isn't counted as an arrival.
       const rows = await store.listByCheckIn(hotel.id, addDays(tomorrow, -62), tomorrow);
-      const arrivals = groupStays(rows.filter((r) => r.booking_status !== "cancelled")).filter((s) => s.check_in === tomorrow);
+      const arrivals = groupStays(rows.filter((r) => r.booking_status !== "cancelled" && !isCalendarBlock(r))).filter((s) => s.check_in === tomorrow);
       if (!arrivals.length) {
         out.empty++;
         continue;

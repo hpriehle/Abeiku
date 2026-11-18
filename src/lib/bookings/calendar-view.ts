@@ -107,6 +107,28 @@ export function sourceOf(row: Pick<CalendarBookingRow, "source" | "payment_provi
   }
 }
 
+// ---------- calendar blocks ----------
+
+/** OTA iCal summaries that mean "dates closed", not a guest's stay. Reservations say "Reserved". */
+const BLOCK_SUMMARY_RE = /\b(not available|unavailable|blocked|closed)\b/i;
+const ICAL_BLOCK_SOURCES: readonly string[] = ["airbnb", "vrbo", "booking_com"];
+
+/** Is this iCal summary a block (e.g. Airbnb's "Airbnb (Not available)") rather than a reservation? */
+export function isBlockSummary(summary: string | null | undefined): boolean {
+  const s = (summary ?? "").trim();
+  return !/^reserved\b/i.test(s) && BLOCK_SUMMARY_RE.test(s);
+}
+
+/**
+ * A row synced from an OTA iCal feed that only closes dates (host block, Airbnb's rolling
+ * "Not available" window end). It still takes the rooms (availability is unchanged), but it is
+ * not a booking: no alerts, no arrivals, labelled as a block on the calendar. Derived from the
+ * stored label (guest_name = "<OTA> · <summary>"), so rows synced before this check count too.
+ */
+export function isCalendarBlock(row: Pick<CalendarBookingRow, "source" | "guest_name">): boolean {
+  return Boolean(row.source && ICAL_BLOCK_SOURCES.includes(row.source)) && isBlockSummary(row.guest_name);
+}
+
 // ---------- dates (plain YYYY-MM-DD strings, UTC arithmetic, no time zones) ----------
 
 export function addDays(date: string, n: number): string {
@@ -136,6 +158,8 @@ export interface Stay {
   nights: number;
   rooms_count: number;
   cancelled: boolean;
+  /** An OTA calendar block, not a guest (see isCalendarBlock); guest_name is then "Blocked · <OTA>". */
+  block: boolean;
 }
 
 function normName(name: string): string {
@@ -156,7 +180,8 @@ export function groupStays(rows: CalendarBookingRow[]): Stay[] {
     const source = sourceOf(row);
     const cancelled = row.booking_status === "cancelled";
     const nights = nightsBetween(row.check_in, row.check_out);
-    const key = [source.kind, normName(row.guest_name), row.rooms_count, cancelled].join("|");
+    const block = isCalendarBlock(row);
+    const key = [source.kind, normName(row.guest_name), row.rooms_count, cancelled, block].join("|");
     const prev = open.get(key);
     if (nights === 1 && prev && prev.check_out === row.check_in) {
       prev.rows.push(row);
@@ -168,12 +193,13 @@ export function groupStays(rows: CalendarBookingRow[]): Stay[] {
       id: row.id,
       rows: [row],
       source,
-      guest_name: row.guest_name,
+      guest_name: block ? `Blocked · ${source.label}` : row.guest_name,
       check_in: row.check_in,
       check_out: row.check_out,
       nights,
       rooms_count: row.rooms_count,
       cancelled,
+      block,
     };
     stays.push(stay);
     if (nights === 1) open.set(key, stay);
@@ -238,12 +264,12 @@ export interface Movements {
   departures: { today: Stay[]; tomorrow: Stay[]; week: Stay[] };
 }
 
-/** Arrivals and departures for today, tomorrow and the rest of the next 7 days (cancelled stays left out). */
+/** Arrivals and departures for today, tomorrow and the rest of the next 7 days (cancelled stays and blocks left out). */
 export function movements(stays: Stay[], today: string): Movements {
   const tomorrow = addDays(today, 1);
   const weekEnd = addDays(today, 7); // exclusive
   const pick = (field: "check_in" | "check_out") => {
-    const live = stays.filter((s) => !s.cancelled).sort((a, b) => a[field].localeCompare(b[field]));
+    const live = stays.filter((s) => !s.cancelled && !s.block).sort((a, b) => a[field].localeCompare(b[field]));
     return {
       today: live.filter((s) => s[field] === today),
       tomorrow: live.filter((s) => s[field] === tomorrow),
