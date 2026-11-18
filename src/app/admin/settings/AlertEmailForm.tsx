@@ -49,6 +49,7 @@ export function AlertEmailForm({ available, email }: AlertEmailFormProps) {
           <input
             id="settings-alert-email"
             type="email"
+            multiple
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="you@yourhotel.com"
@@ -56,7 +57,7 @@ export function AlertEmailForm({ available, email }: AlertEmailFormProps) {
             className="admin-input"
           />
           <p className="text-xs text-gray-500 mt-1">
-            {available ? "One address. Leave empty to stop alert emails." : "This can't be changed yet. Please try again later."}
+            {available ? "Separate several addresses with commas. Leave empty to stop alert emails." : "This can't be changed yet. Please try again later."}
           </p>
         </div>
         <div className="flex items-center gap-3">

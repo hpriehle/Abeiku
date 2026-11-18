@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   alertBookingsNow,
+  alertEmailRecipients,
   arrivalsDigestEmail,
   formatDateRange,
   newBookingEmail,
@@ -53,7 +54,7 @@ function row(over: Partial<HotelBookingRow> & Record<string, unknown> = {}): Hot
 function setup(initial: (HotelBookingRow & Record<string, unknown>)[] = [], opts: { missingSchema?: boolean; hotels?: AlertHotel[] } = {}) {
   const db = memoryHotelBookings(initial);
   const alerts = memoryAlertStore(db.rows, { hotels: opts.hotels ?? [HOTEL], missingSchema: opts.missingSchema });
-  const sent: { to: string; subject: string; html: string; text: string }[] = [];
+  const sent: { to: string | string[]; subject: string; html: string; text: string }[] = [];
   let failNext = 0;
   const mailer: Mailer = vi.fn(async (msg) => {
     if (failNext > 0) {
@@ -464,5 +465,30 @@ describe("arrivals digest", () => {
     const m = arrivalsDigestEmail(stays, "2026-11-16", HOTEL);
     expect(m.subject).toBe("Arriving tomorrow (Mon 16 Nov 2026): 1 booking, 1 room");
     expect(m.text.split("\n").length).toBeLessThan(20);
+  });
+});
+
+describe("several alert recipients (comma-separated alert_email)", () => {
+  it("one address: sent to exactly that address, as before", async () => {
+    const t = setup([row()]);
+    await runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY });
+    expect(t.sent.map((m) => m.to)).toEqual(["info@aracuya.com"]);
+  });
+
+  it("two addresses: new booking, cancellation and digest each go to both, in one email", async () => {
+    const hotel = { ...HOTEL, alert_email: "info@aracuya.com, owner@example.com" };
+    const t = setup([row({ check_in: "2026-11-16", check_out: "2026-11-18" })], { hotels: [hotel] });
+    await runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY });
+    await sendArrivalsDigest({ store: t.store, mailer: t.mailer, tomorrow: "2026-11-16" });
+    t.db.rows.get("r1")!.booking_status = "cancelled";
+    await alertBookingsNow({ store: t.store, mailer: t.mailer, hotelId: H, ids: ["r1"], today: TODAY });
+    expect(t.sent.map((m) => m.subject.split(":")[0])).toEqual(["New booking", "Arriving tomorrow (Mon 16 Nov 2026)", "Cancelled"]);
+    for (const m of t.sent) expect(m.to).toEqual(["info@aracuya.com", "owner@example.com"]);
+  });
+
+  it("tolerates spaces, semicolons, empty entries and duplicates; skips entries that aren't addresses", () => {
+    expect(alertEmailRecipients(" a@inn.gh ;b@inn.gh,, a@inn.gh , junk ")).toEqual(["a@inn.gh", "b@inn.gh"]);
+    expect(alertEmailRecipients("info@aracuya.com")).toEqual(["info@aracuya.com"]);
+    expect(alertEmailRecipients(null)).toEqual([]);
   });
 });

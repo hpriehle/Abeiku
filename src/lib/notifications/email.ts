@@ -16,7 +16,8 @@ export function fromEmail(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export async function sendEmail(params: {
-  to: string;
+  /** One address, or several (all in To, one email). */
+  to: string | string[];
   subject: string;
   html: string;
   /** Plain-text version (shown by mail apps that prefer it). */
