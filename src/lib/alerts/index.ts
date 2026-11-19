@@ -45,10 +45,10 @@ const sendWhatsAppAlert: WhatsAppAlerter = async ({ hotelId, hotelName, to, summ
     const hotel = await getHotelById(hotelId);
     const sender = hotel ? await pickAlertSender(hotel, getHotelById) : null;
     if (!sender) return { success: false, error: "WhatsApp not connected" };
-    await hotelStorage.run({ hotelId: sender.id, hotel: sender }, () =>
+    const id = await hotelStorage.run({ hotelId: sender.id, hotel: sender }, () =>
       sendTemplate(to, { name: BOOKING_ALERT_TEMPLATE, language: BOOKING_ALERT_LANGUAGE, bodyParams: [hotelName, summary] })
     );
-    return { success: true };
+    return { success: true, id };
   } catch (err) {
     return { success: false, error: (err as Error)?.message ?? String(err) };
   }
