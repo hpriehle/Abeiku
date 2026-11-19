@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySession } from "@/lib/auth/session";
-import { ADMIN_PATH_HEADER, blockedAdminApiAllowed } from "@/lib/billing/access";
+import { loadBillingView } from "@/lib/billing";
+import { ADMIN_PATH_HEADER, blockedAdminApiAllowed, lockedAdminApiAllowed } from "@/lib/billing/access";
 
 const COOKIE_NAME = "admin_session";
 
-type AdminClaims = { billing?: string };
+type AdminClaims = { billing?: string; hotelId?: string; role?: string };
 
 const PUBLIC_ADMIN_PAGES = new Set(["/admin/login", "/admin/forgot-password", "/admin/reset-password"]);
 
@@ -19,6 +20,12 @@ export async function middleware(request: NextRequest) {
     const session = await verifySession<AdminClaims>(cookie, "admin");
     if (session?.billing === "blocked") {
       return NextResponse.json({ error: "Finish signing up to use this. Add your card to start your free trial." }, { status: 402 });
+    }
+    // Past due over 14 days: the pages are locked to /admin/plan by the layout, the API here.
+    if (session?.hotelId && session.role !== "platform_admin" && !lockedAdminApiAllowed(pathname)) {
+      if ((await loadBillingView(session.hotelId)).access === "locked") {
+        return NextResponse.json({ error: "billing_locked" }, { status: 402 });
+      }
     }
     return NextResponse.next();
   }

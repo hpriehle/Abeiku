@@ -156,6 +156,16 @@ export function adminRedirect(view: BillingView, pathname: string | null): strin
   return null;
 }
 
+/** Admin API a locked (past-due over 14 days) hotel may still use: sign-in/out, password, billing. */
+export function lockedAdminApiAllowed(pathname: string): boolean {
+  return (
+    blockedAdminApiAllowed(pathname) ||
+    pathname === "/api/admin/account/password" ||
+    pathname === "/api/admin/billing" ||
+    pathname.startsWith("/api/admin/billing/")
+  );
+}
+
 /** Paths a blocked admin may still use (the sign-up steps live outside /admin). */
 export function blockedAdminApiAllowed(pathname: string): boolean {
   return pathname === "/api/admin/auth" || pathname.startsWith("/api/admin/auth/");
