@@ -142,7 +142,7 @@ admin is locked to the Plan page until a charge succeeds.
 
 - `CRON_SECRET` must be set (it already is for the arrivals digest). The new scheduled function
   `netlify/functions/billing-daily.mts` runs at 09:00 UTC each day.
-- Optional: `PLATFORM_ALERT_EMAIL` for sign-up / failed payment / cancel / plan-ended notes.
+- Optional: `OPS_ALERT_EMAIL` (shared with the ops alerts) for sign-up / failed payment / cancel / plan-ended notes.
   If unset they go to Harrison's own address.
 
 ## Check after switching on (test mode)

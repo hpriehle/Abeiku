@@ -6,7 +6,7 @@ import { adminRedirect, billingView, graceEndsAt, sessionBillingClaim, GRACE_DAY
 import { cancelBilling, completePaystackSetup, completeStripeSetup, restartBilling, startCardSetup, BillingError } from "./flow";
 import { handlePaystackBillingEvent, handleStripeEvent } from "./webhooks";
 import { runDailyBillingCheck } from "./notices";
-import { LEGAL_LINE, formatMinor, notifyPlatform, platformAlertEmail } from "./emails";
+import { LEGAL_LINE, formatMinor, notifyPlatform } from "./emails";
 import { cardRedirect } from "./card-redirect";
 import { checkoutForm, stripeBillingApi } from "./stripe-api";
 import { paystackBillingApi } from "./paystack-api";
@@ -109,15 +109,6 @@ describe("grace period then lock", () => {
 // ── Billing emails ──────────────────────────────────────────────────────
 
 describe("billing emails", () => {
-  afterEach(() => {
-    delete process.env.PLATFORM_ALERT_EMAIL;
-  });
-
-  it("platform address: PLATFORM_ALERT_EMAIL, else Harrison's", () => {
-    expect(platformAlertEmail({})).toBe("hpriehle@gmail.com");
-    expect(platformAlertEmail({ PLATFORM_ALERT_EMAIL: " ops@x.test " })).toBe("ops@x.test");
-  });
-
   it("trial started: owner gets first charge date and amount, platform gets a sign-up note, once", async () => {
     const { deps, store, send } = mailDeps();
     store.add({ id: "h1", name: "Sunset Lodge", billing_status: "pending_card", room_count: 3 });

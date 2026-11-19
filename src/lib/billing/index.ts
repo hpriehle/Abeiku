@@ -2,7 +2,7 @@
 
 import { SITE_URL } from "@/lib/site";
 import { sendEmail } from "@/lib/notifications/email";
-import { platformAlertEmail } from "./emails";
+import { opsAlertEmail } from "@/lib/ops/alerts";
 import type { BillingDeps } from "./flow";
 import { paystackBillingApi } from "./paystack-api";
 import { planIdsFromEnv } from "./plans";
@@ -20,7 +20,7 @@ export function billingDeps(): BillingDeps {
     appUrl: SITE_URL,
     cardCheckPesewas: 100, // GH₵1: the sign-up page says so
     send: sendEmail,
-    platformEmail: platformAlertEmail(),
+    platformEmail: opsAlertEmail(),
   };
 }
 

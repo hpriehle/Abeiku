@@ -6,6 +6,7 @@
 // Nothing here throws: a failed email is logged and never breaks a webhook or a page.
 
 import { LEGAL_ENTITY, SITE_URL } from "@/lib/site";
+import { opsAlertEmail } from "@/lib/ops/alerts";
 import { formatPrice, type BillingCurrency, type Tier } from "./plans";
 import type { BillingHotel, BillingStore } from "./store";
 
@@ -16,13 +17,6 @@ export type SendEmail = (params: { to: string; subject: string; html: string; te
 
 /** The legal line on every billing email and on the Plan page. */
 export const LEGAL_LINE = `Abeiku, operated by ${LEGAL_ENTITY}`;
-
-const DEFAULT_PLATFORM_EMAIL = "hpriehle@gmail.com";
-
-/** Where platform notes go: PLATFORM_ALERT_EMAIL, else Harrison's address. */
-export function platformAlertEmail(env: Record<string, string | undefined> = process.env): string {
-  return env.PLATFORM_ALERT_EMAIL?.trim() || DEFAULT_PLATFORM_EMAIL;
-}
 
 export function formatDate(iso: string | null | undefined): string {
   if (!iso || Number.isNaN(Date.parse(iso))) return "soon";
@@ -150,7 +144,7 @@ export interface Mail {
   store: BillingStore;
   /** Absent: emails are off (tests that don't care, scripts). */
   send?: SendEmail;
-  /** Platform address; default platformAlertEmail(). */
+  /** Platform address; default opsAlertEmail() (same address as the ops alerts). */
   platformEmail?: string;
 }
 
@@ -184,11 +178,11 @@ export async function emailOwner(mail: Mail, hotel: BillingHotel, key: string, b
 }
 
 /**
- * A short note to the platform (PLATFORM_ALERT_EMAIL). With `key` it is sent once per key;
+ * A short note to the platform (OPS_ALERT_EMAIL). With `key` it is sent once per key;
  * without, every call sends.
  */
 export async function notifyPlatform(mail: Mail, subject: string, text: string, key?: string): Promise<SendResult> {
-  const to = mail.platformEmail ?? platformAlertEmail();
+  const to = mail.platformEmail ?? opsAlertEmail();
   const body: EmailBody = { subject: `[Abeiku] ${subject}`, lines: text.split("\n").filter(Boolean) };
   if (key) return sendOnce(mail, `platform:${key}`, to, body);
   if (!mail.send) return "off";

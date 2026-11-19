@@ -37,7 +37,7 @@ export interface BillingDeps {
   cardCheckPesewas?: number;
   /** Billing emails (sendEmail in production; absent = no emails, e.g. most tests). */
   send?: SendEmail;
-  /** Platform note address (default PLATFORM_ALERT_EMAIL or Harrison's). */
+  /** Platform note address (default OPS_ALERT_EMAIL or Harrison's). */
   platformEmail?: string;
 }
 
