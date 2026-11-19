@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDate, formatMoney, nightsLabel, ruleLabel, STATUS_LABEL, STATUS_STYLES } from "@/components/partner/format";
 import { copyText } from "@/components/partner/copy";
@@ -71,27 +71,26 @@ export default function PartnerDashboardPage() {
   const [error, setError] = useState("");
   // Null: the hotel the session opened on.
   const [hotel, setHotel] = useState<string | null>(null);
+  // Bumped by "Try again" to re-run the fetch effect.
+  const [attempt, setAttempt] = useState(0);
   const router = useRouter();
 
-  const load = useCallback(async () => {
-    setError("");
-    try {
-      const query = hotel ? `?hotel=${encodeURIComponent(hotel)}` : "";
-      const r = await fetch(`/api/partner/stats${query}`, { cache: "no-store" });
-      if (r.status === 401) {
-        router.replace("/partner/login");
-        return;
-      }
-      if (!r.ok) throw new Error(String(r.status));
-      setStats(await r.json());
-    } catch {
-      setError("We couldn't load your bookings. Check your internet connection and try again.");
-    }
-  }, [router, hotel]);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    (async () => {
+      try {
+        const query = hotel ? `?hotel=${encodeURIComponent(hotel)}` : "";
+        const r = await fetch(`/api/partner/stats${query}`, { cache: "no-store" });
+        if (r.status === 401) {
+          router.replace("/partner/login");
+          return;
+        }
+        if (!r.ok) throw new Error(String(r.status));
+        setStats(await r.json());
+      } catch {
+        setError("We couldn't load your bookings. Check your internet connection and try again.");
+      }
+    })();
+  }, [router, hotel, attempt]);
 
   if (error) {
     return (
@@ -99,7 +98,13 @@ export default function PartnerDashboardPage() {
         <div className={`${CARD} p-6`} role="alert">
           <p className="text-gray-900 font-medium">Something went wrong</p>
           <p className="text-sm text-gray-700 mt-1">{error}</p>
-          <button onClick={load} className={`${BUTTON_PRIMARY} mt-4`}>
+          <button
+            onClick={() => {
+              setError("");
+              setAttempt((a) => a + 1);
+            }}
+            className={`${BUTTON_PRIMARY} mt-4`}
+          >
             Try again
           </button>
         </div>
