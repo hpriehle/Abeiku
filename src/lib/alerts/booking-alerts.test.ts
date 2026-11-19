@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   alertBookingsNow,
+  alertEmailRecipients,
   arrivalsDigestEmail,
   formatDateRange,
   newBookingEmail,
@@ -12,7 +13,7 @@ import {
 } from "./booking-alerts";
 import { memoryAlertStore } from "./memory-alert-store.test-helper";
 import { memoryHotelBookings } from "@/lib/bookings/memory-store.test-helper";
-import { syncHotelBookings, type FeedResult, type GoogleEventLike, googleEventToBooking } from "@/lib/bookings/calendar-sync";
+import { parseIcalBookings, syncHotelBookings, type FeedResult, type GoogleEventLike, googleEventToBooking } from "@/lib/bookings/calendar-sync";
 import { recordWebBooking } from "@/lib/bookings/web-ingest";
 import { groupStays, toCalendarRow } from "@/lib/bookings/calendar-view";
 import type { HotelBookingRow } from "@/lib/bookings/hotel-bookings";
@@ -53,7 +54,7 @@ function row(over: Partial<HotelBookingRow> & Record<string, unknown> = {}): Hot
 function setup(initial: (HotelBookingRow & Record<string, unknown>)[] = [], opts: { missingSchema?: boolean; hotels?: AlertHotel[] } = {}) {
   const db = memoryHotelBookings(initial);
   const alerts = memoryAlertStore(db.rows, { hotels: opts.hotels ?? [HOTEL], missingSchema: opts.missingSchema });
-  const sent: { to: string; subject: string; html: string; text: string }[] = [];
+  const sent: { to: string | string[]; subject: string; html: string; text: string }[] = [];
   let failNext = 0;
   const mailer: Mailer = vi.fn(async (msg) => {
     if (failNext > 0) {
@@ -343,6 +344,86 @@ describe("with the real calendar sync (C1)", () => {
   });
 });
 
+describe("OTA calendar blocks (Airbnb 'Not available')", () => {
+  const vevent = (uid: string, summary: string, start: string, end: string) =>
+    `BEGIN:VEVENT\nUID:${uid}\nDTSTART;VALUE=DATE:${start.replace(/-/g, "")}\nDTEND;VALUE=DATE:${end.replace(/-/g, "")}\nSUMMARY:${summary}\nEND:VEVENT`;
+  const airbnbFeed = (...events: string[]): FeedResult => ({ source: "airbnb", bookings: parseIcalBookings(events.join("\n"), "airbnb", 3) });
+  const RESERVED = vevent("a-res", "Reserved", "2026-12-10", "2026-12-12");
+  const WINDOW_END = vevent("a-blk1", "Airbnb (Not available)", "2027-11-17", "2027-11-18");
+
+  it("the rolling 'Not available' day never alerts (email or WhatsApp); a new reservation does, once", async () => {
+    const t = setup([], { hotels: [{ ...HOTEL, alert_whatsapp: "+233551542355", whatsappConnected: true }] });
+    const whatsapps: string[] = [];
+    const whatsapp = vi.fn(async (m: { summary: string }) => (whatsapps.push(m.summary), { success: true }));
+    const run = async (feed: FeedResult) => {
+      const before = await t.store.syncedFeeds(H);
+      await syncHotelBookings({ store: t.db.store, hotelId: H, hotelSlug: "aracuya", feeds: [feed], today: TODAY });
+      await silenceBackfill({ store: t.store, hotelId: H, loadedFeeds: ["airbnb"], syncedBefore: before });
+      return runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY, whatsapp });
+    };
+    await run(airbnbFeed(WINDOW_END)); // first sync: backfill
+    // Next day: the window moves one day further, the host blocks a week, and a guest books.
+    const nextDay = airbnbFeed(
+      WINDOW_END,
+      vevent("a-blk2", "Airbnb (Not available)", "2027-11-18", "2027-11-19"),
+      vevent("a-blk3", "Not available", "2026-12-20", "2026-12-27"),
+      RESERVED
+    );
+    const c = await run(nextDay);
+    await run(nextDay);
+    expect(t.sent.map((s) => s.subject)).toEqual(["New booking: Airbnb · Reserved, 10–12 Dec, 3 rooms (Entire House) (Airbnb)"]);
+    expect(whatsapps).toHaveLength(1);
+    expect(c.silenced).toBe(2);
+
+    // Blocks still take the rooms: stored, not cancelled.
+    const blocks = [...t.db.rows.values()].filter((r) => r.external_ref.startsWith("a-blk"));
+    expect(blocks).toHaveLength(3);
+    expect(blocks.every((r) => r.booking_status === "confirmed" && r.rooms_count === 3)).toBe(true);
+
+    // The host unblocks: the sync cancels the row, but no cancellation alert.
+    await run(airbnbFeed(WINDOW_END, vevent("a-blk2", "Airbnb (Not available)", "2027-11-18", "2027-11-19"), RESERVED));
+    expect(t.db.rows.get(blocks.find((r) => r.external_ref === "a-blk3")!.id)!.booking_status).toBe("cancelled");
+    expect(t.sent).toHaveLength(1);
+    expect(whatsapps).toHaveLength(1);
+  });
+
+  it("a block row already in the table (synced before this fix) is silenced, not alerted", async () => {
+    const t = setup([
+      row({ source: "airbnb", guest_name: "Airbnb · Airbnb (Not available)", check_in: "2027-11-18", check_out: "2027-11-19", rooms_count: 3 }),
+      row({ source: "airbnb", guest_name: "Airbnb · Reserved", rooms_count: 3 }),
+    ]);
+    const c = await runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY });
+    expect(c).toMatchObject({ newSent: 1, silenced: 1 });
+    expect(t.sent.map((s) => s.subject)).toEqual(["New booking: Airbnb · Reserved, 20–23 Nov, 3 rooms (Entire House) (Airbnb)"]);
+    // An already-announced block that is cancelled: no cancellation email either.
+    const u = setup([row({ source: "vrbo", guest_name: "VRBO · Blocked", booking_status: "cancelled", alert_new_sent_at: "x" })]);
+    await alertBookingsNow({ store: u.store, mailer: u.mailer, hotelId: H, ids: ["r3"], today: TODAY });
+    await runBookingAlerts({ store: u.store, mailer: u.mailer, today: TODAY });
+    expect(u.sent).toHaveLength(0);
+  });
+
+  it("blocks are left out of the arrivals digest", async () => {
+    const t = setup([
+      row({ source: "airbnb", guest_name: "Airbnb · Airbnb (Not available)", check_in: "2026-11-16", check_out: "2026-11-17", rooms_count: 3 }),
+      row({ source: "booking_com", guest_name: "Booking.com · CLOSED - Not available", check_in: "2026-11-16", check_out: "2026-11-18", rooms_count: 3 }),
+    ]);
+    expect(await sendArrivalsDigest({ store: t.store, mailer: t.mailer, tomorrow: "2026-11-16" })).toMatchObject({ sent: 0, empty: 1 });
+    const u = setup([
+      row({ source: "airbnb", guest_name: "Airbnb · Airbnb (Not available)", check_in: "2026-11-16", check_out: "2026-11-17", rooms_count: 3 }),
+      row({ guest_name: "Arrives A", check_in: "2026-11-16", check_out: "2026-11-17" }),
+    ]);
+    await sendArrivalsDigest({ store: u.store, mailer: u.mailer, tomorrow: "2026-11-16" });
+    expect(u.sent[0].subject).toBe("Arriving tomorrow (Mon 16 Nov 2026): 1 booking, 1 room");
+    expect(u.sent[0].text).not.toContain("Not available");
+  });
+
+  it("Google calendar events and website bookings with block-like names still alert as before", async () => {
+    const t = setup([row({ source: "google_calendar", guest_name: "Blocked" }), row({ source: "aracuya_web", guest_name: "Not available", total_price: 900 })]);
+    const c = await runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY });
+    expect(c).toMatchObject({ newSent: 2, silenced: 0 });
+  });
+});
+
 describe("arrivals digest", () => {
   it("lists tomorrow's arrivals once per date; cancelled and continuing stays are left out", async () => {
     const t = setup([
@@ -384,5 +465,30 @@ describe("arrivals digest", () => {
     const m = arrivalsDigestEmail(stays, "2026-11-16", HOTEL);
     expect(m.subject).toBe("Arriving tomorrow (Mon 16 Nov 2026): 1 booking, 1 room");
     expect(m.text.split("\n").length).toBeLessThan(20);
+  });
+});
+
+describe("several alert recipients (comma-separated alert_email)", () => {
+  it("one address: sent to exactly that address, as before", async () => {
+    const t = setup([row()]);
+    await runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY });
+    expect(t.sent.map((m) => m.to)).toEqual(["info@aracuya.com"]);
+  });
+
+  it("two addresses: new booking, cancellation and digest each go to both, in one email", async () => {
+    const hotel = { ...HOTEL, alert_email: "info@aracuya.com, owner@example.com" };
+    const t = setup([row({ check_in: "2026-11-16", check_out: "2026-11-18" })], { hotels: [hotel] });
+    await runBookingAlerts({ store: t.store, mailer: t.mailer, today: TODAY });
+    await sendArrivalsDigest({ store: t.store, mailer: t.mailer, tomorrow: "2026-11-16" });
+    t.db.rows.get("r1")!.booking_status = "cancelled";
+    await alertBookingsNow({ store: t.store, mailer: t.mailer, hotelId: H, ids: ["r1"], today: TODAY });
+    expect(t.sent.map((m) => m.subject.split(":")[0])).toEqual(["New booking", "Arriving tomorrow (Mon 16 Nov 2026)", "Cancelled"]);
+    for (const m of t.sent) expect(m.to).toEqual(["info@aracuya.com", "owner@example.com"]);
+  });
+
+  it("tolerates spaces, semicolons, empty entries and duplicates; skips entries that aren't addresses", () => {
+    expect(alertEmailRecipients(" a@inn.gh ;b@inn.gh,, a@inn.gh , junk ")).toEqual(["a@inn.gh", "b@inn.gh"]);
+    expect(alertEmailRecipients("info@aracuya.com")).toEqual(["info@aracuya.com"]);
+    expect(alertEmailRecipients(null)).toEqual([]);
   });
 });

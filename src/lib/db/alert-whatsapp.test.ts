@@ -12,9 +12,17 @@ describe("manager WhatsApp number for alerts", () => {
     expect(parseAlertWhatsApp("")).toEqual({ ok: true, phone: null });
     expect(parseAlertWhatsApp(null)).toEqual({ ok: true, phone: null });
   });
-  it("refuses local-only, junk and several numbers", () => {
-    expect(parseAlertWhatsApp("055 154 2355").ok).toBe(false);
-    expect(parseAlertWhatsApp("+233 55 154 2355, +233 59 795 7528").ok).toBe(false);
+  it("several numbers separated by commas: each checked, stored as +digits", () => {
+    expect(parseAlertWhatsApp("+233 55 154 2355, +1 (703) 232-6925")).toEqual({ ok: true, phone: "+233551542355, +17032326925" });
+    expect(parseAlertWhatsApp(" +233551542355;0017032326925 , ,+233 55 154 2355 ")).toEqual({ ok: true, phone: "+233551542355, +17032326925" });
+    expect(parseAlertWhatsApp(" , ")).toEqual({ ok: true, phone: null });
+    expect(parseAlertWhatsApp("+233551542355, 0597957528")).toEqual({ ok: false, error: 'Include the country code ("0597957528"), e.g. +233 55 154 2355.' });
+    expect(parseAlertWhatsApp("+233551542355, call me")).toEqual({ ok: false, error: 'Enter a valid phone number with country code ("call me").' });
+    expect(parseAlertWhatsApp("+233551542355, +12").ok).toBe(false);
+  });
+  it("refuses local-only and junk", () => {
+    expect(parseAlertWhatsApp("055 154 2355")).toEqual({ ok: false, error: "Include the country code, e.g. +233 55 154 2355." });
+    expect(parseAlertWhatsApp("+233 55 154 2355 / 2356").ok).toBe(false);
     expect(parseAlertWhatsApp("+12").ok).toBe(false);
     expect(parseAlertWhatsApp("call me").ok).toBe(false);
     expect(parseAlertWhatsApp(233551542355).ok).toBe(false);

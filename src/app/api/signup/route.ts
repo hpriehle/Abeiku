@@ -15,6 +15,9 @@ import { setAdminSession } from "@/lib/billing/session";
 import { isMissingColumnError } from "@/lib/billing/store";
 import { parseAccount, slugify } from "@/lib/billing/signup-input";
 import { recordTermsAccepted } from "@/lib/billing/terms";
+import { createConfirmToken, getConfirmStore } from "@/lib/auth/email-confirm";
+import { verifyEmailMessage } from "@/lib/auth/account-emails";
+import { sendEmail } from "@/lib/notifications/email";
 import { checkLimit, clientIp, getAttemptStore, hashKey, recordFailure, tooManyMessage } from "@/lib/auth/rate-limit";
 
 const SIGNUP_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 };
@@ -24,6 +27,16 @@ async function billingColumnsReady(): Promise<boolean> {
   if (!error) return true;
   if (isMissingColumnError(error)) return false;
   throw error;
+}
+
+async function sendVerifyEmail(userId: string, email: string): Promise<void> {
+  try {
+    const token = await createConfirmToken(await getConfirmStore(), userId, email, "verify");
+    const result = await sendEmail({ to: email, ...verifyEmailMessage(token) });
+    if (!result.success) console.error("[signup] confirm email failed:", result.error);
+  } catch (err) {
+    console.error("[signup] could not create confirm link (run docs/go-live-l3-account.sql?):", (err as Error).message);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -84,10 +97,13 @@ export async function POST(request: NextRequest) {
       console.error("[signup] notification defaults failed:", err);
     }
 
+    // L3: confirm the login email. Never blocks sign-up; the admin banner nags until it's done.
+    await sendVerifyEmail(user.id, user.email);
+
     const res = NextResponse.json({ success: true, next: "hotel" });
     return setAdminSession(
       res,
-      { userId: user.id, hotelId: hotel.id, email: user.email, hotelName: hotel.name, role: user.role },
+      { userId: user.id, hotelId: hotel.id, email: user.email, hotelName: hotel.name, role: user.role, sv: 0 },
       billingView({ billing_status: "pending_card" })
     );
   } catch (error) {
