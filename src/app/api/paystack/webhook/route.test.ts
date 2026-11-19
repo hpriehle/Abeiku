@@ -23,6 +23,8 @@ vi.mock("@/lib/whatsapp/chat-logger", () => ({ logEvent: vi.fn() }));
 vi.mock("@/lib/whatsapp/client", () => ({ sendText: vi.fn(), sendButtons: vi.fn() }));
 vi.mock("@/lib/notifications", () => ({ notifyOwner: vi.fn() }));
 vi.mock("@/lib/payments/paystack-transfer", () => ({ initiateTransfer: vi.fn() }));
+const opsAlert = vi.fn();
+vi.mock("@/lib/ops/alerts", () => ({ opsAlert: (...a: unknown[]) => opsAlert(...a) }));
 
 const { makeDeps } = await import("@/lib/billing/fakes.test-helper");
 let m = makeDeps();
@@ -46,6 +48,7 @@ describe("POST /api/paystack/webhook with L2 billing", () => {
     m = makeDeps();
     m.store.add({ id: "h1", billing_status: "trialing", billing_provider: "paystack", billing_customer_id: "CUS_1", billing_subscription_id: "SUB_1" });
     getPaymentByPaystackReference.mockClear();
+    opsAlert.mockClear();
   });
 
   it("bad signature: 400 and nothing changes", async () => {
@@ -79,5 +82,18 @@ describe("POST /api/paystack/webhook with L2 billing", () => {
     };
     const res = await send({ event: "invoice.payment_failed", data: { id: 2, subscription: { subscription_code: "SUB_1" } } });
     expect(res.status).toBe(500);
+    expect(opsAlert).toHaveBeenCalledWith("paystack-webhook", "Paystack webhook invoice.payment_failed failed", expect.any(Error));
+  });
+
+  it("L3: an error in the guest-payment code answers 500 and emails Harrison", async () => {
+    getPaymentByPaystackReference.mockRejectedValueOnce(new Error("db down"));
+    const res = await send({ event: "charge.success", data: { reference: "bk_9", plan: {} } });
+    expect(res.status).toBe(500);
+    expect(opsAlert).toHaveBeenCalledWith("paystack-webhook", "Paystack webhook failed", expect.any(Error));
+  });
+
+  it("no alert on a normal event", async () => {
+    await send({ event: "charge.success", data: { reference: "bk_1", plan: {} } });
+    expect(opsAlert).not.toHaveBeenCalled();
   });
 });

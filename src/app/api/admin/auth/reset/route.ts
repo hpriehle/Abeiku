@@ -11,6 +11,7 @@ import {
   tokenProblemMessage,
 } from "@/lib/auth/password-reset";
 import { passwordChangedEmail } from "@/lib/auth/password-reset-emails";
+import { bumpSessionVersion, getAccountDb } from "@/lib/auth/account";
 
 export async function POST(request: NextRequest) {
   let token: unknown;
@@ -40,6 +41,13 @@ export async function POST(request: NextRequest) {
     }
 
     await setAdminUserPassword(used.adminUserId, passwordHash);
+    // Sign out every session of this account (#17). The password is already changed, so a
+    // failure here is logged, not shown.
+    try {
+      await bumpSessionVersion(await getAccountDb(), used.adminUserId);
+    } catch (err) {
+      console.error("[reset-password] could not end old sessions:", (err as Error).message);
+    }
 
     const user = await getAdminUserById(used.adminUserId);
     if (user) {

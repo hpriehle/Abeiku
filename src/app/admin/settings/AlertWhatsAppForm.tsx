@@ -39,7 +39,7 @@ export function AlertWhatsAppForm({ available, phone, connected }: AlertWhatsApp
     }
   }
 
-  let hint = "One number with country code. Leave empty to stop WhatsApp alerts.";
+  let hint = "Number with country code; separate several with commas. Leave empty to stop WhatsApp alerts.";
   if (!available) hint = "This can't be changed yet. Please try again later.";
   else if (!connected) hint = "Alerts are sent from your hotel's WhatsApp number, so they start once WhatsApp is connected in Settings → WhatsApp.";
 

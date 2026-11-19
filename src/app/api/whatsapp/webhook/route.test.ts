@@ -9,6 +9,8 @@ const markAsRead = vi.fn<(id: string) => Promise<object>>(async () => ({}));
 const conv = { id: "c1", phone: "233200000001", guest_state: "lead", step: "idle", guest_name: null };
 
 vi.mock("@/lib/supabase/client", () => ({ supabase: {} }));
+const updateAlertDeliveryStatus = vi.fn(async (..._a: unknown[]) => {});
+vi.mock("@/lib/alerts/delivery-log", () => ({ updateAlertDeliveryStatus: (...a: unknown[]) => updateAlertDeliveryStatus(...a) }));
 vi.mock("@/lib/whatsapp/client", () => ({ markAsRead: (id: string) => markAsRead(id) }));
 vi.mock("@/lib/whatsapp/state-machine", () => ({ handleMessage: () => handleMessage() }));
 vi.mock("@/lib/whatsapp/chat-logger", () => ({ recordMessage: (p: unknown) => recordMessage(p) }));
@@ -89,6 +91,22 @@ describe("POST /api/whatsapp/webhook", () => {
     expect(recordMessage).toHaveBeenCalledWith(
       expect.objectContaining({ direction: "outbound", senderType: "admin", body: "Yes, we have a room", phone: "233200000001" })
     );
+  });
+
+  it("delivery status of a booking alert updates alert_deliveries by wamid", async () => {
+    const status = JSON.stringify({
+      object: "whatsapp_business_account",
+      entry: [{ id: "WABA", changes: [{ field: "messages", value: { metadata: { phone_number_id: "PNID" }, statuses: [
+        { id: "wamid.A", status: "read", timestamp: "3", recipient_id: "233551542355" },
+        { id: "wamid.B", status: "failed", timestamp: "3", recipient_id: "17032326925", errors: [{ code: 131026, title: "Message undeliverable" }] },
+      ] } }] }],
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {}); // supabase is a stub here: the chat_messages lookup fails
+    expect((await post(status, signBody(status, SECRET))).status).toBe(200);
+    expect(updateAlertDeliveryStatus.mock.calls).toEqual([
+      ["wamid.A", "read", null],
+      ["wamid.B", "failed", "131026: Message undeliverable"],
+    ]);
   });
 });
 

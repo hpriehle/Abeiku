@@ -7,6 +7,7 @@ import { getHotelById } from "@/lib/db";
 import { hotelStorage } from "@/lib/hotel-context";
 import { sendTemplate } from "@/lib/whatsapp/client";
 import { pickAlertSender } from "./alert-sender";
+import { opsAlert } from "@/lib/ops/alerts";
 import {
   alertBookingsNow,
   logSkip,
@@ -17,7 +18,12 @@ import {
   type WhatsAppAlerter,
 } from "./booking-alerts";
 
-export const resendMailer: Mailer = (msg) => sendEmail(msg);
+/** L3: a failed alert email also emails Harrison (at most hourly). No guest data in that email. */
+export const resendMailer: Mailer = async (msg) => {
+  const res = await sendEmail(msg);
+  if (!res.success) await opsAlert("alert-send-email", "A booking alert email to a hotel was not sent", res.error ?? "unknown");
+  return res;
+};
 
 /** Approved Meta template for manager alerts (body: "Booking alert for {{1}}: {{2}}. …"). */
 export const BOOKING_ALERT_TEMPLATE = process.env.WHATSAPP_ALERT_TEMPLATE || "booking_alert";
@@ -28,15 +34,21 @@ export const BOOKING_ALERT_LANGUAGE = process.env.WHATSAPP_ALERT_TEMPLATE_LANG |
  * or, if it has none, from the platform sender hotel (WHATSAPP_ALERT_SENDER_HOTEL_ID).
  * The text always names the alerting hotel.
  */
-export const metaWhatsAppAlerter: WhatsAppAlerter = async ({ hotelId, hotelName, to, summary }) => {
+export const metaWhatsAppAlerter: WhatsAppAlerter = async (msg) => {
+  const res = await sendWhatsAppAlert(msg);
+  if (!res.success) await opsAlert("alert-send-whatsapp", `A WhatsApp booking alert for ${msg.hotelName} was not sent`, res.error ?? "unknown");
+  return res;
+};
+
+const sendWhatsAppAlert: WhatsAppAlerter = async ({ hotelId, hotelName, to, summary }) => {
   try {
     const hotel = await getHotelById(hotelId);
     const sender = hotel ? await pickAlertSender(hotel, getHotelById) : null;
     if (!sender) return { success: false, error: "WhatsApp not connected" };
-    await hotelStorage.run({ hotelId: sender.id, hotel: sender }, () =>
+    const id = await hotelStorage.run({ hotelId: sender.id, hotel: sender }, () =>
       sendTemplate(to, { name: BOOKING_ALERT_TEMPLATE, language: BOOKING_ALERT_LANGUAGE, bodyParams: [hotelName, summary] })
     );
-    return { success: true };
+    return { success: true, id };
   } catch (err) {
     return { success: false, error: (err as Error)?.message ?? String(err) };
   }
