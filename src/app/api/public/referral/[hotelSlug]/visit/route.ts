@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHotelBySlug } from "@/lib/db";
-import { getInfluencerBySlug, logClick } from "@/lib/db/influencers";
+import { getInfluencerBySlug, hasClickSince, logClick } from "@/lib/db/influencers";
+import { isCountableClick, REPEAT_CLICK_WINDOW_MS } from "@/lib/partner/clicks";
 
 const ALLOWED_ORIGINS = new Set([
   "https://aracuya.com",
@@ -59,7 +60,12 @@ export async function POST(
   }
 
   try {
-    await logClick({
+    // Bots, link previews and repeat visits get the same answer; they just don't count as a click.
+    const since = new Date(Date.now() - REPEAT_CLICK_WINDOW_MS).toISOString();
+    const counts =
+      isCountableClick(body.user_agent) &&
+      !(body.ip_hash && (await hasClickSince(influencer.id, body.ip_hash, since)));
+    if (counts) await logClick({
       influencer_id: influencer.id,
       ip_hash: body.ip_hash ?? null,
       user_agent: body.user_agent ?? null,
