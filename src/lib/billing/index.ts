@@ -1,6 +1,8 @@
 // Real billing dependencies for routes and pages.
 
 import { SITE_URL } from "@/lib/site";
+import { sendEmail } from "@/lib/notifications/email";
+import { opsAlertEmail } from "@/lib/ops/alerts";
 import type { BillingDeps } from "./flow";
 import { paystackBillingApi } from "./paystack-api";
 import { planIdsFromEnv } from "./plans";
@@ -17,6 +19,8 @@ export function billingDeps(): BillingDeps {
     planIds: planIdsFromEnv(),
     appUrl: SITE_URL,
     cardCheckPesewas: 100, // GH₵1: the sign-up page says so
+    send: sendEmail,
+    platformEmail: opsAlertEmail(),
   };
 }
 

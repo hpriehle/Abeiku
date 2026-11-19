@@ -54,14 +54,14 @@ export const alertFeedKey = (feedId: string) => `feed:${feedId}`;
 // ── Who gets synced ──────────────────────────────────────────────────────
 
 /**
- * Hotels on a live trial or paid plan (also past due, or cancelled but still inside the paid
+ * Hotels on a live trial or paid plan (also past due, even locked, or cancelled but still inside the paid
  * time), and billing-exempt hotels. Not: no card yet, ended, or hotels outside billing.
  */
 export function shouldSyncHotel(h: HotelBilling & { active?: boolean | null }): boolean {
   if (h.active === false) return false;
   const v = billingView(h);
   if (v.exempt) return true;
-  return v.status !== null && v.access === "full";
+  return v.status !== null && (v.access === "full" || v.access === "locked");
 }
 
 // ── Validation ───────────────────────────────────────────────────────────

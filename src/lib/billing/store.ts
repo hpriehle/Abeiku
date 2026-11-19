@@ -20,6 +20,14 @@ export interface BillingStore {
   findByCustomer(provider: BillingProvider, customerId: string): Promise<BillingHotel | null>;
   /** true the first time an event id is seen; false for a repeat delivery. */
   firstDelivery(provider: BillingProvider, eventId: string): Promise<boolean>;
+  /** Billing emails: true the first time `key` is claimed (then send); false if already sent. */
+  claimEmail(key: string): Promise<boolean>;
+  /** Undo a claim when the send failed, so the next run tries again. */
+  releaseEmail(key: string): Promise<void>;
+  /** The owner's login email (admin_users), else the hotel's contact email. */
+  ownerEmail(hotelId: string): Promise<string | null>;
+  /** Hotels the daily billing check looks at: trialing, past_due or canceled. */
+  listForDailyCheck(): Promise<BillingHotel[]>;
 }
 
 /** True when an error means the billing columns/table are not there yet (SQL not run). */

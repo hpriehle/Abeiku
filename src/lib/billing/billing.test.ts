@@ -75,7 +75,7 @@ describe("gating (billingView)", () => {
   it("payment failed: still open, with the past-due banner", () => {
     const v = billingView({ billing_status: "past_due" }, NOW);
     expect(v.access).toBe("full");
-    expect(v.banner).toEqual({ kind: "past_due" });
+    expect(v.banner).toEqual({ kind: "past_due", lockAt: null, locked: false });
   });
   it("cancelled: open until the end of the paid time, then ended", () => {
     const h = { billing_status: "canceled", current_period_end: "2026-11-20T00:00:00.000Z" };
@@ -105,7 +105,7 @@ describe("card on file: Paystack (cedis)", () => {
     expect(url).toMatch(/^https:\/\/checkout\.paystack\.test\//);
     const arg = paystack.initializeCardCheck.mock.calls[0][0];
     expect(arg.amountPesewas).toBe(100);
-    expect(arg.metadata).toEqual({ purpose: "abeiku_card_check", hotel_id: "h1", tier: "small" });
+    expect(arg.metadata).toEqual({ purpose: "abeiku_card_check", hotel_id: "h1", tier: "small", trial: true });
     expect(arg.callbackUrl).toBe("https://abeiku.test/signup/done?provider=paystack");
     expect(store.hotels.get("h1")).toMatchObject({ billing_provider: "paystack", billing_currency: "GHS", billing_tier: "small" });
   });

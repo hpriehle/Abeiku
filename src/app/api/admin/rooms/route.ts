@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelRooms, createHotelRoom, getNextRoomPosition } from "@/lib/db";
+import { supabaseBillingStore } from "@/lib/billing/supabase-store";
+import { checkRoomLimit, loadRoomLimit, roomLimitResponseBody, roomsAfterSave } from "@/lib/billing/room-limit";
 
 export async function GET() {
   const session = await getSession();
@@ -44,9 +46,20 @@ export async function POST(request: NextRequest) {
       counter++;
     }
 
+    const resolvedRoomType = room_type || "standard";
+    const resolvedTotal = resolvedRoomType === "individual" ? 1 : (total_rooms || 1);
+
+    // The plan's room limit (small plan: 5). Exempt and non-billed hotels are not limited.
+    const limit = await loadRoomLimit(session.hotelId, (id) => supabaseBillingStore.getHotel(id));
+    const check = checkRoomLimit(
+      limit,
+      existingRooms,
+      roomsAfterSave(existingRooms, { id: "new", room_type: resolvedRoomType, total_rooms: resolvedTotal, group_id: group_id || null })
+    );
+    if (!check.ok) return NextResponse.json(roomLimitResponseBody(check), { status: 403 });
+
     const position = await getNextRoomPosition(session.hotelId);
 
-    const resolvedRoomType = room_type || "standard";
     const pricingTiers = price
       ? [{ rooms: 1, price: Number(price), label: resolvedRoomType === "group" ? "Entire House" : "1 Room" }]
       : [];
@@ -57,7 +70,7 @@ export async function POST(request: NextRequest) {
       tagline: tagline || null,
       description: description || null,
       pricing_tiers: pricingTiers,
-      total_rooms: resolvedRoomType === "individual" ? 1 : (total_rooms || 1),
+      total_rooms: resolvedTotal,
       size: size || null,
       bed_type: bed_type || null,
       occupancy: occupancy || 2,

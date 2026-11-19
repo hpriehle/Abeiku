@@ -33,7 +33,16 @@ export function DoneClient() {
           <p className="mt-3 text-base text-gray-700">This takes a few seconds. Please keep this page open.</p>
         </>
       )}
-      {view.kind === "ok" && (
+      {view.kind === "ok" && !view.trialEndsAt && (
+        <>
+          <h1 className="text-2xl font-bold tracking-tight" style={H1_FONT}>Your plan has started</h1>
+          <p className="mt-3 text-base text-gray-700">
+            Your card is saved and your plan is on again. You can change your card or cancel any time on the Plan page.
+          </p>
+          <a href="/admin" className={`${primary} mt-6`}>Go to my hotel</a>
+        </>
+      )}
+      {view.kind === "ok" && view.trialEndsAt && (
         <>
           <h1 className="text-2xl font-bold tracking-tight" style={H1_FONT}>Your free trial has started</h1>
           <p className="mt-3 text-base text-gray-700">

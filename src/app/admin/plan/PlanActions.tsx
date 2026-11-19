@@ -11,17 +11,21 @@ export function PlanActions({
   roomCount,
   currency,
   trialEndsAt,
+  periodEnd,
 }: {
   status: string | null;
   roomCount: number | null;
   currency: BillingCurrency | null;
   trialEndsAt: string | null;
+  /** End of the month paid for (formatted), the date a cancel takes effect after the trial. */
+  periodEnd: string | null;
 }) {
   const router = useRouter();
   const { pending, busy, error, setError, run } = useAdminAction();
   const [rooms, setRooms] = useState(roomCount ? String(roomCount) : "");
   const [confirming, setConfirming] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [cancelledUntil, setCancelledUntil] = useState<string | null>(null);
 
   const live = status === "trialing" || status === "active" || status === "past_due";
   const newRooms = Number(rooms);
@@ -39,14 +43,26 @@ export function PlanActions({
   }
 
   async function cancel() {
-    const r = await run("cancel", () => apiRequest("/api/admin/billing/cancel", { method: "POST" }));
+    const r = await run("cancel", () => apiRequest<{ accessUntil: string | null }>("/api/admin/billing/cancel", { method: "POST" }));
     if (r?.ok) {
       setConfirming(false);
+      const until = r.data.accessUntil;
+      setCancelledUntil(
+        until ? new Date(until).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Accra" }) : ""
+      );
       router.refresh();
     }
   }
 
+  if (cancelledUntil !== null) {
+    return (
+      <p className="admin-success mt-6" role="status">
+        Your plan is cancelled. You will not be charged again.{cancelledUntil ? ` You can use Abeiku until ${cancelledUntil}.` : ""}
+      </p>
+    );
+  }
   if (!live) return error ? <ErrorNotice message={error} onDismiss={() => setError(null)} className="mt-4" /> : null;
+  const endsOn = status === "trialing" ? trialEndsAt : periodEnd;
 
   return (
     <div className="mt-6 space-y-6">
@@ -79,18 +95,21 @@ export function PlanActions({
       </form>
 
       <div className="admin-card">
-        <h2 className="admin-h2">Cancel</h2>
+        <h2 className="admin-h2">Cancel plan</h2>
         <p className="mt-1 text-sm text-gray-700">
           {status === "trialing"
             ? `You are in your free trial. If you cancel now you pay nothing${trialEndsAt ? `, and you can use Abeiku until ${trialEndsAt}` : ""}.`
-            : "No more charges. You can use Abeiku until the end of the month you paid for."}
+            : `No more charges. You can use Abeiku until ${periodEnd ?? "the end of the month you paid for"}. No refunds for part of a month.`}
         </p>
         {!confirming ? (
           <button type="button" className="admin-btn-secondary mt-4" onClick={() => setConfirming(true)} disabled={busy}>
-            Cancel my plan
+            Cancel plan
           </button>
         ) : (
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <p className="w-full text-sm font-medium text-gray-900">
+              Cancel your plan?{endsOn ? ` It ends on ${endsOn}.` : ""}
+            </p>
             <button type="button" className="admin-btn-danger" onClick={cancel} disabled={busy}>
               {pending === "cancel" ? "Cancelling..." : "Yes, cancel"}
             </button>

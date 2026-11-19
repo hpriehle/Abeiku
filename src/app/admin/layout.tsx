@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { readSession } from "@/lib/admin/auth";
 import { loadBillingView } from "@/lib/billing";
+import { ADMIN_PATH_HEADER, adminRedirect } from "@/lib/billing/access";
 import { loadAdminFeatures, NO_FEATURES } from "@/lib/admin/features";
 import { AdminNav } from "./AdminNav";
 import { BillingBanner } from "./BillingBanner";
@@ -20,7 +22,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Billing state from the database (the session claim can be days old, e.g. after a cancel).
   // Never throws: missing columns or exempt hotels give full access.
   const billing = session ? await loadBillingView(session.hotelId) : null;
-  if (billing && billing.access !== "full") redirect("/signup");
+  // No card / plan ended: sign-up steps. Payment failed over 14 days ago: only /admin/plan.
+  const to = billing ? adminRedirect(billing, (await headers()).get(ADMIN_PATH_HEADER)) : null;
+  if (to) redirect(to);
   // L3: hide features that don't work for this hotel (WhatsApp inbox, Simulator).
   const features = session ? await loadAdminFeatures(session) : NO_FEATURES;
 
