@@ -65,17 +65,22 @@ beforeEach(() => {
 
 describe("whatsAppAlertTo (routing)", () => {
   it("needs both a connected WhatsApp number and a manager number", () => {
-    expect(whatsAppAlertTo({ alert_whatsapp: MANAGER, whatsappConnected: true })).toBe("233551542355");
-    expect(whatsAppAlertTo({ alert_whatsapp: MANAGER, whatsappConnected: false })).toBeNull();
-    expect(whatsAppAlertTo({ alert_whatsapp: MANAGER })).toBeNull();
-    expect(whatsAppAlertTo({ alert_whatsapp: null, whatsappConnected: true })).toBeNull();
-    expect(whatsAppAlertTo({ alert_whatsapp: "", whatsappConnected: true })).toBeNull();
+    expect(whatsAppAlertTo({ alert_whatsapp: MANAGER, whatsappConnected: true })).toEqual(["233551542355"]);
+    expect(whatsAppAlertTo({ alert_whatsapp: MANAGER, whatsappConnected: false })).toEqual([]);
+    expect(whatsAppAlertTo({ alert_whatsapp: MANAGER })).toEqual([]);
+    expect(whatsAppAlertTo({ alert_whatsapp: null, whatsappConnected: true })).toEqual([]);
+    expect(whatsAppAlertTo({ alert_whatsapp: "", whatsappConnected: true })).toEqual([]);
   });
 
   it("normalises the number and refuses junk", () => {
-    expect(whatsAppAlertTo({ alert_whatsapp: "00233551542355", whatsappConnected: true })).toBe("233551542355");
-    expect(whatsAppAlertTo({ alert_whatsapp: "12345", whatsappConnected: true })).toBeNull();
-    expect(whatsAppAlertTo({ alert_whatsapp: "1".repeat(16), whatsappConnected: true })).toBeNull();
+    expect(whatsAppAlertTo({ alert_whatsapp: "00233551542355", whatsappConnected: true })).toEqual(["233551542355"]);
+    expect(whatsAppAlertTo({ alert_whatsapp: "12345", whatsappConnected: true })).toEqual([]);
+    expect(whatsAppAlertTo({ alert_whatsapp: "1".repeat(16), whatsappConnected: true })).toEqual([]);
+  });
+
+  it("several numbers: spaces, semicolons and duplicates tolerated, bad entries skipped", () => {
+    expect(whatsAppAlertTo({ alert_whatsapp: "+233 55 154 2355,+1 (703) 232-6925", whatsappConnected: true })).toEqual(["233551542355", "17032326925"]);
+    expect(whatsAppAlertTo({ alert_whatsapp: " +233551542355 ; 12345 ; 00233551542355 ,", whatsappConnected: true })).toEqual(["233551542355"]);
   });
 });
 
@@ -151,5 +156,43 @@ describe("WhatsApp booking alert alongside the email", () => {
     await runBookingAlerts({ store: t.store, mailer: t.mailer, whatsapp: t.whatsapp, today: TODAY });
     await runBookingAlerts({ store: t.store, mailer: t.mailer, whatsapp: t.whatsapp, today: TODAY });
     expect(t.whatsapp).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("several manager numbers", () => {
+  const TWO = "+233551542355, +17032326925";
+
+  it("one template per number, for new bookings and cancellations", async () => {
+    const t = setup({ ...BASE, alert_whatsapp: TWO, whatsappConnected: true });
+    const c = await runBookingAlerts({ store: t.store, mailer: t.mailer, whatsapp: t.whatsapp, today: TODAY });
+    expect(c.newSent).toBe(1);
+    expect(c.whatsappSent).toBe(2);
+    expect(t.whatsapps.map((w) => w.to)).toEqual(["233551542355", "17032326925"]);
+    expect(new Set(t.whatsapps.map((w) => w.summary)).size).toBe(1);
+    t.db.rows.get("r1")!.booking_status = "cancelled";
+    await alertBookingsNow({ store: t.store, mailer: t.mailer, whatsapp: t.whatsapp, hotelId: H, ids: ["r1"], today: TODAY });
+    expect(t.whatsapps.slice(2).map((w) => [w.to, w.summary.split(":")[0]])).toEqual([
+      ["233551542355", "Cancelled"],
+      ["17032326925", "Cancelled"],
+    ]);
+  });
+
+  it("one number failing (or throwing) doesn't stop the others, and nothing is re-sent", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t = setup({ ...BASE, alert_whatsapp: `+447700900123, ${TWO}`, whatsappConnected: true });
+    const sentTo: string[] = [];
+    const whatsapp: WhatsAppAlerter = vi.fn(async (m) => {
+      if (m.to === "447700900123") return { success: false, error: "(#131030) Recipient not in allowed list" };
+      if (m.to === "233551542355") throw new Error("network");
+      sentTo.push(m.to);
+      return { success: true };
+    });
+    const c1 = await runBookingAlerts({ store: t.store, mailer: t.mailer, whatsapp, today: TODAY });
+    expect(whatsapp).toHaveBeenCalledTimes(3);
+    expect(sentTo).toEqual(["17032326925"]);
+    expect(c1).toMatchObject({ newSent: 1, whatsappSent: 1, failed: 0 });
+    await runBookingAlerts({ store: t.store, mailer: t.mailer, whatsapp, today: TODAY });
+    expect(whatsapp).toHaveBeenCalledTimes(3);
+    errors.mockRestore();
   });
 });

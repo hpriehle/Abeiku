@@ -19,7 +19,7 @@ describe("sendEmail (Resend)", () => {
   it("sends from notifications@abeiku.com by default (not mail.abeiku.com)", async () => {
     expect(DEFAULT_FROM_EMAIL).toBe("notifications@abeiku.com");
     const res = await sendEmail({ to: "info@aracuya.com", subject: "S", html: "<p>h</p>", text: "t" });
-    expect(res).toEqual({ success: true });
+    expect(res).toEqual({ success: true, id: "x" });
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][0]).toMatchObject({ from: "Abeiku <notifications@abeiku.com>", to: "info@aracuya.com", subject: "S", text: "t" });
   });

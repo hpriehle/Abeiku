@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
+import { loadAdminFeatures } from "@/lib/admin/features";
 import { supabase } from "@/lib/supabase/client";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // L3: the Simulator is for platform admins and exempt hotels only.
+  if (!(await loadAdminFeatures(session)).simulator) return NextResponse.json({ error: "Not available" }, { status: 403 });
 
   const { phone } = await request.json();
   if (!phone) return NextResponse.json({ error: "Phone required" }, { status: 400 });

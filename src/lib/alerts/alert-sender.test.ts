@@ -86,13 +86,13 @@ describe("metaWhatsAppAlerter", () => {
 
   it("hotel without its own number sends from the sender hotel, text names the alerting hotel", async () => {
     vi.stubEnv("WHATSAPP_ALERT_SENDER_HOTEL_ID", TEST_HOTEL);
-    expect(await metaWhatsAppAlerter(msg(ARACUYA, "Aracuya"))).toEqual({ success: true });
+    expect(await metaWhatsAppAlerter(msg(ARACUYA, "Aracuya"))).toEqual({ success: true, id: "wamid.1" });
     expect(sent).toEqual([{ to: "233551542355", bodyParams: ["Aracuya", "New booking: Ama, 20 Nov"], sender: TEST_HOTEL, phoneId: "1456929977506972" }]);
   });
 
   it("hotel with its own number uses it, even with a sender configured", async () => {
     vi.stubEnv("WHATSAPP_ALERT_SENDER_HOTEL_ID", TEST_HOTEL);
-    expect(await metaWhatsAppAlerter(msg(OWN, "Own Hotel"))).toEqual({ success: true });
+    expect(await metaWhatsAppAlerter(msg(OWN, "Own Hotel"))).toEqual({ success: true, id: "wamid.1" });
     expect(sent).toEqual([{ to: "233551542355", bodyParams: ["Own Hotel", "New booking: Ama, 20 Nov"], sender: OWN, phoneId: "999" }]);
   });
 

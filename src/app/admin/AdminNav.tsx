@@ -52,17 +52,26 @@ export function AdminNav({
   email,
   platformAdmin,
   showPlan = false,
+  showCommunication = false,
+  showSimulator = false,
 }: {
   hotelName: string;
   email: string;
   platformAdmin: boolean;
   /** L2: hotels on Abeiku billing get a "Plan" page (trial, card, cancel). */
   showPlan?: boolean;
+  /** L3: WhatsApp inbox, only for hotels with WhatsApp connected (or exempt). See src/lib/admin/features.ts. */
+  showCommunication?: boolean;
+  /** L3: platform admins and exempt hotels only. */
+  showSimulator?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const withPlan = showPlan ? [...LINKS, { href: "/admin/plan", label: "Plan", icon: CreditCard }] : LINKS;
+  const visible = LINKS.filter(
+    (l) => (l.href !== "/admin/communication" || showCommunication) && (l.href !== "/admin/simulator" || showSimulator),
+  );
+  const withPlan = showPlan ? [...visible, { href: "/admin/plan", label: "Plan", icon: CreditCard }] : visible;
   const links = platformAdmin ? [...withPlan, { href: "/admin/platform", label: "Platform", icon: Building2 }] : withPlan;
 
   useEffect(() => {

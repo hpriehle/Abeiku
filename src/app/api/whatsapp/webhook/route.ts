@@ -13,6 +13,8 @@ import { recordMessage } from "@/lib/whatsapp/chat-logger";
 import { processInbound, storeEcho, type InboundDeps } from "@/lib/whatsapp/inbound";
 import { checkWebhookSignature } from "@/lib/whatsapp/signature";
 import { supabase } from "@/lib/supabase/client";
+import { opsAlert } from "@/lib/ops/alerts";
+import { updateAlertDeliveryStatus } from "@/lib/alerts/delivery-log";
 
 const inboundDeps: InboundDeps = {
   determineGuestState,
@@ -61,6 +63,10 @@ interface StatusUpdate {
 const STATUS_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3, failed: 4 };
 
 async function recordStatus(s: StatusUpdate) {
+  const err = s.errors?.[0];
+  const errText = err ? `${err.code}: ${err.error_data?.details || err.message || err.title}` : null;
+  // Booking alerts (not in chat_messages): never throws.
+  await updateAlertDeliveryStatus(s.id, s.status, errText);
   // Statuses can arrive out of order; never downgrade read -> delivered.
   const { data: row } = await supabase
     .from("chat_messages")
@@ -70,13 +76,12 @@ async function recordStatus(s: StatusUpdate) {
   if (!row) return;
   if ((STATUS_RANK[row.wa_status ?? ""] ?? 0) >= (STATUS_RANK[s.status] ?? 0)) return;
 
-  const err = s.errors?.[0];
   const { error } = await supabase
     .from("chat_messages")
     .update({
       wa_status: s.status,
       wa_status_at: new Date(Number(s.timestamp) * 1000).toISOString(),
-      wa_error: err ? `${err.code}: ${err.error_data?.details || err.message || err.title}` : null,
+      wa_error: errText,
     })
     .eq("id", row.id);
   if (error && error.code !== "PGRST204") console.error("[webhook] status update error:", error.message);
@@ -162,6 +167,7 @@ export async function POST(request: NextRequest) {
               await processInbound(inboundDeps, hotel, message as WhatsAppMessage, message.from, senderName);
             } catch (error) {
               console.error(`Error handling message from ${message.from} (hotel: ${hotel.slug}):`, error);
+              await opsAlert("whatsapp-webhook", `WhatsApp message for ${hotel.slug} could not be handled`, error);
             }
           }
         });
@@ -171,6 +177,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: "ok" });
   } catch (error) {
     console.error("Webhook processing error:", error);
+    await opsAlert("whatsapp-webhook", "WhatsApp webhook failed", error);
     // Still return 200 so Meta doesn't retry a payload we can't parse
     return NextResponse.json({ status: "ok" });
   }

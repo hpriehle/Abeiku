@@ -65,10 +65,14 @@ describe("parseAlertEmail", () => {
     expect(parseAlertEmail("   ")).toEqual({ ok: true, email: null });
     expect(parseAlertEmail(null)).toEqual({ ok: true, email: null });
   });
-  it("rejects bad and multiple addresses", () => {
+  it("several addresses separated by commas: each checked, stored lower case", () => {
+    expect(parseAlertEmail("Info@Aracuya.com, owner@example.com")).toEqual({ ok: true, email: "info@aracuya.com, owner@example.com" });
+    expect(parseAlertEmail(" a@inn.gh;b@inn.gh ,, A@inn.gh ")).toEqual({ ok: true, email: "a@inn.gh, b@inn.gh" });
+    expect(parseAlertEmail(" , ")).toEqual({ ok: true, email: null });
+  });
+  it("rejects bad addresses", () => {
     expect(parseAlertEmail("not an email")).toEqual({ ok: false, error: "Enter a valid email address." });
-    expect(parseAlertEmail("a@inn.gh, b@inn.gh")).toEqual({ ok: false, error: "Enter one email address only." });
-    expect(parseAlertEmail("a@inn.gh;b@inn.gh")).toEqual({ ok: false, error: "Enter one email address only." });
+    expect(parseAlertEmail("a@inn.gh, not an email")).toEqual({ ok: false, error: '"not an email" is not a valid email address.' });
     expect(parseAlertEmail("a@inn.gh b@inn.gh").ok).toBe(false);
     expect(parseAlertEmail(42).ok).toBe(false);
   });
@@ -112,10 +116,15 @@ describe("PATCH /api/admin/hotel/alert-email", () => {
     expect(res.status).toBe(200);
     expect(row.alert_email).toBeNull();
   });
+  it("saves several addresses", async () => {
+    const res = await patchAlert({ alert_email: "info@aracuya.com,  Owner@Example.com" });
+    expect(res.status).toBe(200);
+    expect(row.alert_email).toBe("info@aracuya.com, owner@example.com");
+  });
   it("bad address: 400, nothing saved", async () => {
-    const res = await patchAlert({ alert_email: "a@inn.gh, b@inn.gh" });
+    const res = await patchAlert({ alert_email: "a@inn.gh, b@inn" });
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe("Enter one email address only.");
+    expect((await res.json()).error).toBe('"b@inn" is not a valid email address.');
     expect("alert_email" in row).toBe(false);
   });
   it("column missing: 503 with a plain message, not a 500", async () => {

@@ -9,6 +9,7 @@ import {
   type GoogleEventLike,
 } from "./calendar-sync";
 import type { HotelBookingRow } from "./hotel-bookings";
+import { isBlockSummary, isCalendarBlock } from "./calendar-view";
 import { memoryHotelBookings } from "./memory-store.test-helper";
 
 const H = "hotel-1";
@@ -118,6 +119,36 @@ describe("iCal feeds", () => {
       phone: null,
     });
     expect(out[1].guest_name).toBe("Airbnb · Airbnb (Not available)");
+  });
+
+  it("Airbnb 'Not available' is a calendar block; Airbnb 'Reserved' stays a booking", () => {
+    const [reserved, notAvailable] = parseIcalBookings(ics, "airbnb", 3);
+    expect(isCalendarBlock(notAvailable)).toBe(true);
+    expect(isCalendarBlock(reserved)).toBe(false);
+    // Blocks still take the whole house (availability unchanged).
+    expect(notAvailable.rooms_count).toBe(3);
+  });
+
+  it("block summaries from each OTA, case-insensitive; reservations and guest names are not blocks", () => {
+    for (const s of ["Not available", "Airbnb (Not available)", "Blocked", "CLOSED - Not available", "closed - not available", "Unavailable"]) {
+      expect(isBlockSummary(s)).toBe(true);
+    }
+    for (const s of ["Reserved", "Airbnb (Reserved)", "Reserved - Ama", "Kwame Asante", ""]) {
+      expect(isBlockSummary(s)).toBe(false);
+    }
+    const one = (summary: string, source: "airbnb" | "vrbo" | "booking_com") =>
+      parseIcalBookings(`BEGIN:VEVENT\nUID:u1\nDTSTART:20261204\nDTEND:20261206\nSUMMARY:${summary}\nEND:VEVENT`, source, 3)[0];
+    expect(isCalendarBlock(one("Blocked", "vrbo"))).toBe(true);
+    expect(isCalendarBlock(one("CLOSED - Not available", "booking_com"))).toBe(true);
+    expect(isCalendarBlock(one("Reserved - Ama", "vrbo"))).toBe(false);
+    expect(isCalendarBlock(one("Airbnb (Reserved)", "airbnb"))).toBe(false);
+  });
+
+  it("Google calendar and website rows are never blocks, whatever the summary", () => {
+    const g = googleEventToBooking(allDay("g1", "Blocked - Not available", "2026-12-01", "2026-12-02"), 3)!;
+    expect(g.source).toBe("google_calendar");
+    expect(isCalendarBlock(g)).toBe(false);
+    expect(isCalendarBlock({ source: "aracuya_web", guest_name: "Not available" })).toBe(false);
   });
 
   it("VRBO 'Reserved - Name' gives the guest's first name", () => {
