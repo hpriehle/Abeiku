@@ -24,6 +24,7 @@ import type { PaystackBillingApi, StripeBillingApi, StripeSubscription } from ".
 import type { BillingHotel, BillingPatch, BillingStore } from "./store";
 import type { SendEmail } from "./emails";
 import { applyBillingPatch } from "./notices";
+import { errorText, opsAlert } from "@/lib/ops/alerts";
 
 export interface BillingDeps {
   store: BillingStore;
@@ -338,7 +339,18 @@ export async function changeRoomCount(
     // Point the hotel at the new subscription first, so the old one's "disabled" webhook
     // no longer matches it and can't mark the hotel cancelled.
     await deps.store.update(hotelId, { room_count: rooms, billing_tier: tier, billing_subscription_id: next.subscription_code });
-    await deps.paystack.disableSubscription(old.subscription_code, old.email_token);
+    const disableOld = () => deps.paystack.disableSubscription(old.subscription_code, old.email_token);
+    await disableOld()
+      .catch(disableOld)
+      .catch(async (err) => {
+        // Both subscriptions stay active, so the hotel would be charged twice: tell Harrison.
+        await opsAlert(
+          `paystack-plan-change:${hotelId}`,
+          `Paystack plan change: old subscription of ${hotel.name} not disabled`,
+          `Hotel ${hotel.name} (${hotelId}) now uses ${next.subscription_code}; the old ${old.subscription_code} is still active. Disable it in the Paystack dashboard, or the hotel is charged twice.\n${errorText(err)}`
+        );
+        throw err;
+      });
   }
   return { tier, changed: true };
 }

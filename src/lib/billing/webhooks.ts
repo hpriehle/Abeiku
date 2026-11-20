@@ -93,6 +93,13 @@ export async function handlePaystackBillingEvent(deps: BillingDeps, event: strin
   }
   if (!hotel) return { handled: false, note: `no hotel for ${subCode ?? customerCode ?? "event"}` };
 
+  // Deliveries come late or out of order: a failure counts only while Paystack still has the
+  // subscription in "attention" (test mode: "attention" after a failed charge, "active" after a paid one).
+  if ((event === "charge.failed" || event === "invoice.payment_failed") && hotel.billing_subscription_id) {
+    const fresh = await deps.paystack.fetchSubscription(hotel.billing_subscription_id);
+    if (fresh.status !== "attention") return { handled: false, hotelId: hotel.id, note: `${event}: no longer past due, ignored` };
+  }
+
   const eventId = `${event}:${str(data.id) ?? String(data.id ?? "")}:${subCode ?? ""}:${str(data.invoice_code) ?? str(data.reference) ?? ""}:${str(data.status) ?? ""}`;
   if (!(await deps.store.firstDelivery("paystack", eventId))) return { handled: false, hotelId: hotel.id, note: "repeat delivery" };
 

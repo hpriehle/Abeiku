@@ -105,6 +105,12 @@ export function fakePaystack(tx: Partial<PaystackTransaction> = {}) {
   return api;
 }
 
+/** Paystack reports the subscription unpaid ("attention"), as test mode does after a failed charge. */
+export function paystackUnpaid(api: ReturnType<typeof fakePaystack>) {
+  const real = api.fetchSubscription.getMockImplementation()!;
+  api.fetchSubscription.mockImplementation(async (code: string) => ({ ...(await real(code)), status: "attention" }));
+}
+
 export function stripeSub(over: Partial<StripeSubscription> = {}): StripeSubscription {
   return {
     id: "sub_1",

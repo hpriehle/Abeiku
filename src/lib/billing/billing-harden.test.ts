@@ -5,8 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { completePaystackSetup, startCardSetup, changeRoomCount } from "./flow";
 import { handlePaystackBillingEvent, handleStripeEvent } from "./webhooks";
 import { runDailyBillingCheck } from "./notices";
+import { billingView } from "./access";
 import { paystackBillingApi } from "./paystack-api";
-import { fakeStripe, makeDeps, stripeSub } from "./fakes.test-helper";
+import { fakeStripe, makeDeps, paystackUnpaid, stripeSub } from "./fakes.test-helper";
+
+const opsAlert = vi.hoisted(() => vi.fn(async () => "sent"));
+vi.mock("@/lib/ops/alerts", async (orig) => ({ ...(await orig<object>()), opsAlert }));
 
 function failNextUpdate(store: { update: (...a: never[]) => Promise<void> }) {
   const real = store.update.bind(store);
@@ -78,9 +82,41 @@ describe("Stripe: late or out-of-order failure events", () => {
   });
 });
 
+describe("Paystack: late or out-of-order failure events", () => {
+  const failures: [string, Record<string, unknown>][] = [
+    ["invoice.payment_failed", { id: 1, subscription: { subscription_code: "SUB_1" } }],
+    ["charge.failed", { id: 2, reference: "r2", customer: { customer_code: "CUS_1" }, plan: { plan_code: "PLN_small" } }],
+  ];
+  const paidHotel = { id: "h1", billing_status: "active" as const, billing_provider: "paystack" as const, billing_customer_id: "CUS_1", billing_subscription_id: "SUB_1" };
+
+  it("a failure delivered after the hotel paid again (Paystack says active) is ignored", async () => {
+    for (const [event, data] of failures) {
+      const { deps, store, paystack } = makeDeps();
+      store.add(paidHotel);
+      const out = await handlePaystackBillingEvent(deps, event, data);
+      expect(paystack.fetchSubscription).toHaveBeenCalledWith("SUB_1");
+      expect(out).toMatchObject({ handled: false, note: `${event}: no longer past due, ignored` });
+      expect(store.hotels.get("h1")?.billing_status).toBe("active");
+      expect(store.hotels.get("h1")?.past_due_since).toBeUndefined();
+    }
+  });
+
+  it("a hotel that really hasn't paid (Paystack says attention) is past_due and locked after grace", async () => {
+    for (const [event, data] of failures) {
+      const { deps, store, paystack } = makeDeps();
+      paystackUnpaid(paystack);
+      store.add(paidHotel);
+      await handlePaystackBillingEvent(deps, event, data);
+      expect(store.hotels.get("h1")?.billing_status).toBe("past_due");
+      expect(billingView(store.hotels.get("h1")!, new Date(deps.now!().getTime() + 15 * 86_400_000)).access).toBe("locked");
+    }
+  });
+});
+
 describe("Paystack events not yet covered", () => {
   it("renewal charge failed (found by customer): past_due", async () => {
-    const { deps, store } = makeDeps();
+    const { deps, store, paystack } = makeDeps();
+    paystackUnpaid(paystack);
     store.add({ id: "h1", billing_status: "active", billing_provider: "paystack", billing_customer_id: "CUS_1", billing_subscription_id: "SUB_1" });
     await handlePaystackBillingEvent(deps, "charge.failed", { id: 92, reference: "r92", customer: { customer_code: "CUS_1" }, plan: { plan_code: "PLN_large" } });
     expect(store.hotels.get("h1")?.billing_status).toBe("past_due");
@@ -117,6 +153,37 @@ describe("Aracuya (billing exempt) is never charged or locked", () => {
     expect(store.hotels.get("h1")?.billing_tier).toBeUndefined();
     expect(await runDailyBillingCheck(deps)).toMatchObject({ locked: 0, trialReminders: 0, ended: 0 });
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe("Paystack tier change: old subscription not disabled", () => {
+  function setup() {
+    opsAlert.mockClear();
+    const m = makeDeps();
+    m.store.add({ id: "h1", name: "Kofi Lodge", billing_status: "active", billing_provider: "paystack", billing_subscription_id: "SUB_old", billing_tier: "small", room_count: 3 });
+    return m;
+  }
+
+  it("one failure: retried, no alert", async () => {
+    const { deps, paystack } = setup();
+    paystack.disableSubscription.mockRejectedValueOnce(new Error("Paystack 500"));
+    await changeRoomCount(deps, "h1", 12);
+    expect(paystack.disableSubscription).toHaveBeenCalledTimes(2);
+    expect(opsAlert).not.toHaveBeenCalled();
+  });
+
+  it("fails twice: ops alert names the hotel and both subscriptions, owner still gets the error", async () => {
+    const { deps, store, paystack } = setup();
+    paystack.disableSubscription.mockRejectedValue(new Error("Paystack 500"));
+    await expect(changeRoomCount(deps, "h1", 12)).rejects.toThrow("Paystack 500");
+    expect(paystack.disableSubscription).toHaveBeenCalledTimes(2);
+    expect(opsAlert).toHaveBeenCalledTimes(1);
+    const [kind, summary, detail] = opsAlert.mock.calls[0] as unknown as string[];
+    expect(kind).toBe("paystack-plan-change:h1");
+    expect(`${summary} ${detail}`).toMatch(/Kofi Lodge/);
+    expect(detail).toMatch(/SUB_1/);
+    expect(detail).toMatch(/SUB_old/);
+    expect(store.hotels.get("h1")?.billing_subscription_id).toBe("SUB_1");
   });
 });
 
