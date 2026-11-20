@@ -81,10 +81,15 @@ export function ReviewsList({
   const [googleLoading, setGoogleLoading] = useState(hasGooglePlace);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
-  async function fetchGoogle() {
+  function fetchGoogle() {
     if (!hasGooglePlace) return;
     setGoogleLoading(true);
     setGoogleError(null);
+    loadGoogle();
+  }
+
+  // Only sets state after the fetch resolves, so the mount effect can call it directly
+  async function loadGoogle() {
     try {
       const res = await fetch("/api/admin/google-reviews");
       if (!res.ok) {
@@ -100,7 +105,7 @@ export function ReviewsList({
   }
 
   useEffect(() => {
-    fetchGoogle();
+    if (hasGooglePlace) loadGoogle();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

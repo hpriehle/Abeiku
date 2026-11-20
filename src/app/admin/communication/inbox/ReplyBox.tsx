@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { ChatMessage } from "@/lib/db";
 
 export function ReplyBox({
@@ -14,13 +14,20 @@ export function ReplyBox({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Clock kept out of render; ticks at the inbox's 15s poll rate, which used to re-run the check
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Check if within 24h window
   const isWindowOpen = useMemo(() => {
     const lastInbound = [...messages].reverse().find((m) => m.direction === "inbound");
     if (!lastInbound) return false;
-    const hoursSince = (Date.now() - new Date(lastInbound.created_at).getTime()) / (1000 * 60 * 60);
+    const hoursSince = (now - new Date(lastInbound.created_at).getTime()) / (1000 * 60 * 60);
     return hoursSince < 24;
-  }, [messages]);
+  }, [messages, now]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
