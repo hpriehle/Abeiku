@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import type { CommissionKind, PartnerCurrency, PartnerType } from "@/lib/partner/commission";
 import type { PartnerAdminStore } from "@/lib/partner/bulk";
+import { isCountableClick } from "@/lib/partner/clicks";
 import type {
   BookingEvent,
   BookingPatch,
@@ -242,20 +243,34 @@ export async function logClick(input: {
   if (error) throw error;
 }
 
-export async function getTotalClicks(influencerId: string): Promise<number> {
+/** True when this visitor (ip_hash) already has a click for this partner since `since`. */
+export async function hasClickSince(influencerId: string, ipHash: string, since: string): Promise<boolean> {
   const { count, error } = await supabase
     .from("influencer_clicks")
     .select("id", { count: "exact", head: true })
+    .eq("influencer_id", influencerId)
+    .eq("ip_hash", ipHash)
+    .gte("clicked_at", since);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+// Stats skip rows a bot or script left (logged before the visit route filtered them), without deleting them.
+// shortcut: counts in JS over at most PostgREST's row limit (1000) per query; move to SQL when a partner nears that.
+export async function getTotalClicks(influencerId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("influencer_clicks")
+    .select("user_agent")
     .eq("influencer_id", influencerId);
   if (error) throw error;
-  return count ?? 0;
+  return (data ?? []).filter((r) => isCountableClick(r.user_agent)).length;
 }
 
 export async function getClicksByDay(influencerId: string, days: number): Promise<ClickStatsRow[]> {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("influencer_clicks")
-    .select("clicked_at")
+    .select("clicked_at, user_agent")
     .eq("influencer_id", influencerId)
     .gte("clicked_at", since);
   if (error) throw error;
@@ -265,7 +280,7 @@ export async function getClicksByDay(influencerId: string, days: number): Promis
     const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     buckets.set(d.toISOString().slice(0, 10), 0);
   }
-  for (const row of data ?? []) {
+  for (const row of (data ?? []).filter((r) => isCountableClick(r.user_agent))) {
     const day = (row.clicked_at as string).slice(0, 10);
     if (buckets.has(day)) buckets.set(day, (buckets.get(day) ?? 0) + 1);
   }
@@ -296,13 +311,13 @@ export async function getClickCountsByInfluencer(hotelId: string): Promise<Map<s
 
   const { data: clicks, error: e2 } = await supabase
     .from("influencer_clicks")
-    .select("influencer_id")
+    .select("influencer_id, user_agent")
     .in("influencer_id", ids);
   if (e2) throw e2;
 
   const counts = new Map<string, number>();
   for (const id of ids) counts.set(id, 0);
-  for (const row of clicks ?? []) {
+  for (const row of (clicks ?? []).filter((r) => isCountableClick(r.user_agent))) {
     counts.set(row.influencer_id, (counts.get(row.influencer_id) ?? 0) + 1);
   }
   return counts;
