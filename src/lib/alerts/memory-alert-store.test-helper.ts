@@ -3,7 +3,7 @@
 // calendar sync and the alerts can run against one table.
 
 import { toCalendarRow } from "@/lib/bookings/calendar-view";
-import type { AlertField, AlertHotel, AlertStore } from "./booking-alerts";
+import type { AlertDelivery, AlertField, AlertHotel, AlertStore } from "./booking-alerts";
 
 type Row = Record<string, unknown> & { id: string; hotel_id: string };
 
@@ -15,6 +15,7 @@ export function memoryAlertStore(
   const hotels = opts.hotels ?? [];
   const feeds = new Set<string>();
   const digests = new Set<string>();
+  const deliveries: AlertDelivery[] = [];
   let clock = 0;
   const now = () => `2026-11-15T18:00:${String(clock++ % 60).padStart(2, "0")}Z`;
   const guard = () => {
@@ -90,6 +91,9 @@ export function memoryAlertStore(
     async releaseDigest(hotelId, kind, forDate) {
       digests.delete(`${hotelId}|${kind}|${forDate}`);
     },
+    async logDeliveries(list) {
+      deliveries.push(...list);
+    },
   };
-  return { store, feeds, digests };
+  return { store, feeds, digests, deliveries };
 }

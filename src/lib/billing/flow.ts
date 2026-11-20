@@ -88,8 +88,8 @@ export async function startCardSetup(
 ): Promise<{ url: string }> {
   const hotel = await mustGet(deps, hotelId);
   const view = billingView(hotel, nowOf(deps));
-  if (view.status !== "pending_card") {
-    throw new BillingError(`hotel ${hotelId} is ${view.status}`, "Your card is already on file.", 409);
+  if (view.exempt || view.status !== "pending_card") {
+    throw new BillingError(`hotel ${hotelId} is ${view.exempt ? "exempt" : view.status}`, "Your card is already on file.", 409);
   }
   if (!hotel.room_count) {
     throw new BillingError("no room count", "Please enter your number of rooms first.");
@@ -165,24 +165,33 @@ export async function completePaystackSetup(deps: BillingDeps, hotelId: string, 
   const now = nowOf(deps).toISOString();
   const trialEnd = noTrial ? null : trialEndsAt(nowOf(deps)).toISOString();
 
-  const sub = await deps.paystack.createSubscription({
-    customer: tx.customer.customer_code,
-    plan,
-    authorization: tx.authorization.authorization_code,
-    startDate: trialEnd ?? now,
-  });
+  // Two returns at once (refresh, or the return page and the card step): only one creates a
+  // subscription, else the card is charged twice a month.
+  const claim = `setup:${reference}`;
+  if (!(await deps.store.firstDelivery("paystack", claim))) return { ok: true, trialEndsAt: trialEnd, alreadyDone: true };
+  try {
+    const sub = await deps.paystack.createSubscription({
+      customer: tx.customer.customer_code,
+      plan,
+      authorization: tx.authorization.authorization_code,
+      startDate: trialEnd ?? now,
+    });
 
-  await applyBillingPatch(deps, hotel, {
-    billing_status: noTrial ? "active" : "trialing",
-    billing_provider: "paystack",
-    billing_currency: "GHS",
-    billing_tier: tier,
-    billing_customer_id: tx.customer.customer_code,
-    billing_subscription_id: sub.subscription_code,
-    ...(trialEnd ? { trial_ends_at: trialEnd } : {}),
-    current_period_end: trialEnd ?? sub.next_payment_date ?? now,
-    billing_setup_ref: null,
-  });
+    await applyBillingPatch(deps, hotel, {
+      billing_status: noTrial ? "active" : "trialing",
+      billing_provider: "paystack",
+      billing_currency: "GHS",
+      billing_tier: tier,
+      billing_customer_id: tx.customer.customer_code,
+      billing_subscription_id: sub.subscription_code,
+      ...(trialEnd ? { trial_ends_at: trialEnd } : {}),
+      current_period_end: trialEnd ?? sub.next_payment_date ?? now,
+      billing_setup_ref: null,
+    });
+  } catch (err) {
+    await deps.store.forgetDelivery("paystack", claim);
+    throw err;
+  }
 
   // The card check is only there to save the card: give it back. A failed refund must not undo
   // the sign-up; it is logged so it can be refunded by hand in the Paystack dashboard.

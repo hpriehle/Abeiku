@@ -38,7 +38,7 @@ export function PaystackSubaccountWizard({
   payoutMethod,
   momoPhone,
 }: PaystackSubaccountWizardProps) {
-  const [step, setStep] = useState<Step>(isConnected ? "connected" : "idle");
+  const [step, setStep] = useState<Step>(isConnected ? "connected" : "loading_banks");
   const [banks, setBanks] = useState<Bank[]>([]);
   const [selectedBank, setSelectedBank] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -58,7 +58,6 @@ export function PaystackSubaccountWizard({
   // Fetch banks on mount
   useEffect(() => {
     if (isConnected) return;
-    setStep("loading_banks");
     fetch("/api/admin/paystack/banks")
       .then((res) => res.json())
       .then((data) => {

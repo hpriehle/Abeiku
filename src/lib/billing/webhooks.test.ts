@@ -159,12 +159,12 @@ describe("Stripe events", () => {
     expect(store.hotels.get("h1")?.billing_status).toBe("active");
   });
   it("invoice payment failed (new API shape, subscription under parent): past_due", async () => {
-    const { deps, store } = stripeHotel();
+    const { deps, store } = stripeHotel(stripeSub({ status: "past_due" }));
     await handleStripeEvent(deps, { id: "evt_3", type: "invoice.payment_failed", data: { object: { parent: { subscription_details: { subscription: "sub_1" } } } } });
     expect(store.hotels.get("h1")?.billing_status).toBe("past_due");
   });
   it("subscription updated to past_due, period end read from the item", async () => {
-    const { deps, store } = stripeHotel();
+    const { deps, store } = stripeHotel(stripeSub({ status: "past_due" }));
     await handleStripeEvent(deps, { id: "evt_4", type: "customer.subscription.updated", data: { object: subObj({ status: "past_due" }) } });
     expect(store.hotels.get("h1")).toMatchObject({ billing_status: "past_due", current_period_end: new Date(1_797_000_000_000).toISOString() });
   });
@@ -174,7 +174,7 @@ describe("Stripe events", () => {
     expect(store.hotels.get("h1")).toMatchObject({ billing_status: "canceled", current_period_end: "2026-12-15T10:00:00.000Z" });
   });
   it("repeat delivery and unknown subscriptions change nothing", async () => {
-    const { deps, store } = stripeHotel();
+    const { deps, store } = stripeHotel(stripeSub({ status: "past_due" }));
     const evt = { id: "evt_6", type: "invoice.payment_failed", data: { object: { subscription: "sub_1" } } };
     await handleStripeEvent(deps, evt);
     expect((await handleStripeEvent(deps, evt)).note).toBe("repeat delivery");

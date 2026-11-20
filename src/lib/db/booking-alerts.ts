@@ -7,6 +7,7 @@ import { toCalendarRow } from "@/lib/bookings/calendar-view";
 import { listingFor } from "@/lib/bookings/hotel-bookings";
 import type { AlertField, AlertStore } from "@/lib/alerts/booking-alerts";
 import { alertSenderHotelId, hasOwnWhatsApp } from "@/lib/alerts/alert-sender";
+import { logAlertDeliveries } from "@/lib/alerts/delivery-log";
 
 const MAX_PENDING = 500;
 const PAGE = 1000;
@@ -188,4 +189,6 @@ export const supabaseAlertStore: AlertStore = {
       .eq("for_date", forDate);
     if (error) throw error;
   },
+
+  logDeliveries: logAlertDeliveries,
 };

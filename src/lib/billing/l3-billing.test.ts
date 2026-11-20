@@ -90,7 +90,7 @@ describe("grace period then lock", () => {
   });
 
   it("Stripe: failed invoice sets it, paid invoice clears it", async () => {
-    const { deps, store } = makeDeps();
+    const { deps, store } = makeDeps({ stripe: fakeStripe(stripeSub({ status: "past_due" })) });
     store.add({ id: "h1", billing_status: "active", billing_provider: "stripe", billing_subscription_id: "sub_1" });
     await handleStripeEvent(deps, { id: "e1", type: "invoice.payment_failed", data: { object: { subscription: "sub_1" } } });
     expect(store.hotels.get("h1")?.past_due_since).toBe(NOW.toISOString());
@@ -137,7 +137,7 @@ describe("billing emails", () => {
   });
 
   it("payment failed: one email with how to fix it and the lock date, even on repeated failures", async () => {
-    const { deps, store, send } = mailDeps();
+    const { deps, store, send } = mailDeps({ stripe: fakeStripe(stripeSub({ status: "past_due" })) });
     store.add({ id: "h1", billing_status: "active", billing_provider: "stripe", billing_subscription_id: "sub_1", billing_tier: "small", billing_currency: "USD" });
     await handleStripeEvent(deps, { id: "e1", type: "invoice.payment_failed", data: { object: { subscription: "sub_1" } } });
     await handleStripeEvent(deps, { id: "e2", type: "invoice.payment_failed", data: { object: { subscription: "sub_1" } } });

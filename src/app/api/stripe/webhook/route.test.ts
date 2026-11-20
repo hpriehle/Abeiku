@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 const SECRET = "whsec_test";
 process.env.STRIPE_WEBHOOK_SECRET = SECRET;
 
-const { makeDeps } = await import("@/lib/billing/fakes.test-helper");
+const { makeDeps, fakeStripe, stripeSub } = await import("@/lib/billing/fakes.test-helper");
 let m = makeDeps();
 vi.mock("@/lib/billing", () => ({ billingDeps: () => m.deps }));
 const { POST } = await import("./route");
@@ -19,7 +19,7 @@ function send(payload: object, opts: { secret?: string; t?: number } = {}) {
 
 describe("POST /api/stripe/webhook", () => {
   beforeEach(() => {
-    m = makeDeps();
+    m = makeDeps({ stripe: fakeStripe(stripeSub({ status: "past_due" })) }); // Stripe says the subscription is unpaid
     m.store.add({ id: "h1", billing_status: "active", billing_provider: "stripe", billing_subscription_id: "sub_1" });
   });
   const failed = { id: "evt_1", type: "invoice.payment_failed", data: { object: { subscription: "sub_1" } } };

@@ -14,6 +14,7 @@ import { processInbound, storeEcho, type InboundDeps } from "@/lib/whatsapp/inbo
 import { checkWebhookSignature } from "@/lib/whatsapp/signature";
 import { supabase } from "@/lib/supabase/client";
 import { opsAlert } from "@/lib/ops/alerts";
+import { updateAlertDeliveryStatus } from "@/lib/alerts/delivery-log";
 
 const inboundDeps: InboundDeps = {
   determineGuestState,
@@ -62,6 +63,10 @@ interface StatusUpdate {
 const STATUS_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3, failed: 4 };
 
 async function recordStatus(s: StatusUpdate) {
+  const err = s.errors?.[0];
+  const errText = err ? `${err.code}: ${err.error_data?.details || err.message || err.title}` : null;
+  // Booking alerts (not in chat_messages): never throws.
+  await updateAlertDeliveryStatus(s.id, s.status, errText);
   // Statuses can arrive out of order; never downgrade read -> delivered.
   const { data: row } = await supabase
     .from("chat_messages")
@@ -71,13 +76,12 @@ async function recordStatus(s: StatusUpdate) {
   if (!row) return;
   if ((STATUS_RANK[row.wa_status ?? ""] ?? 0) >= (STATUS_RANK[s.status] ?? 0)) return;
 
-  const err = s.errors?.[0];
   const { error } = await supabase
     .from("chat_messages")
     .update({
       wa_status: s.status,
       wa_status_at: new Date(Number(s.timestamp) * 1000).toISOString(),
-      wa_error: err ? `${err.code}: ${err.error_data?.details || err.message || err.title}` : null,
+      wa_error: errText,
     })
     .eq("id", row.id);
   if (error && error.code !== "PGRST204") console.error("[webhook] status update error:", error.message);
