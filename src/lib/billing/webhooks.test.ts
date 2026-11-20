@@ -7,7 +7,7 @@ import {
   verifyPaystackSignature,
   verifyStripeSignature,
 } from "./webhooks";
-import { makeDeps, PLAN_IDS, stripeSub, fakeStripe } from "./fakes.test-helper";
+import { makeDeps, PLAN_IDS, paystackUnpaid, stripeSub, fakeStripe } from "./fakes.test-helper";
 
 const PS_SECRET = "sk_test_abc";
 const WH_SECRET = "whsec_test_123";
@@ -95,7 +95,8 @@ describe("Paystack billing events", () => {
     expect(store.hotels.get("h1")).toMatchObject({ billing_status: "active", current_period_end: "2027-01-15T10:00:00.000Z" });
   });
   it("charge failed: past_due", async () => {
-    const { deps, store } = paystackHotel();
+    const { deps, store, paystack } = paystackHotel();
+    paystackUnpaid(paystack);
     await handlePaystackBillingEvent(deps, "invoice.payment_failed", { id: 6, subscription: { subscription_code: "SUB_1" } });
     expect(store.hotels.get("h1")?.billing_status).toBe("past_due");
   });
@@ -105,7 +106,8 @@ describe("Paystack billing events", () => {
     expect(store.hotels.get("h1")).toMatchObject({ billing_status: "canceled", current_period_end: "2026-12-15T10:00:00.000Z" });
   });
   it("same delivery twice: applied once", async () => {
-    const { deps, store } = paystackHotel();
+    const { deps, store, paystack } = paystackHotel();
+    paystackUnpaid(paystack);
     const data = { id: 6, subscription: { subscription_code: "SUB_1" } };
     await handlePaystackBillingEvent(deps, "invoice.payment_failed", data);
     const again = await handlePaystackBillingEvent(deps, "invoice.payment_failed", data);

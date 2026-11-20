@@ -11,7 +11,7 @@ import { cardRedirect } from "./card-redirect";
 import { checkoutForm, stripeBillingApi } from "./stripe-api";
 import { paystackBillingApi } from "./paystack-api";
 import { checkRoomLimit, countRoomUnits, loadRoomLimit, planRoomLimit, roomLimitMessage, roomsAfterSave, type RoomUnits } from "./room-limit";
-import { makeDeps, NOW, stripeSub, fakeStripe } from "./fakes.test-helper";
+import { makeDeps, NOW, paystackUnpaid, stripeSub, fakeStripe } from "./fakes.test-helper";
 import type { BillingDeps } from "./flow";
 
 const DAY = 86_400_000;
@@ -72,7 +72,8 @@ describe("grace period then lock", () => {
   });
 
   it("first failure sets past_due_since, a second keeps it, paying again clears it", async () => {
-    const { deps, store } = makeDeps();
+    const { deps, store, paystack } = makeDeps();
+    paystackUnpaid(paystack);
     store.add({ id: "h1", billing_status: "active", billing_provider: "paystack", billing_subscription_id: "SUB_1", billing_customer_id: "CUS_1" });
     await handlePaystackBillingEvent(deps, "invoice.payment_failed", { id: 1, subscription: { subscription_code: "SUB_1" } });
     expect(store.hotels.get("h1")).toMatchObject({ billing_status: "past_due", past_due_since: NOW.toISOString() });
