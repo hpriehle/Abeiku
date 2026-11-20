@@ -22,9 +22,9 @@ export async function sendEmail(params: {
   html: string;
   /** Plain-text version (shown by mail apps that prefer it). */
   text?: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; error?: string; id?: string }> {
   try {
-    const { error } = await getResend().emails.send({
+    const { data, error } = await getResend().emails.send({
       from: `Abeiku <${fromEmail()}>`,
       to: params.to,
       subject: params.subject,
@@ -35,7 +35,7 @@ export async function sendEmail(params: {
     if (error) {
       return { success: false, error: error.message };
     }
-    return { success: true };
+    return { success: true, id: data?.id };
   } catch (err) {
     return {
       success: false,

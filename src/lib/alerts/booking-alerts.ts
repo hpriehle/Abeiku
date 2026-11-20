@@ -68,16 +68,34 @@ export interface AlertStore {
   /** Records the digest for (hotel, kind, date); false if it was already recorded. */
   claimDigest(hotelId: string, kind: string, forDate: string): Promise<boolean>;
   releaseDigest(hotelId: string, kind: string, forDate: string): Promise<void>;
+  /** Records who an alert went to (alert_deliveries), one insert per alert. Never throws. */
+  logDeliveries(rows: AlertDelivery[]): Promise<void>;
 }
 
-export type Mailer = (msg: { to: string | string[]; subject: string; html: string; text: string }) => Promise<{ success: boolean; error?: string }>;
+/** One alert_deliveries row: one recipient of one alert. */
+export interface AlertDelivery {
+  hotel_id: string;
+  booking_id: string | null;
+  kind: "new" | "cancel" | "digest";
+  channel: "email" | "whatsapp";
+  recipient: string;
+  /** Resend email id or WhatsApp wamid. */
+  provider_message_id: string | null;
+  status: "sent" | "failed";
+  error: string | null;
+}
+
+type Delivery = Pick<AlertDelivery, "channel" | "recipient" | "provider_message_id" | "status" | "error">;
+
+/** `id`: the provider's message id (Resend id / WhatsApp wamid), for the delivery log. */
+export type Mailer = (msg: { to: string | string[]; subject: string; html: string; text: string }) => Promise<{ success: boolean; error?: string; id?: string }>;
 
 /**
  * Sends one booking alert to the manager's WhatsApp, from the hotel's own connected
  * number, as the approved `booking_alert` template (see docs/whatsapp-setup.md).
  * `summary` is the email subject line (one line, no newlines).
  */
-export type WhatsAppAlerter = (msg: { hotelId: string; hotelName: string; to: string; summary: string }) => Promise<{ success: boolean; error?: string }>;
+export type WhatsAppAlerter = (msg: { hotelId: string; hotelName: string; to: string; summary: string }) => Promise<{ success: boolean; error?: string; id?: string }>;
 
 /** Splits a recipients column ("a, b" or "a; b") into trimmed, non-empty entries. */
 export function splitRecipients(v: string | null | undefined): string[] {
@@ -108,21 +126,45 @@ export function whatsAppAlertTo(hotel: Pick<AlertHotel, "alert_whatsapp" | "what
 
 /**
  * Best effort, after the email went out: one template per number; a failure is logged, never
- * retried (so never sent twice), and doesn't stop the other numbers. Returns how many went out.
+ * retried (so never sent twice), and doesn't stop the other numbers. Returns one delivery per number.
  */
-async function sendWhatsAppAlert(whatsapp: WhatsAppAlerter | undefined, hotel: AlertHotel, summary: string): Promise<number> {
-  if (!whatsapp) return 0;
-  let sent = 0;
+async function sendWhatsAppAlert(whatsapp: WhatsAppAlerter | undefined, hotel: AlertHotel, summary: string): Promise<Delivery[]> {
+  if (!whatsapp) return [];
+  const out: Delivery[] = [];
   for (const to of whatsAppAlertTo(hotel)) {
+    let res: { success: boolean; error?: string; id?: string };
     try {
-      const res = await whatsapp({ hotelId: hotel.id, hotelName: hotel.name, to, summary: oneLine(summary) });
-      if (res.success) sent++;
-      else console.error(`[booking-alerts] WhatsApp alert failed (${hotel.slug}, …${to.slice(-4)}): ${res.error ?? "unknown"}`);
+      res = await whatsapp({ hotelId: hotel.id, hotelName: hotel.name, to, summary: oneLine(summary) });
     } catch (err) {
-      console.error(`[booking-alerts] WhatsApp alert failed (${hotel.slug}, …${to.slice(-4)}):`, (err as Error)?.message ?? err);
+      res = { success: false, error: (err as Error)?.message ?? String(err) };
     }
+    if (!res.success) console.error(`[booking-alerts] WhatsApp alert failed (${hotel.slug}, …${to.slice(-4)}): ${res.error ?? "unknown"}`);
+    out.push(delivery("whatsapp", to, res));
   }
-  return sent;
+  return out;
+}
+
+function delivery(channel: Delivery["channel"], recipient: string, res: { success: boolean; error?: string; id?: string }): Delivery {
+  return { channel, recipient, provider_message_id: res.id ?? null, status: res.success ? "sent" : "failed", error: res.success ? null : res.error ?? "unknown" };
+}
+
+/** Sends the alert email; returns whether it went out and one delivery per address. */
+async function sendAlertEmail(mailer: Mailer, hotel: AlertHotel, msg: { subject: string; html: string; text: string }, what: string) {
+  const to = alertEmailRecipients(hotel.alert_email);
+  let res: { success: boolean; error?: string; id?: string };
+  try {
+    res = await mailer({ to: mailTo(to), ...msg });
+  } catch (err) {
+    res = { success: false, error: (err as Error)?.message ?? String(err) };
+  }
+  if (!res.success) console.error(`[booking-alerts] ${what} email failed: ${res.error ?? "unknown"}`);
+  return { ok: res.success, deliveries: to.map((addr) => delivery("email", addr, res)) };
+}
+
+/** Writes the alert's delivery rows in one insert; a log failure never fails the alert. */
+async function logDeliveries(store: AlertStore, base: Pick<AlertDelivery, "hotel_id" | "booking_id" | "kind">, deliveries: Delivery[]) {
+  if (!deliveries.length) return;
+  await store.logDeliveries(deliveries.map((d) => ({ ...base, ...d }))).catch((err) => console.error("[booking-alerts] delivery log failed:", (err as Error)?.message ?? err));
 }
 
 export interface AlertCounts {
@@ -318,17 +360,14 @@ async function sendForStays(
     const rows = stay.rows.filter((r) => claimed.includes(r.id));
     const mine = rows.length === stay.rows.length ? stay : { ...stay, rows, check_in: rows[0].check_in, check_out: rows[rows.length - 1].check_out, nights: rows.reduce((n, r) => n + nightsBetween(r.check_in, r.check_out), 0) };
     const msg = build(mine, hotel);
-    let ok = false;
-    try {
-      const res = await mailer({ to: mailTo(alertEmailRecipients(hotel.alert_email)), ...msg });
-      ok = res.success;
-      if (!ok) console.error(`[booking-alerts] ${field} email failed: ${res.error ?? "unknown"}`);
-    } catch (err) {
-      console.error(`[booking-alerts] ${field} email failed:`, (err as Error)?.message ?? err);
-    }
+    const { ok, deliveries } = await sendAlertEmail(mailer, hotel, msg, field);
+    if (ok) deliveries.push(...(await sendWhatsAppAlert(whatsapp, hotel, msg.subject)));
+    // The many-bookings summary covers several stays: no single booking.
+    const bookingId = groupStays(mine.rows).length === 1 ? mine.rows[0].id : null;
+    await logDeliveries(store, { hotel_id: hotel.id, booking_id: bookingId, kind: field === "alert_new_sent_at" ? "new" : "cancel" }, deliveries);
     if (ok) {
       sent++;
-      whatsappSent += await sendWhatsAppAlert(whatsapp, hotel, msg.subject);
+      whatsappSent += deliveries.filter((d) => d.channel === "whatsapp" && d.status === "sent").length;
     } else {
       failed++;
       await store.release(claimed, field);
@@ -505,14 +544,8 @@ export async function sendArrivalsDigest(input: { store: AlertStore; mailer: Mai
         continue;
       }
       const msg = arrivalsDigestEmail(arrivals, tomorrow, hotel);
-      let ok = false;
-      try {
-        const res = await mailer({ to: mailTo(alertEmailRecipients(hotel.alert_email)), ...msg });
-        ok = res.success;
-        if (!ok) console.error(`[booking-alerts] digest email failed: ${res.error ?? "unknown"}`);
-      } catch (err) {
-        console.error("[booking-alerts] digest email failed:", (err as Error)?.message ?? err);
-      }
+      const { ok, deliveries } = await sendAlertEmail(mailer, hotel, msg, "digest");
+      await logDeliveries(store, { hotel_id: hotel.id, booking_id: null, kind: "digest" }, deliveries);
       if (ok) out.sent++;
       else {
         out.failed++;
