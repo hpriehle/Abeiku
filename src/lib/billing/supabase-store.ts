@@ -71,6 +71,11 @@ export const supabaseBillingStore: BillingStore = {
     throw error;
   },
 
+  async forgetDelivery(provider, eventId) {
+    const { error } = await supabase.from("billing_events").delete().eq("provider", provider).eq("event_id", eventId);
+    if (error) console.error("[billing] could not forget delivery", provider, eventId, error.message);
+  },
+
   async claimEmail(key) {
     const { error } = await supabase.from("billing_events").insert({ provider: EMAIL_PROVIDER, event_id: key });
     if (!error) return true;

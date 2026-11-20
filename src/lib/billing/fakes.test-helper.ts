@@ -38,6 +38,9 @@ export class MemoryBillingStore implements BillingStore {
     this.events.add(k);
     return true;
   }
+  async forgetDelivery(provider: string, id: string) {
+    this.events.delete(`${provider}:${id}`);
+  }
   emailKeys = new Set<string>();
   async claimEmail(key: string) {
     if (this.emailKeys.has(key)) return false;

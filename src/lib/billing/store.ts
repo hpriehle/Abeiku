@@ -20,6 +20,8 @@ export interface BillingStore {
   findByCustomer(provider: BillingProvider, customerId: string): Promise<BillingHotel | null>;
   /** true the first time an event id is seen; false for a repeat delivery. */
   firstDelivery(provider: BillingProvider, eventId: string): Promise<boolean>;
+  /** Undo firstDelivery when handling failed, so the provider's retry is applied. */
+  forgetDelivery(provider: BillingProvider, eventId: string): Promise<void>;
   /** Billing emails: true the first time `key` is claimed (then send); false if already sent. */
   claimEmail(key: string): Promise<boolean>;
   /** Undo a claim when the send failed, so the next run tries again. */
