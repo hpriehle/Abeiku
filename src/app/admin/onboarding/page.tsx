@@ -59,6 +59,8 @@ export default function OnboardingPage() {
   const nextKey = rooms.length > 0 ? Math.max(...rooms.map((r) => r.key)) + 1 : 1;
 
   // Step 3 state
+  // L3: hidden from self-serve hotels until WhatsApp connecting is live (see lib/admin/features).
+  const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [integrations, setIntegrations] = useState<IntegrationStatus>({
     google_calendar: false,
     whatsapp: false,
@@ -93,6 +95,7 @@ export default function OnboardingPage() {
         if (data.integrations) {
           setIntegrations(data.integrations);
         }
+        setShowWhatsApp(!!data.features?.whatsappSetup);
       })
       .catch(() => {});
   }, []);
@@ -570,6 +573,7 @@ export default function OnboardingPage() {
             </div>
 
             {/* WhatsApp */}
+            {showWhatsApp && (
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -611,6 +615,7 @@ export default function OnboardingPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* MTN Mobile Money */}
             <div className="bg-white rounded-xl shadow-lg p-6">

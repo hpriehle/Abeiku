@@ -2,7 +2,8 @@
 // - Communication (WhatsApp inbox, templates, report): the hotel has its own WhatsApp connected,
 //   or is an exempt hotel (Aracuya uses the platform alert sender; Test Hotel is ours).
 // - Simulator and the "Dev: Run Onboarding" button: platform admins and exempt hotels only.
-// Settings > WhatsApp (Connect) stays visible to everyone: connecting is how a hotel gets the inbox.
+// - WhatsApp setup (Settings tile and page, onboarding block): hotels already connected, platform
+//   admins and exempt hotels. Self-serve connecting isn't live yet (Meta account restricted).
 
 import { getSession, type SessionPayload } from "@/lib/admin/auth";
 import { getHotelById } from "@/lib/db";
@@ -20,10 +21,11 @@ export interface AdminFeatures {
   communication: boolean;
   simulator: boolean;
   devTools: boolean;
+  whatsappSetup: boolean;
 }
 
 /** Everything hidden: used when the hotel can't be loaded. */
-export const NO_FEATURES: AdminFeatures = { communication: false, simulator: false, devTools: false };
+export const NO_FEATURES: AdminFeatures = { communication: false, simulator: false, devTools: false, whatsappSetup: false };
 
 export function whatsappConnected(hotel: FeatureHotel): boolean {
   return Boolean(hotel.whatsapp_access_token && hotel.whatsapp_phone_number_id);
@@ -33,11 +35,8 @@ export function adminFeatures(hotel: FeatureHotel | null, role?: string | null):
   const platformAdmin = role === "platform_admin";
   const exempt = !!hotel?.slug && FEATURE_EXEMPT_SLUGS.includes(hotel.slug);
   const insider = platformAdmin || exempt;
-  return {
-    communication: exempt || (!!hotel && whatsappConnected(hotel)),
-    simulator: insider,
-    devTools: insider,
-  };
+  const communication = exempt || (!!hotel && whatsappConnected(hotel));
+  return { communication, simulator: insider, devTools: insider, whatsappSetup: communication || insider };
 }
 
 /** Loads the features for a session. Never throws: on a DB error only platform-admin features show. */
