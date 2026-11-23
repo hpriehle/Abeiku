@@ -20,7 +20,7 @@ import {
   type PlanIds,
   type Tier,
 } from "./plans";
-import type { PaystackBillingApi, StripeBillingApi, StripeSubscription } from "./providers";
+import type { PaystackBillingApi, PaystackSubscription, StripeBillingApi, StripeSubscription } from "./providers";
 import type { BillingHotel, BillingPatch, BillingStore } from "./store";
 import type { SendEmail } from "./emails";
 import { applyBillingPatch } from "./notices";
@@ -326,33 +326,78 @@ export async function changeRoomCount(
     await deps.store.update(hotelId, { room_count: rooms, billing_tier: tier });
   } else {
     const old = await deps.paystack.fetchSubscription(hotel.billing_subscription_id);
-    if (!old.authorization_code || !old.customer_code) {
-      throw new BillingError("old subscription lacks card", "We could not change your plan. Please email us.", 500);
-    }
     const start = old.next_payment_date ?? hotel.current_period_end ?? trialEndsAt(nowOf(deps)).toISOString();
-    const next = await deps.paystack.createSubscription({
-      customer: old.customer_code,
-      plan,
-      authorization: old.authorization_code,
-      startDate: start,
-    });
-    // Point the hotel at the new subscription first, so the old one's "disabled" webhook
-    // no longer matches it and can't mark the hotel cancelled.
-    await deps.store.update(hotelId, { room_count: rooms, billing_tier: tier, billing_subscription_id: next.subscription_code });
-    const disableOld = () => deps.paystack.disableSubscription(old.subscription_code, old.email_token);
-    await disableOld()
-      .catch(disableOld)
-      .catch(async (err) => {
-        // Both subscriptions stay active, so the hotel would be charged twice: tell Harrison.
-        await opsAlert(
-          `paystack-plan-change:${hotelId}`,
-          `Paystack plan change: old subscription of ${hotel.name} not disabled`,
-          `Hotel ${hotel.name} (${hotelId}) now uses ${next.subscription_code}; the old ${old.subscription_code} is still active. Disable it in the Paystack dashboard, or the hotel is charged twice.\n${errorText(err)}`
-        );
-        throw err;
-      });
+    await swapPaystackSubscription(deps, hotel, old, plan, start, { room_count: rooms, billing_tier: tier }, "plan change");
   }
   return { tier, changed: true };
+}
+
+/**
+ * Paystack can't move a subscription's dates or plan: start a new one on the same card from
+ * `startDate`, point the hotel at it (with `patch`), then disable the old one.
+ */
+async function swapPaystackSubscription(
+  deps: BillingDeps,
+  hotel: BillingHotel,
+  old: PaystackSubscription,
+  plan: string,
+  startDate: string,
+  patch: BillingPatch,
+  what: string
+): Promise<void> {
+  if (!old.authorization_code || !old.customer_code) {
+    throw new BillingError("old subscription lacks card", "We could not change your plan. Please email us.", 500);
+  }
+  const next = await deps.paystack.createSubscription({
+    customer: old.customer_code,
+    plan,
+    authorization: old.authorization_code,
+    startDate,
+  });
+  // Point the hotel at the new subscription first, so the old one's "disabled" webhook
+  // no longer matches it and can't mark the hotel cancelled.
+  await deps.store.update(hotel.id, { ...patch, billing_subscription_id: next.subscription_code });
+  const disableOld = () => deps.paystack.disableSubscription(old.subscription_code, old.email_token);
+  await disableOld()
+    .catch(disableOld)
+    .catch(async (err) => {
+      // Both subscriptions stay active, so the hotel would be charged twice: tell Harrison.
+      await opsAlert(
+        `paystack-${what.replace(/ /g, "-")}:${hotel.id}`,
+        `Paystack ${what}: old subscription of ${hotel.name} not disabled`,
+        `Hotel ${hotel.name} (${hotel.id}) now uses ${next.subscription_code}; the old ${old.subscription_code} is still active. Disable it in the Paystack dashboard, or the hotel is charged twice.\n${errorText(err)}`
+      );
+      throw err;
+    });
+}
+
+/** New trial end: `days` after the current end (or after now, if that is already past). */
+export function extendedTrialEnd(trialEndsAt: string | null | undefined, days: number, now: Date): string {
+  const from = Math.max(trialEndsAt ? Date.parse(trialEndsAt) || 0 : 0, now.getTime());
+  return new Date(from + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Platform admin: push a trialing hotel's trial end (and so its first charge) back by `days`.
+ * The provider is moved too, or it would charge on the old date.
+ */
+export async function extendTrial(deps: BillingDeps, hotelId: string, days: number): Promise<{ trialEndsAt: string }> {
+  const hotel = await mustGet(deps, hotelId);
+  if (hotel.billing_status !== "trialing") throw new BillingError("not trialing", "Only a hotel in its free trial can get more trial days.", 400);
+  const end = extendedTrialEnd(hotel.trial_ends_at, days, nowOf(deps));
+  const patch: BillingPatch = { trial_ends_at: end, current_period_end: end };
+  const sub = hotel.billing_subscription_id;
+  if (sub && hotel.billing_provider === "stripe") {
+    await deps.stripe.extendTrial(sub, Math.floor(Date.parse(end) / 1000));
+    await deps.store.update(hotelId, patch);
+  } else if (sub && hotel.billing_provider === "paystack") {
+    const old = await deps.paystack.fetchSubscription(sub);
+    const plan = old.plan_code ?? planFor(deps, "paystack", (hotel.billing_tier as Tier) ?? tierForRooms(hotel.room_count ?? 1));
+    await swapPaystackSubscription(deps, hotel, old, plan, end, patch, "trial extension");
+  } else {
+    await deps.store.update(hotelId, patch);
+  }
+  return { trialEndsAt: end };
 }
 
 export { patchFromStripe };

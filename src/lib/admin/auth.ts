@@ -15,6 +15,9 @@ export interface SessionPayload {
   billing?: "blocked";
   /** Session version (admin_users.session_version) when issued; see src/lib/auth/account.ts. */
   sv?: number;
+  /** Platform admin viewing another hotel ("view as"): the hotel to go back to. */
+  homeHotelId?: string;
+  homeHotelName?: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -69,8 +72,9 @@ export async function checkSessionToken(token: string): Promise<SessionRead> {
 
 /** A fresh token for the same login, with some claims changed (e.g. the new `sv` or email). */
 export async function reissueSessionToken(session: SessionPayload, changes: Partial<SessionPayload>): Promise<string> {
-  const { userId, hotelId, email, hotelName, role, billing, sv } = { ...session, ...changes };
-  return createSessionToken({ userId, hotelId, email, hotelName, role, ...(billing ? { billing } : {}), sv });
+  const { userId, hotelId, email, hotelName, role, billing, sv, homeHotelId, homeHotelName } = { ...session, ...changes };
+  const home = homeHotelId ? { homeHotelId, homeHotelName } : {};
+  return createSessionToken({ userId, hotelId, email, hotelName, role, ...(billing ? { billing } : {}), sv, ...home });
 }
 
 export async function readSession(): Promise<SessionRead> {

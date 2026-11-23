@@ -160,7 +160,7 @@ export async function runDailyBillingCheck(deps: NoticeDeps): Promise<DailyResul
           const r = await notifyPlatform(mail, `Plan ended: ${h.name}`, `${h.name} (${h.slug}): the plan ended on ${formatDate(until)}.`, `plan_ended:${h.id}:${until}`);
           if (r === "sent") result.ended++;
         }
-      } else if (v.access === "locked") {
+      } else if (v.status === "past_due" && v.access === "locked") {
         const r = await notifyPlatform(
           mail,
           `Locked: ${h.name}`,

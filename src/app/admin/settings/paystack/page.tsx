@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById } from "@/lib/db";
+import { adminFeatures } from "@/lib/admin/features";
 import { PaystackSubaccountWizard } from "./PaystackForm";
 
 export default async function PaystackSettingsPage() {
@@ -10,6 +11,8 @@ export default async function PaystackSettingsPage() {
 
   const hotel = await getHotelById(session.hotelId);
   if (!hotel) redirect("/admin/login");
+  // L3: guests only pay through WhatsApp, so payouts are hidden without it.
+  if (!adminFeatures(hotel, session.role).payouts) redirect("/admin/settings");
 
   const feeLabel =
     hotel.fee_type && hotel.fee_value != null

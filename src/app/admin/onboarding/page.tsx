@@ -61,6 +61,7 @@ export default function OnboardingPage() {
   // Step 3 state
   // L3: hidden from self-serve hotels until WhatsApp connecting is live (see lib/admin/features).
   const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [showPayouts, setShowPayouts] = useState(false);
   const [integrations, setIntegrations] = useState<IntegrationStatus>({
     google_calendar: false,
     whatsapp: false,
@@ -96,6 +97,7 @@ export default function OnboardingPage() {
           setIntegrations(data.integrations);
         }
         setShowWhatsApp(!!data.features?.whatsappSetup);
+        setShowPayouts(!!data.features?.payouts);
       })
       .catch(() => {});
   }, []);
@@ -617,52 +619,56 @@ export default function OnboardingPage() {
             </div>
             )}
 
-            {/* MTN Mobile Money */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              {momoVerified || integrations.momo ? (
-                <div className="flex items-center gap-3">
-                  <Wallet className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">MTN Mobile Money</h3>
-                    <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Verified</span>
+            {showPayouts && (
+              <>
+              {/* MTN Mobile Money */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                {momoVerified || integrations.momo ? (
+                  <div className="flex items-center gap-3">
+                    <Wallet className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">MTN Mobile Money</h3>
+                      <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Verified</span>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <MoMoVerificationWizard
-                  initialPhone={null}
-                  isVerified={false}
-                  hasPendingVerification={false}
-                  verificationSentAt={null}
-                  currency="GHS"
-                  feeLabel={null}
-                  onVerified={handleMoMoVerified}
-                />
-              )}
-            </div>
-
-            {/* Card Payments (Paystack) */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Card Payments</h3>
-                    <p className="text-xs text-gray-500">Accept card payments from guests</p>
-                  </div>
-                </div>
+                ) : (
+                  <MoMoVerificationWizard
+                    initialPhone={null}
+                    isVerified={false}
+                    hasPendingVerification={false}
+                    verificationSentAt={null}
+                    currency="GHS"
+                    feeLabel={null}
+                    onVerified={handleMoMoVerified}
+                  />
+                )}
               </div>
-              <p className="text-xs text-gray-500 mb-3">
-                Connect your bank account so guests can pay by card. You can set this up now or later in Settings.
-              </p>
-              <a
-                href="/admin/settings/paystack"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="admin-btn-primary"
-              >
-                Set Up Card Payments
-              </a>
-            </div>
+
+              {/* Card Payments (Paystack) */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="size-7 text-[#2D4A3E] shrink-0" aria-hidden="true" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Card Payments</h3>
+                      <p className="text-xs text-gray-500">Accept card payments from guests</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Connect your bank account so guests can pay by card. You can set this up now or later in Settings.
+                </p>
+                <a
+                  href="/admin/settings/paystack"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="admin-btn-primary"
+                >
+                  Set Up Card Payments
+                </a>
+              </div>
+              </>
+            )}
 
             {/* Google Reviews */}
             <div className="bg-white rounded-xl shadow-lg p-6">

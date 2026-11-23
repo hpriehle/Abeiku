@@ -4,6 +4,8 @@
 // - Simulator and the "Dev: Run Onboarding" button: platform admins and exempt hotels only.
 // - WhatsApp setup (Settings tile and page, onboarding block): hotels already connected, platform
 //   admins and exempt hotels. Self-serve connecting isn't live yet (Meta account restricted).
+// - Payouts (MoMo and Paystack tiles): same rule as WhatsApp setup. Guests only pay through the
+//   WhatsApp booking flow (lib/whatsapp/state-machine.ts), so without WhatsApp they do nothing.
 
 import { getSession, type SessionPayload } from "@/lib/admin/auth";
 import { getHotelById } from "@/lib/db";
@@ -22,10 +24,11 @@ export interface AdminFeatures {
   simulator: boolean;
   devTools: boolean;
   whatsappSetup: boolean;
+  payouts: boolean;
 }
 
 /** Everything hidden: used when the hotel can't be loaded. */
-export const NO_FEATURES: AdminFeatures = { communication: false, simulator: false, devTools: false, whatsappSetup: false };
+export const NO_FEATURES: AdminFeatures = { communication: false, simulator: false, devTools: false, whatsappSetup: false, payouts: false };
 
 export function whatsappConnected(hotel: FeatureHotel): boolean {
   return Boolean(hotel.whatsapp_access_token && hotel.whatsapp_phone_number_id);
@@ -36,7 +39,8 @@ export function adminFeatures(hotel: FeatureHotel | null, role?: string | null):
   const exempt = !!hotel?.slug && FEATURE_EXEMPT_SLUGS.includes(hotel.slug);
   const insider = platformAdmin || exempt;
   const communication = exempt || (!!hotel && whatsappConnected(hotel));
-  return { communication, simulator: insider, devTools: insider, whatsappSetup: communication || insider };
+  const whatsappSetup = communication || insider;
+  return { communication, simulator: insider, devTools: insider, whatsappSetup, payouts: whatsappSetup };
 }
 
 /** Loads the features for a session. Never throws: on a DB error only platform-admin features show. */
