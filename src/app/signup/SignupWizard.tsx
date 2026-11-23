@@ -11,7 +11,7 @@ const STEPS: Step[] = ["account", "hotel", "calendars", "plan"];
 
 interface State {
   hotel: { name: string; town: string; rooms: number | null; contactEmail: string; calendars: Record<string, string | null> | null };
-  billing: { access: string; status: string | null; tier: Tier | null; legacy: boolean; exempt: boolean };
+  billing: { access: string; status: string | null; tier: Tier | null; legacy: boolean; exempt: boolean; trialAvailable?: boolean };
 }
 
 const input =
@@ -70,6 +70,10 @@ export function SignupWizard() {
       return;
     }
     setState(r.data);
+    if (r.data.billing.access === "locked") {
+      window.location.assign("/admin/plan"); // payment failed: only the Plan page is open
+      return;
+    }
     if (r.data.billing.access === "full") setStep("ready");
     else if (r.data.billing.access === "ended") setStep("ended");
     else if (!r.data.hotel.rooms || !r.data.hotel.town) setStep("hotel");
@@ -153,9 +157,20 @@ export function SignupWizard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={H1_FONT}>Your plan has ended</h1>
           <p className="mt-3 text-base text-gray-700">
-            Your Abeiku plan was cancelled and has now ended. To start again, email us.
+            Your Abeiku plan was cancelled and has now ended. You can start again now: add your card and
+            your plan starts straight away, with your rooms and settings as you left them.
           </p>
-          <a href={`mailto:${CONTACT_EMAIL}`} className={`${primary} mt-6`}>{CONTACT_EMAIL}</a>
+          <button
+            type="button"
+            className={`${primary} mt-6`}
+            disabled={busy}
+            onClick={() => submit("/api/signup/restart", {}, () => load("plan"))}
+          >
+            {busy ? "Starting..." : "Start again"}
+          </button>
+          <p className="mt-3 text-sm text-gray-600">
+            Questions? Email <a href={`mailto:${CONTACT_EMAIL}`} className="underline underline-offset-4">{CONTACT_EMAIL}</a>.
+          </p>
         </div>
       )}
       <ErrorBox text={error} />
@@ -313,6 +328,7 @@ function PlanStep({
   const [provider, setProvider] = useState<BillingProvider>("paystack");
   const tier = state.billing.tier ?? tierForRooms(state.hotel.rooms ?? 1);
   const firstCharge = trialEndsAt(new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const trial = state.billing.trialAvailable !== false;
   const options: { id: BillingProvider; title: string; price: string; note: string }[] = [
     { id: "paystack", title: "Pay in cedis", price: `${formatPrice(tier, "GHS")} a month`, note: "Card through Paystack" },
     { id: "stripe", title: "Pay in dollars", price: `${formatPrice(tier, "USD")} a month`, note: "Card through Stripe" },
@@ -326,8 +342,10 @@ function PlanStep({
     >
       <h1 className="text-2xl font-bold tracking-tight" style={H1_FONT}>Add your card</h1>
       <p className="mt-2 text-base text-gray-700">
-        {state.hotel.rooms} {state.hotel.rooms === 1 ? "room" : "rooms"}. Free for {TRIAL_DAYS} days, then your card is charged
-        on {firstCharge} and each month after. Cancel before then and you pay nothing.
+        {state.hotel.rooms} {state.hotel.rooms === 1 ? "room" : "rooms"}.{" "}
+        {trial
+          ? <>Free for {TRIAL_DAYS} days, then your card is charged on {firstCharge} and each month after. Cancel before then and you pay nothing.</>
+          : <>You already had your free trial, so your card is charged today and each month after. Cancel any time.</>}
       </p>
       <fieldset className="mt-6">
         <legend className={label}>How do you want to pay?</legend>
@@ -359,10 +377,12 @@ function PlanStep({
       <p className="mt-4 text-sm text-gray-700">
         {provider === "paystack"
           ? "To check your card, Paystack takes GH₵1 now and we give it straight back."
-          : "Stripe saves your card now. Nothing is taken today."}
+          : trial
+            ? "Stripe saves your card now. Nothing is taken today."
+            : "Stripe takes the first month now."}
       </p>
       <button type="submit" className={`${primary} mt-6`} disabled={busy}>
-        {busy ? "Opening the card page..." : "Add card and start free trial"}
+        {busy ? "Opening the card page..." : trial ? "Add card and start free trial" : "Add card and start my plan"}
       </button>
       <button type="button" className={`${secondary} mt-3`} onClick={onBack} disabled={busy}>Back</button>
     </form>

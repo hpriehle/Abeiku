@@ -26,7 +26,7 @@ vi.mock("@/lib/payments/paystack-transfer", () => ({ initiateTransfer: vi.fn() }
 const opsAlert = vi.fn();
 vi.mock("@/lib/ops/alerts", () => ({ opsAlert: (...a: unknown[]) => opsAlert(...a) }));
 
-const { makeDeps } = await import("@/lib/billing/fakes.test-helper");
+const { makeDeps, paystackUnpaid } = await import("@/lib/billing/fakes.test-helper");
 let m = makeDeps();
 vi.mock("@/lib/billing", () => ({ billingDeps: () => m.deps }));
 
@@ -47,6 +47,7 @@ describe("POST /api/paystack/webhook with L2 billing", () => {
   beforeEach(() => {
     m = makeDeps();
     m.store.add({ id: "h1", billing_status: "trialing", billing_provider: "paystack", billing_customer_id: "CUS_1", billing_subscription_id: "SUB_1" });
+    paystackUnpaid(m.paystack);
     getPaymentByPaystackReference.mockClear();
     opsAlert.mockClear();
   });

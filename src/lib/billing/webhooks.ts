@@ -6,9 +6,11 @@
 
 import crypto from "crypto";
 import { tierForPlanId, type PlanIds } from "./plans";
-import { CARD_CHECK_PURPOSE, patchFromStripe, type BillingDeps } from "./flow";
+import { CARD_CHECK_PURPOSE, patchFromStripe, stripeStatus, type BillingDeps } from "./flow";
 import { toStripeSubscription } from "./stripe-api";
 import type { BillingPatch } from "./store";
+import { formatMinor } from "./emails";
+import { applyBillingPatch, sendPaymentReceived, sendTrialEnding } from "./notices";
 
 function safeEqualHex(a: string, b: string): boolean {
   const x = Buffer.from(a, "utf8");
@@ -91,6 +93,13 @@ export async function handlePaystackBillingEvent(deps: BillingDeps, event: strin
   }
   if (!hotel) return { handled: false, note: `no hotel for ${subCode ?? customerCode ?? "event"}` };
 
+  // Deliveries come late or out of order: a failure counts only while Paystack still has the
+  // subscription in "attention" (test mode: "attention" after a failed charge, "active" after a paid one).
+  if ((event === "charge.failed" || event === "invoice.payment_failed") && hotel.billing_subscription_id) {
+    const fresh = await deps.paystack.fetchSubscription(hotel.billing_subscription_id);
+    if (fresh.status !== "attention") return { handled: false, hotelId: hotel.id, note: `${event}: no longer past due, ignored` };
+  }
+
   const eventId = `${event}:${str(data.id) ?? String(data.id ?? "")}:${subCode ?? ""}:${str(data.invoice_code) ?? str(data.reference) ?? ""}:${str(data.status) ?? ""}`;
   if (!(await deps.store.firstDelivery("paystack", eventId))) return { handled: false, hotelId: hotel.id, note: "repeat delivery" };
 
@@ -127,7 +136,16 @@ export async function handlePaystackBillingEvent(deps: BillingDeps, event: strin
   if (hotel.billing_status === "canceled" && patch.billing_status && patch.billing_status !== "canceled") {
     return { handled: false, hotelId: hotel.id, note: `${event}: hotel cancelled, ignored` };
   }
-  await deps.store.update(hotel.id, patch);
+  try {
+    await applyBillingPatch(deps, hotel, patch);
+  } catch (err) {
+    await deps.store.forgetDelivery("paystack", eventId); // so Paystack's retry is applied
+    throw err;
+  }
+  if (event === "charge.success") {
+    const amount = typeof data.amount === "number" ? formatMinor(data.amount, str(data.currency) ?? "GHS") : null;
+    await sendPaymentReceived(deps, { ...hotel, ...patch }, `paystack:${str(data.reference) ?? eventId}`, amount, null);
+  }
   return { handled: true, hotelId: hotel.id, note: `${event} → ${patch.billing_status ?? "updated"}` };
 }
 
@@ -166,6 +184,14 @@ export async function handleStripeEvent(deps: BillingDeps, evt: { id: string; ty
       delete patch.billing_customer_id;
       break;
     }
+    case "customer.subscription.trial_will_end": {
+      // Stripe sends this 3 days before the trial ends: the same once-only reminder as the daily check.
+      const sub = toStripeSubscription(o);
+      hotel = await deps.store.findBySubscription("stripe", sub.id);
+      if (!hotel) return { handled: false, note: `no hotel for ${sub.id}` };
+      await sendTrialEnding(deps, hotel);
+      return { handled: true, hotelId: hotel.id, note: "trial_will_end: reminder" };
+    }
     case "invoice.paid":
     case "invoice.payment_succeeded":
     case "invoice.payment_failed": {
@@ -186,10 +212,26 @@ export async function handleStripeEvent(deps: BillingDeps, evt: { id: string; ty
   }
 
   if (!patch || !hotel) return { handled: false, hotelId: hotel?.id, note: `${evt.type}: no change` };
+  // Deliveries come late or out of order (retries): a failure counts only if Stripe still says unpaid,
+  // else a paid hotel would be marked past_due again and locked 14 days later.
+  if (patch.billing_status === "past_due" && hotel.billing_subscription_id) {
+    const fresh = await deps.stripe.retrieveSubscription(hotel.billing_subscription_id);
+    if (stripeStatus(fresh) !== "past_due") return { handled: false, hotelId: hotel.id, note: `${evt.type}: no longer past due, ignored` };
+  }
   if (!(await deps.store.firstDelivery("stripe", evt.id))) return { handled: false, hotelId: hotel.id, note: "repeat delivery" };
   if (hotel.billing_status === "canceled" && patch.billing_status && patch.billing_status !== "canceled") {
     return { handled: false, hotelId: hotel.id, note: `${evt.type}: hotel cancelled, ignored` };
   }
-  await deps.store.update(hotel.id, patch);
+  try {
+    await applyBillingPatch(deps, hotel, patch);
+  } catch (err) {
+    await deps.store.forgetDelivery("stripe", evt.id); // so Stripe's retry is applied
+    throw err;
+  }
+  if ((evt.type === "invoice.paid" || evt.type === "invoice.payment_succeeded") && Number(o.amount_paid ?? 0) > 0) {
+    // invoice.paid and invoice.payment_succeeded both come for one invoice: key on the invoice.
+    const amount = formatMinor(Number(o.amount_paid), str(o.currency) ?? "usd");
+    await sendPaymentReceived(deps, { ...hotel, ...patch }, `stripe:${str(o.id) ?? evt.id}`, amount, null);
+  }
   return { handled: true, hotelId: hotel.id, note: `${evt.type} → ${patch.billing_status ?? "updated"}` };
 }

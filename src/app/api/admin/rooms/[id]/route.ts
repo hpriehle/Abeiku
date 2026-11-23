@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/admin/auth";
-import { updateHotelRoom, deleteHotelRoom } from "@/lib/db";
+import { updateHotelRoom, deleteHotelRoom, getHotelRooms } from "@/lib/db";
+import { supabaseBillingStore } from "@/lib/billing/supabase-store";
+import { checkRoomLimit, loadRoomLimit, roomLimitResponseBody, roomsAfterSave } from "@/lib/billing/room-limit";
 import { validatePricingTiers } from "@/lib/rooms/pricing";
 
 export async function PUT(
@@ -34,6 +36,18 @@ export async function PUT(
     if (room_type !== undefined) updates.room_type = room_type;
     if (group_id !== undefined) updates.group_id = group_id;
     if (images !== undefined) updates.images = images;
+
+    // The plan's room limit, only when the save changes how many rooms this listing counts as.
+    if (total_rooms !== undefined || room_type !== undefined || group_id !== undefined) {
+      const limit = await loadRoomLimit(session.hotelId, (hid) => supabaseBillingStore.getHotel(hid));
+      if (limit !== null) {
+        const rooms = await getHotelRooms(session.hotelId);
+        if (rooms.some((r) => r.id === id)) {
+          const check = checkRoomLimit(limit, rooms, roomsAfterSave(rooms, { id, total_rooms, room_type, group_id }));
+          if (!check.ok) return NextResponse.json(roomLimitResponseBody(check), { status: 403 });
+        }
+      }
+    }
 
     const room = await updateHotelRoom(session.hotelId, id, updates);
     return NextResponse.json({ success: true, room });

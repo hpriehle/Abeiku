@@ -38,6 +38,24 @@ export class MemoryBillingStore implements BillingStore {
     this.events.add(k);
     return true;
   }
+  async forgetDelivery(provider: string, id: string) {
+    this.events.delete(`${provider}:${id}`);
+  }
+  emailKeys = new Set<string>();
+  async claimEmail(key: string) {
+    if (this.emailKeys.has(key)) return false;
+    this.emailKeys.add(key);
+    return true;
+  }
+  async releaseEmail(key: string) {
+    this.emailKeys.delete(key);
+  }
+  async ownerEmail(id: string) {
+    return this.hotels.get(id)?.contact_email ?? null;
+  }
+  async listForDailyCheck() {
+    return [...this.hotels.values()].filter((h) => ["trialing", "past_due", "canceled"].includes(h.billing_status ?? ""));
+  }
 }
 
 export const PLAN_IDS: PlanIds = {
@@ -82,8 +100,15 @@ export function fakePaystack(tx: Partial<PaystackTransaction> = {}) {
     })),
     disableSubscription: vi.fn(async () => {}),
     refund: vi.fn(async () => {}),
+    manageLink: vi.fn(async (code: string) => `https://paystack.test/manage/${code}`),
   } satisfies PaystackBillingApi;
   return api;
+}
+
+/** Paystack reports the subscription unpaid ("attention"), as test mode does after a failed charge. */
+export function paystackUnpaid(api: ReturnType<typeof fakePaystack>) {
+  const real = api.fetchSubscription.getMockImplementation()!;
+  api.fetchSubscription.mockImplementation(async (code: string) => ({ ...(await real(code)), status: "attention" }));
 }
 
 export function stripeSub(over: Partial<StripeSubscription> = {}): StripeSubscription {
@@ -103,7 +128,7 @@ export function stripeSub(over: Partial<StripeSubscription> = {}): StripeSubscri
 
 export function fakeStripe(sub: StripeSubscription = stripeSub()) {
   const api = {
-    createCheckoutSession: vi.fn(async () => ({ id: "cs_1", url: "https://checkout.stripe.test/cs_1" })),
+    createCheckoutSession: vi.fn(async (_i: Parameters<StripeBillingApi["createCheckoutSession"]>[0]) => ({ id: "cs_1", url: "https://checkout.stripe.test/cs_1" })),
     retrieveCheckoutSession: vi.fn(async (id: string) => ({
       id,
       status: "complete",
@@ -118,6 +143,8 @@ export function fakeStripe(sub: StripeSubscription = stripeSub()) {
       atEnd ? { ...sub, cancel_at_period_end: true, cancel_at: sub.current_period_end } : { ...sub, status: "canceled" }
     ),
     changePrice: vi.fn(async (_s: string, _i: string, price: string) => ({ ...sub, item: { id: "si_1", price } })),
+    extendTrial: vi.fn(async (_s: string, trialEnd: number) => ({ ...sub, trial_end: trialEnd, current_period_end: trialEnd })),
+    createPortalSession: vi.fn(async (customer: string, returnUrl: string) => `https://billing.stripe.test/${customer}?return=${encodeURIComponent(returnUrl)}`),
   } satisfies StripeBillingApi;
   return api;
 }

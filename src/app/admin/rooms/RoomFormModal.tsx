@@ -6,6 +6,7 @@ import type { HotelRoom, RoomType } from "@/lib/db";
 import { apiRequest } from "@/lib/admin/api-client";
 import { basePriceTier, parsePrice, withBasePrice } from "@/lib/rooms/pricing";
 import { ErrorNotice } from "../useAdminAction";
+import { ROOM_LIMIT_HINT } from "@/lib/billing/room-limit";
 
 interface RoomFormModalProps {
   room?: HotelRoom | null;
@@ -457,6 +458,11 @@ export function RoomFormModal({ room, currency, groups, onClose, onSaved }: Room
           </div>
 
           <ErrorNotice message={error} onDismiss={() => setError("")} />
+          {error.includes(ROOM_LIMIT_HINT) && (
+            <a href="/admin/plan" className="text-sm font-semibold text-[#2D4A3E] underline underline-offset-4">
+              Go to the Plan page
+            </a>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

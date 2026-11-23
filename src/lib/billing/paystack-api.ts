@@ -87,4 +87,11 @@ export const paystackBillingApi: PaystackBillingApi = {
   async refund(reference) {
     await call("POST", "/refund", { transaction: reference });
   },
+
+  async manageLink(code) {
+    const d = await call<Raw>("GET", `/subscription/${encodeURIComponent(code)}/manage/link`);
+    const link = str(d?.link);
+    if (!link) throw new Error("Paystack manage link: no link in reply");
+    return link;
+  },
 };

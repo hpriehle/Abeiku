@@ -402,6 +402,15 @@ describe("OTA calendar blocks (Airbnb 'Not available')", () => {
     expect(u.sent).toHaveLength(0);
   });
 
+  it("a suspended hotel gets no arrivals digest; unsuspended it does again", async () => {
+    const arrives = [row({ guest_name: "Arrives A", check_in: "2026-11-16", check_out: "2026-11-17" })];
+    const t = setup(arrives, { hotels: [{ ...HOTEL, suspended: true }] });
+    expect(await sendArrivalsDigest({ store: t.store, mailer: t.mailer, tomorrow: "2026-11-16" })).toMatchObject({ sent: 0 });
+    expect(t.sent).toHaveLength(0);
+    const u = setup(arrives, { hotels: [{ ...HOTEL, suspended: false }] });
+    expect(await sendArrivalsDigest({ store: u.store, mailer: u.mailer, tomorrow: "2026-11-16" })).toMatchObject({ sent: 1 });
+  });
+
   it("blocks are left out of the arrivals digest", async () => {
     const t = setup([
       row({ source: "airbnb", guest_name: "Airbnb · Airbnb (Not available)", check_in: "2026-11-16", check_out: "2026-11-17", rooms_count: 3 }),

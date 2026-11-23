@@ -20,8 +20,11 @@ import {
   type PlanIds,
   type Tier,
 } from "./plans";
-import type { PaystackBillingApi, StripeBillingApi, StripeSubscription } from "./providers";
+import type { PaystackBillingApi, PaystackSubscription, StripeBillingApi, StripeSubscription } from "./providers";
 import type { BillingHotel, BillingPatch, BillingStore } from "./store";
+import type { SendEmail } from "./emails";
+import { applyBillingPatch } from "./notices";
+import { errorText, opsAlert } from "@/lib/ops/alerts";
 
 export interface BillingDeps {
   store: BillingStore;
@@ -33,6 +36,15 @@ export interface BillingDeps {
   now?: () => Date;
   /** Card check amount in pesewas (default 100 = GH₵1). */
   cardCheckPesewas?: number;
+  /** Billing emails (sendEmail in production; absent = no emails, e.g. most tests). */
+  send?: SendEmail;
+  /** Platform note address (default OPS_ALERT_EMAIL or Harrison's). */
+  platformEmail?: string;
+}
+
+/** A hotel that already had a trial (it has a trial end date) starts again without one. */
+export function trialUsed(hotel: Pick<BillingHotel, "trial_ends_at">): boolean {
+  return !!hotel.trial_ends_at;
 }
 
 export class BillingError extends Error {
@@ -77,8 +89,8 @@ export async function startCardSetup(
 ): Promise<{ url: string }> {
   const hotel = await mustGet(deps, hotelId);
   const view = billingView(hotel, nowOf(deps));
-  if (view.status !== "pending_card") {
-    throw new BillingError(`hotel ${hotelId} is ${view.status}`, "Your card is already on file.", 409);
+  if (view.exempt || view.status !== "pending_card") {
+    throw new BillingError(`hotel ${hotelId} is ${view.exempt ? "exempt" : view.status}`, "Your card is already on file.", 409);
   }
   if (!hotel.room_count) {
     throw new BillingError("no room count", "Please enter your number of rooms first.");
@@ -88,6 +100,7 @@ export async function startCardSetup(
 
   const tier = tierForRooms(hotel.room_count);
   const plan = planFor(deps, provider, tier);
+  const trialDays = trialUsed(hotel) ? 0 : TRIAL_DAYS;
 
   if (provider === "paystack") {
     const reference = `abk_${hotelId.slice(0, 8)}_${nowOf(deps).getTime()}`;
@@ -96,7 +109,7 @@ export async function startCardSetup(
       amountPesewas: deps.cardCheckPesewas ?? 100,
       reference,
       callbackUrl: `${deps.appUrl}/signup/done?provider=paystack`,
-      metadata: { purpose: CARD_CHECK_PURPOSE, hotel_id: hotelId, tier },
+      metadata: { purpose: CARD_CHECK_PURPOSE, hotel_id: hotelId, tier, trial: trialDays > 0 },
     });
     await deps.store.update(hotelId, {
       billing_provider: "paystack",
@@ -111,7 +124,7 @@ export async function startCardSetup(
     price: plan,
     hotelId,
     email,
-    trialDays: TRIAL_DAYS,
+    trialDays,
     successUrl: `${deps.appUrl}/signup/done?provider=stripe&session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${deps.appUrl}/signup?step=plan`,
   });
@@ -132,7 +145,7 @@ export type SetupResult = { ok: true; trialEndsAt: string | null; alreadyDone?: 
  */
 export async function completePaystackSetup(deps: BillingDeps, hotelId: string, reference: string): Promise<SetupResult> {
   const hotel = await mustGet(deps, hotelId);
-  if (hotel.billing_status !== "pending_card") return { ok: true, trialEndsAt: hotel.trial_ends_at ?? null, alreadyDone: true };
+  if (hotel.billing_status !== "pending_card") return { ok: true, trialEndsAt: hotel.billing_status === "trialing" ? (hotel.trial_ends_at ?? null) : null, alreadyDone: true };
 
   const tx = await deps.paystack.verifyTransaction(reference);
   const meta = tx.metadata ?? {};
@@ -148,26 +161,38 @@ export async function completePaystackSetup(deps: BillingDeps, hotelId: string, 
 
   const tier = tierForRooms(hotel.room_count ?? 1);
   const plan = planFor(deps, "paystack", tier);
-  const trialEnd = trialEndsAt(nowOf(deps)).toISOString();
+  // Restart after a cancel: no second trial, the first charge is now.
+  const noTrial = trialUsed(hotel);
+  const now = nowOf(deps).toISOString();
+  const trialEnd = noTrial ? null : trialEndsAt(nowOf(deps)).toISOString();
 
-  const sub = await deps.paystack.createSubscription({
-    customer: tx.customer.customer_code,
-    plan,
-    authorization: tx.authorization.authorization_code,
-    startDate: trialEnd,
-  });
+  // Two returns at once (refresh, or the return page and the card step): only one creates a
+  // subscription, else the card is charged twice a month.
+  const claim = `setup:${reference}`;
+  if (!(await deps.store.firstDelivery("paystack", claim))) return { ok: true, trialEndsAt: trialEnd, alreadyDone: true };
+  try {
+    const sub = await deps.paystack.createSubscription({
+      customer: tx.customer.customer_code,
+      plan,
+      authorization: tx.authorization.authorization_code,
+      startDate: trialEnd ?? now,
+    });
 
-  await deps.store.update(hotelId, {
-    billing_status: "trialing",
-    billing_provider: "paystack",
-    billing_currency: "GHS",
-    billing_tier: tier,
-    billing_customer_id: tx.customer.customer_code,
-    billing_subscription_id: sub.subscription_code,
-    trial_ends_at: trialEnd,
-    current_period_end: trialEnd,
-    billing_setup_ref: null,
-  });
+    await applyBillingPatch(deps, hotel, {
+      billing_status: noTrial ? "active" : "trialing",
+      billing_provider: "paystack",
+      billing_currency: "GHS",
+      billing_tier: tier,
+      billing_customer_id: tx.customer.customer_code,
+      billing_subscription_id: sub.subscription_code,
+      ...(trialEnd ? { trial_ends_at: trialEnd } : {}),
+      current_period_end: trialEnd ?? sub.next_payment_date ?? now,
+      billing_setup_ref: null,
+    });
+  } catch (err) {
+    await deps.store.forgetDelivery("paystack", claim);
+    throw err;
+  }
 
   // The card check is only there to save the card: give it back. A failed refund must not undo
   // the sign-up; it is logged so it can be refunded by hand in the Paystack dashboard.
@@ -210,7 +235,7 @@ export function stripeStatus(sub: Pick<StripeSubscription, "status" | "cancel_at
 /** Stripe return (and checkout.session.completed): record the customer and subscription. */
 export async function completeStripeSetup(deps: BillingDeps, hotelId: string, sessionId: string): Promise<SetupResult> {
   const hotel = await mustGet(deps, hotelId);
-  if (hotel.billing_status !== "pending_card") return { ok: true, trialEndsAt: hotel.trial_ends_at ?? null, alreadyDone: true };
+  if (hotel.billing_status !== "pending_card") return { ok: true, trialEndsAt: hotel.billing_status === "trialing" ? (hotel.trial_ends_at ?? null) : null, alreadyDone: true };
 
   const session = await deps.stripe.retrieveCheckoutSession(sessionId);
   if (session.client_reference_id !== hotelId) {
@@ -222,8 +247,8 @@ export async function completeStripeSetup(deps: BillingDeps, hotelId: string, se
   const sub = await deps.stripe.retrieveSubscription(session.subscription);
   const patch = { ...patchFromStripe(sub, deps), billing_setup_ref: null };
   if (!patch.billing_status) patch.billing_status = "trialing";
-  await deps.store.update(hotelId, patch);
-  return { ok: true, trialEndsAt: patch.trial_ends_at ?? null };
+  await applyBillingPatch(deps, hotel, patch);
+  return { ok: true, trialEndsAt: patch.billing_status === "trialing" ? (patch.trial_ends_at ?? null) : null };
 }
 
 /** Finish whichever card step was started, if the owner never came back from the card page. */
@@ -265,7 +290,7 @@ export async function cancelBilling(deps: BillingDeps, hotelId: string): Promise
   }
 
   // pending_card: nothing at the provider yet, the hotel simply never starts.
-  await deps.store.update(hotelId, {
+  await applyBillingPatch(deps, hotel, {
     billing_status: "canceled",
     current_period_end: view.status === "pending_card" ? nowOf(deps).toISOString() : accessUntil,
   });
@@ -301,22 +326,117 @@ export async function changeRoomCount(
     await deps.store.update(hotelId, { room_count: rooms, billing_tier: tier });
   } else {
     const old = await deps.paystack.fetchSubscription(hotel.billing_subscription_id);
-    if (!old.authorization_code || !old.customer_code) {
-      throw new BillingError("old subscription lacks card", "We could not change your plan. Please email us.", 500);
-    }
     const start = old.next_payment_date ?? hotel.current_period_end ?? trialEndsAt(nowOf(deps)).toISOString();
-    const next = await deps.paystack.createSubscription({
-      customer: old.customer_code,
-      plan,
-      authorization: old.authorization_code,
-      startDate: start,
-    });
-    // Point the hotel at the new subscription first, so the old one's "disabled" webhook
-    // no longer matches it and can't mark the hotel cancelled.
-    await deps.store.update(hotelId, { room_count: rooms, billing_tier: tier, billing_subscription_id: next.subscription_code });
-    await deps.paystack.disableSubscription(old.subscription_code, old.email_token);
+    await swapPaystackSubscription(deps, hotel, old, plan, start, { room_count: rooms, billing_tier: tier }, "plan change");
   }
   return { tier, changed: true };
 }
 
+/**
+ * Paystack can't move a subscription's dates or plan: start a new one on the same card from
+ * `startDate`, point the hotel at it (with `patch`), then disable the old one.
+ */
+async function swapPaystackSubscription(
+  deps: BillingDeps,
+  hotel: BillingHotel,
+  old: PaystackSubscription,
+  plan: string,
+  startDate: string,
+  patch: BillingPatch,
+  what: string
+): Promise<void> {
+  if (!old.authorization_code || !old.customer_code) {
+    throw new BillingError("old subscription lacks card", "We could not change your plan. Please email us.", 500);
+  }
+  const next = await deps.paystack.createSubscription({
+    customer: old.customer_code,
+    plan,
+    authorization: old.authorization_code,
+    startDate,
+  });
+  // Point the hotel at the new subscription first, so the old one's "disabled" webhook
+  // no longer matches it and can't mark the hotel cancelled.
+  await deps.store.update(hotel.id, { ...patch, billing_subscription_id: next.subscription_code });
+  const disableOld = () => deps.paystack.disableSubscription(old.subscription_code, old.email_token);
+  await disableOld()
+    .catch(disableOld)
+    .catch(async (err) => {
+      // Both subscriptions stay active, so the hotel would be charged twice: tell Harrison.
+      await opsAlert(
+        `paystack-${what.replace(/ /g, "-")}:${hotel.id}`,
+        `Paystack ${what}: old subscription of ${hotel.name} not disabled`,
+        `Hotel ${hotel.name} (${hotel.id}) now uses ${next.subscription_code}; the old ${old.subscription_code} is still active. Disable it in the Paystack dashboard, or the hotel is charged twice.\n${errorText(err)}`
+      );
+      throw err;
+    });
+}
+
+/** New trial end: `days` after the current end (or after now, if that is already past). */
+export function extendedTrialEnd(trialEndsAt: string | null | undefined, days: number, now: Date): string {
+  const from = Math.max(trialEndsAt ? Date.parse(trialEndsAt) || 0 : 0, now.getTime());
+  return new Date(from + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Platform admin: push a trialing hotel's trial end (and so its first charge) back by `days`.
+ * The provider is moved too, or it would charge on the old date.
+ */
+export async function extendTrial(deps: BillingDeps, hotelId: string, days: number): Promise<{ trialEndsAt: string }> {
+  const hotel = await mustGet(deps, hotelId);
+  if (hotel.billing_status !== "trialing") throw new BillingError("not trialing", "Only a hotel in its free trial can get more trial days.", 400);
+  const end = extendedTrialEnd(hotel.trial_ends_at, days, nowOf(deps));
+  const patch: BillingPatch = { trial_ends_at: end, current_period_end: end };
+  const sub = hotel.billing_subscription_id;
+  if (sub && hotel.billing_provider === "stripe") {
+    await deps.stripe.extendTrial(sub, Math.floor(Date.parse(end) / 1000));
+    await deps.store.update(hotelId, patch);
+  } else if (sub && hotel.billing_provider === "paystack") {
+    const old = await deps.paystack.fetchSubscription(sub);
+    const plan = old.plan_code ?? planFor(deps, "paystack", (hotel.billing_tier as Tier) ?? tierForRooms(hotel.room_count ?? 1));
+    await swapPaystackSubscription(deps, hotel, old, plan, end, patch, "trial extension");
+  } else {
+    await deps.store.update(hotelId, patch);
+  }
+  return { trialEndsAt: end };
+}
+
 export { patchFromStripe };
+
+/**
+ * "Start again" after a plan ended: back to the card step, without a second free trial
+ * (startCardSetup sees the old trial end date). Only for a cancelled plan whose time is over.
+ */
+export async function restartBilling(deps: BillingDeps, hotelId: string): Promise<void> {
+  const hotel = await mustGet(deps, hotelId);
+  const view = billingView(hotel, nowOf(deps));
+  if (view.access !== "ended") {
+    throw new BillingError(`hotel ${hotelId} is ${view.status}/${view.access}`, "Your plan has not ended, so there is nothing to restart.", 409);
+  }
+  await applyBillingPatch(deps, hotel, {
+    billing_status: "pending_card",
+    billing_subscription_id: null,
+    billing_setup_ref: null,
+    current_period_end: null,
+    // trial_ends_at stays: a hotel that had a trial restarts without one. A hotel that cancelled
+    // before ever adding a card has none, so it still gets its free trial.
+  });
+}
+
+/**
+ * Where the owner changes their card (and can cancel): Stripe Billing Portal for the customer,
+ * or Paystack's hosted "manage subscription" page.
+ */
+export async function cardUpdateUrl(deps: BillingDeps, hotelId: string): Promise<string> {
+  const hotel = await mustGet(deps, hotelId);
+  const view = billingView(hotel, nowOf(deps));
+  if (view.exempt || view.legacy) throw new BillingError("not on billing", "This account is not billed, so there is no card to change.", 409);
+  if (hotel.billing_provider === "stripe") {
+    if (!hotel.billing_customer_id) throw new BillingError("no stripe customer", "We have no card on file for you yet.", 409);
+    return deps.stripe.createPortalSession(hotel.billing_customer_id, `${deps.appUrl}/admin/plan`);
+  }
+  if (hotel.billing_provider === "paystack") {
+    if (!hotel.billing_subscription_id) throw new BillingError("no paystack subscription", "We have no card on file for you yet.", 409);
+    return deps.paystack.manageLink(hotel.billing_subscription_id);
+  }
+  throw new BillingError("no provider", "We have no card on file for you yet.", 409);
+}

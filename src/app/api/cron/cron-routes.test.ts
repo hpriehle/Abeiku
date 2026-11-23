@@ -5,7 +5,10 @@ const arrivalsDigestFor = vi.fn<(d: string) => Promise<unknown>>(async () => ({ 
 vi.mock("@/lib/alerts", () => ({ arrivalsDigestFor: (d: string) => arrivalsDigestFor(d) }));
 const runLifecycleChecks = vi.fn(async () => ({}));
 vi.mock("@/lib/lifecycle", () => ({ runLifecycleChecks: () => runLifecycleChecks() }));
-vi.mock("@/lib/db", () => ({ getAllActiveHotels: async () => [{ id: "h1", slug: "aracuya" }], getHotelById: async () => null }));
+let activeHotels: Record<string, unknown>[] = [{ id: "h1", slug: "aracuya" }];
+const opsAlert = vi.fn(async (..._a: unknown[]) => "sent");
+vi.mock("@/lib/ops/alerts", () => ({ opsAlert: (...a: unknown[]) => opsAlert(...a) }));
+vi.mock("@/lib/db", () => ({ getAllActiveHotels: async () => activeHotels, getHotelById: async () => null }));
 
 const digest = await import("./arrivals-digest/route");
 const lifecycle = await import("./lifecycle/route");
@@ -59,6 +62,16 @@ describe("/api/cron/lifecycle (guest messages) stays off", () => {
     await lifecycle.GET(req("/api/cron/lifecycle", "Bearer s"));
     expect(runLifecycleChecks).toHaveBeenCalledTimes(1);
   });
+
+  it("skips suspended hotels", async () => {
+    process.env.CRON_SECRET = "s";
+    process.env.LIFECYCLE_CRON_ENABLED = "true";
+    activeHotels = [{ id: "h1", slug: "aracuya" }, { id: "h2", slug: "off", suspended_at: "2026-11-20T00:00:00Z" }];
+    const res = await lifecycle.GET(req("/api/cron/lifecycle", "Bearer s"));
+    activeHotels = [{ id: "h1", slug: "aracuya" }];
+    expect(Object.keys((await res.json()).results)).toEqual(["aracuya"]);
+    expect(runLifecycleChecks).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Netlify lifecycle function", () => {
@@ -71,5 +84,42 @@ describe("Netlify lifecycle function", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
     log.mockRestore();
+  });
+});
+
+describe("Netlify scheduled functions alert on failure (L3)", () => {
+  const load = async (name: string) =>
+    (await import(`../../../../netlify/functions/${name}.mts`)).default as () => Promise<Response>;
+
+  it.each(["billing-daily", "arrivals-digest", "lifecycle"])("%s: missing config, HTTP error and network error each alert", async (name) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    process.env.LIFECYCLE_CRON_ENABLED = "true";
+    const fn = await load(name);
+    const url = process.env.URL;
+    delete process.env.URL;
+    delete process.env.BOOKING_SYNC_URL;
+    opsAlert.mockClear();
+    expect((await fn()).status).toBe(500);
+    expect(opsAlert).toHaveBeenLastCalledWith(name, expect.stringMatching(/not configured/));
+
+    process.env.URL = "https://example.test";
+    process.env.CRON_SECRET = "s";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("boom", { status: 500 }));
+    expect((await fn()).status).toBe(502);
+    expect(opsAlert).toHaveBeenLastCalledWith(name, expect.stringMatching(/HTTP 500/), "boom");
+
+    fetchSpy.mockRejectedValueOnce(new Error("timeout"));
+    expect((await fn()).status).toBe(502);
+    expect(opsAlert).toHaveBeenLastCalledWith(name, expect.stringMatching(/did not run/), expect.any(Error));
+
+    fetchSpy.mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    opsAlert.mockClear();
+    expect((await fn()).status).toBe(200);
+    expect(opsAlert).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+    if (url === undefined) delete process.env.URL; else process.env.URL = url;
+    vi.restoreAllMocks();
   });
 });

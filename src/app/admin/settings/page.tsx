@@ -170,6 +170,7 @@ export default async function SettingsPage({
   const momoConnected = hotel.momo_phone_verified;
   const paystackConnected = !!hotel.paystack_subaccount_code;
   const googleReviewsConnected = !!hotel.google_place_id;
+  const features = adminFeatures(hotel, session.role);
 
   return (
     <div className="admin-page">
@@ -179,7 +180,7 @@ export default async function SettingsPage({
           Login email and password
         </Link>
         {/* L3: platform admins and exempt hotels only */}
-        {adminFeatures(hotel, session.role).devTools && (
+        {features.devTools && (
         <a
           href="/admin/onboarding"
           className="px-4 py-2 border border-dashed border-orange-300 text-orange-700 rounded-lg text-xs font-medium hover:bg-orange-50 transition-colors"
@@ -222,6 +223,7 @@ export default async function SettingsPage({
               }
               href="/admin/settings/calendars"
             />
+            {features.whatsappSetup && (
             <ServiceTile
               logo={<WhatsAppLogo className="w-8 h-8 text-[#25D366]" />}
               name="WhatsApp"
@@ -230,6 +232,7 @@ export default async function SettingsPage({
               statusLabel={waConnected ? "Connected" : "Not configured"}
               href="/admin/settings/whatsapp"
             />
+            )}
             <ServiceTile
               logo={<GoogleCalendarLogo className="w-8 h-8" />}
               name="Google Calendar"
@@ -238,22 +241,26 @@ export default async function SettingsPage({
               statusLabel={googleConnected ? "Connected" : "Not connected"}
               href="/admin/settings/google"
             />
-            <ServiceTile
-              logo={<MTNLogo className="w-8 h-8" />}
-              name="MTN Mobile Money"
-              tooltip="Receive guest payment disbursements via MoMo"
-              connected={momoConnected}
-              statusLabel={momoConnected ? "Verified" : hotel.momo_phone ? "Pending verification" : "Not configured"}
-              href="/admin/settings/momo"
-            />
-            <ServiceTile
-              logo={<CreditCard className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
-              name="Card Payments"
-              tooltip="Accept card payments from guests with automatic payouts"
-              connected={paystackConnected}
-              statusLabel={paystackConnected ? "Connected" : "Not configured"}
-              href="/admin/settings/paystack"
-            />
+            {features.payouts && (
+              <>
+              <ServiceTile
+                logo={<MTNLogo className="w-8 h-8" />}
+                name="MTN Mobile Money"
+                tooltip="Receive guest payment disbursements via MoMo"
+                connected={momoConnected}
+                statusLabel={momoConnected ? "Verified" : hotel.momo_phone ? "Pending verification" : "Not configured"}
+                href="/admin/settings/momo"
+              />
+              <ServiceTile
+                logo={<CreditCard className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
+                name="Card Payments"
+                tooltip="Accept card payments from guests with automatic payouts"
+                connected={paystackConnected}
+                statusLabel={paystackConnected ? "Connected" : "Not configured"}
+                href="/admin/settings/paystack"
+              />
+              </>
+            )}
             <ServiceTile
               logo={<GoogleBusinessLogo className="w-8 h-8" />}
               name="Google Reviews"

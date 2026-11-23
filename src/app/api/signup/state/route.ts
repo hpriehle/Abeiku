@@ -5,7 +5,7 @@ import { getHotelById } from "@/lib/db";
 import { billingDeps } from "@/lib/billing";
 import { billingView, sessionBillingClaim } from "@/lib/billing/access";
 import { setAdminSession } from "@/lib/billing/session";
-import { resumePendingSetup } from "@/lib/billing/flow";
+import { resumePendingSetup, trialUsed } from "@/lib/billing/flow";
 import { errorResponse, requireSession } from "@/lib/billing/route-helpers";
 
 export async function GET() {
@@ -37,6 +37,8 @@ export async function GET() {
         trialEndsAt: view.trialEndsAt,
         legacy: view.legacy,
         exempt: view.exempt,
+        // A restart after a cancel gets no second trial.
+        trialAvailable: !trialUsed(hotel),
       },
     });
     // Keep the session's billing block in step with the database.

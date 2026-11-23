@@ -41,6 +41,8 @@ export interface PaystackBillingApi {
   disableSubscription(code: string, emailToken: string): Promise<void>;
   /** Full refund of a transaction (the card check). */
   refund(reference: string): Promise<void>;
+  /** Link to Paystack's hosted page where the owner updates the card (GET /subscription/:code/manage/link). */
+  manageLink(subscriptionCode: string): Promise<string>;
 }
 
 export interface StripeSubscription {
@@ -70,6 +72,7 @@ export interface StripeBillingApi {
     price: string;
     hotelId: string;
     email: string;
+    /** 0: no trial (restart after a cancel): Stripe charges at once. */
     trialDays: number;
     successUrl: string;
     cancelUrl: string;
@@ -80,6 +83,10 @@ export interface StripeBillingApi {
   cancelSubscription(id: string, atPeriodEnd: boolean): Promise<StripeSubscription>;
   /** Swap the price from the next invoice on, no proration. */
   changePrice(subscriptionId: string, itemId: string, price: string): Promise<StripeSubscription>;
+  /** Move the trial end (unix seconds), no proration. */
+  extendTrial(subscriptionId: string, trialEnd: number): Promise<StripeSubscription>;
+  /** Billing Portal session (card update, cancel) for a customer; returns its URL. */
+  createPortalSession(customerId: string, returnUrl: string): Promise<string>;
 }
 
 /** Refuse live keys unless BILLING_LIVE=true, so a test build can never charge a real card. */
