@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { adminRedirect, billingView, LOCKED_ADMIN_PAGE } from "./access";
 import { extendTrial, extendedTrialEnd, BillingError } from "./flow";
 import { makeDeps, NOW } from "./fakes.test-helper";
-import { runDailyBillingCheck } from "./notices";
+import { applyBillingPatch, runDailyBillingCheck } from "./notices";
 
 vi.mock("@/lib/ops/alerts", async (orig) => ({ ...(await orig<object>()), opsAlert: vi.fn(async () => "sent") }));
 
@@ -81,5 +81,21 @@ describe("suspend and exempt in access.ts", () => {
     store.add({ id: "h1", billing_status: "canceled", current_period_end: "2026-12-01T00:00:00.000Z", suspended_at: NOW.toISOString() });
     expect((await runDailyBillingCheck({ ...deps, send })).locked).toBe(0);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("suspended: no trial-ending or payment-failed email to the owner; unsuspended gets them again", async () => {
+    const send = vi.fn(async (_p: { to: string; subject: string }) => ({ success: true }));
+    const { deps, store } = makeDeps({ send, platformEmail: "ops@abeiku.test" });
+    const toOwner = () => send.mock.calls.filter((c) => c[0].to === "owner@x.test");
+    const trial = { billing_status: "trialing", trial_ends_at: new Date(NOW.getTime() + 2 * DAY).toISOString(), contact_email: "owner@x.test" };
+    store.add({ id: "h1", ...trial, suspended_at: NOW.toISOString() });
+    expect((await runDailyBillingCheck(deps)).trialReminders).toBe(0);
+    await applyBillingPatch(deps, (await store.getHotel("h1"))!, { billing_status: "past_due" });
+    expect(toOwner()).toEqual([]);
+
+    store.add({ id: "h1", ...trial, suspended_at: null });
+    expect((await runDailyBillingCheck(deps)).trialReminders).toBe(1);
+    await applyBillingPatch(deps, (await store.getHotel("h1"))!, { billing_status: "past_due" });
+    expect(toOwner()).toHaveLength(2);
   });
 });

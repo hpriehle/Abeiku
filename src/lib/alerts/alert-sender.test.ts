@@ -103,6 +103,15 @@ describe("metaWhatsAppAlerter", () => {
   });
 });
 
+describe("listAlertHotels: suspended", () => {
+  it("is true only for a hotel with suspended_at set", async () => {
+    hotels[OWN].suspended_at = "2026-11-20T00:00:00Z";
+    const list = await supabaseAlertStore.listAlertHotels();
+    delete hotels[OWN].suspended_at;
+    expect(Object.fromEntries(list.map((h) => [h.id, h.suspended]))).toEqual({ [ARACUYA]: false, [TEST_HOTEL]: false, [OWN]: true });
+  });
+});
+
 describe("listAlertHotels: whatsappConnected", () => {
   const connected = async () =>
     Object.fromEntries((await supabaseAlertStore.listAlertHotels()).map((h) => [h.id, h.whatsappConnected]));

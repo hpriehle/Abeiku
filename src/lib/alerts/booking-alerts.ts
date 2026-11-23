@@ -40,6 +40,8 @@ export interface AlertHotel {
   totalRooms: number;
   /** Manager's WhatsApp for booking alerts (hotels.alert_whatsapp), any format; several separated by commas. */
   alert_whatsapp?: string | null;
+  /** Suspended by the platform admin (hotels.suspended_at): no arrivals digest. */
+  suspended?: boolean;
   /**
    * The hotel can send WhatsApp alerts: its own number is connected (access token + phone
    * number id), or the platform sender (WHATSAPP_ALERT_SENDER_HOTEL_ID) is connected.
@@ -531,6 +533,7 @@ export async function sendArrivalsDigest(input: { store: AlertStore; mailer: Mai
   if (!hotels) return { ...out, skipped: counts.skipped };
 
   for (const hotel of hotels) {
+    if (hotel.suspended) continue;
     try {
       // Look back so a stay entered as one-night rows that began earlier isn't counted as an arrival.
       const rows = await store.listByCheckIn(hotel.id, addDays(tomorrow, -62), tomorrow);

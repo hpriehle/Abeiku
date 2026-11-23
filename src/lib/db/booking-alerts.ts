@@ -21,7 +21,7 @@ function chunks<T>(xs: T[], size = ID_CHUNK): T[][] {
 }
 
 function isMissingAlertWhatsApp(err: { code?: string; message?: string }): boolean {
-  return /alert_whatsapp/.test(err.message ?? "") && /does not exist|could not find|schema cache/i.test(err.message ?? "");
+  return /alert_whatsapp|suspended_at/.test(err.message ?? "") && /does not exist|could not find|schema cache/i.test(err.message ?? "");
 }
 
 /**
@@ -60,7 +60,9 @@ export const supabaseAlertStore: AlertStore = {
     const base = "id, name, slug, alert_email, whatsapp_access_token, whatsapp_phone_number_id";
     const query = (cols: string) =>
       supabase.from("hotels").select(cols).eq("active", true).not("alert_email", "is", null);
-    let { data, error } = await query(`${base}, alert_whatsapp`);
+    // suspended_at comes from docs/go-live-platform-actions.sql and falls back the same way.
+    let { data, error } = await query(`${base}, alert_whatsapp, suspended_at`);
+    if (error && isMissingAlertWhatsApp(error)) ({ data, error } = await query(`${base}, alert_whatsapp`));
     if (error && isMissingAlertWhatsApp(error)) ({ data, error } = await query(base));
     if (error) throw error;
     const rows = (data ?? []) as unknown as Record<string, unknown>[];
@@ -76,6 +78,7 @@ export const supabaseAlertStore: AlertStore = {
         alert_whatsapp: typeof h.alert_whatsapp === "string" && h.alert_whatsapp.trim() ? h.alert_whatsapp.trim() : null,
         // Can send WhatsApp alerts: from its own number, or from the platform sender's.
         whatsappConnected: hasOwnWhatsApp(h) || senderReady,
+        suspended: !!h.suspended_at,
       }));
   },
 
