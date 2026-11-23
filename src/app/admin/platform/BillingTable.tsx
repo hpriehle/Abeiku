@@ -2,6 +2,7 @@ import { billingView } from "@/lib/billing/access";
 import { formatPrice } from "@/lib/billing/plans";
 import type { BillingHotel } from "@/lib/billing/store";
 import { formatDay } from "../BillingBanner";
+import { HotelActions } from "./HotelActions";
 
 const STATUS: Record<string, { text: string; cls: string }> = {
   pending_card: { text: "No card yet", cls: "bg-gray-100 text-gray-800" },
@@ -30,12 +31,13 @@ export function BillingTable({ hotels }: { hotels: BillingHotel[] | null }) {
                 <th className="px-5 py-3">Trial left</th>
                 <th className="px-5 py-3">Plan</th>
                 <th className="px-5 py-3">Next charge or end</th>
+                <th className="px-5 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {hotels.map((h) => {
                 const v = billingView(h);
-                const s = v.exempt ? { text: "Exempt", cls: "bg-gray-100 text-gray-800" } : v.status ? STATUS[v.status] : { text: "Not billed", cls: "bg-gray-100 text-gray-800" };
+                const s = v.suspended ? { text: "Suspended", cls: "bg-red-100 text-red-900" } : v.exempt ? { text: "Exempt", cls: "bg-gray-100 text-gray-800" } : v.status ? STATUS[v.status] : { text: "Not billed", cls: "bg-gray-100 text-gray-800" };
                 const end = v.status === "trialing" ? v.trialEndsAt : v.periodEnd;
                 return (
                   <tr key={h.id}>
@@ -48,6 +50,9 @@ export function BillingTable({ hotels }: { hotels: BillingHotel[] | null }) {
                       {v.tier && v.currency ? `${formatPrice(v.tier, v.currency)} (${v.roomCount ?? "?"} rooms)` : ""}
                     </td>
                     <td className="px-5 py-3 text-gray-800">{!v.exempt && v.status && end ? formatDay(end) : ""}</td>
+                    <td className="px-5 py-3">
+                      <HotelActions hotelId={h.id} hotelName={h.name} trialing={v.status === "trialing"} exempt={v.exempt} suspended={v.suspended} />
+                    </td>
                   </tr>
                 );
               })}

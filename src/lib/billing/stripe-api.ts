@@ -120,4 +120,11 @@ export const stripeBillingApi: StripeBillingApi = {
     });
     return toStripeSubscription(d);
   },
+  async extendTrial(subscriptionId, trialEnd) {
+    const d = await call("POST", `/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+      trial_end: String(trialEnd),
+      proration_behavior: "none",
+    });
+    return toStripeSubscription(d);
+  },
 };

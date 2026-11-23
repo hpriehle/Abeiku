@@ -27,6 +27,8 @@ export interface HotelBilling {
   billing_updated_at?: string | null;
   /** When the status first became past_due (docs/go-live-l3-billing.sql). Cleared on payment. */
   past_due_since?: string | null;
+  /** Set by the platform admin (docs/go-live-platform-actions.sql): locked like a lapsed grace. */
+  suspended_at?: string | null;
 }
 
 /** Days of full access after a payment first fails; then the admin is locked to the Plan page. */
@@ -47,7 +49,7 @@ export type Access =
   | "needs_card"
   /** Cancelled and the paid or trial time is over. */
   | "ended"
-  /** Payment failed more than GRACE_DAYS ago: only the Plan page (to update the card). */
+  /** Payment failed more than GRACE_DAYS ago, or suspended by the platform admin: only the Plan page. */
   | "locked";
 
 export type Banner =
@@ -60,6 +62,7 @@ export type Banner =
 export interface BillingView {
   access: Access;
   exempt: boolean;
+  suspended: boolean;
   /** Not on Abeiku billing at all (older hotel, or the SQL has not run). */
   legacy: boolean;
   status: BillingStatus | null;
@@ -90,8 +93,10 @@ function accessUntil(h: HotelBilling): string | null {
 export function billingView(h: HotelBilling, now: Date = new Date()): BillingView {
   const status = asStatus(h.billing_status);
   const exempt = h.billing_exempt === true;
+  const suspended = !!h.suspended_at;
   const base = {
     exempt,
+    suspended,
     legacy: status === null,
     status,
     provider: (h.billing_provider === "paystack" || h.billing_provider === "stripe" ? h.billing_provider : null) as BillingProvider | null,
@@ -105,6 +110,8 @@ export function billingView(h: HotelBilling, now: Date = new Date()): BillingVie
     lockAt: status === "past_due" ? graceEndsAt(h.past_due_since) : null,
   };
 
+  // Suspension wins over exempt and legacy. No banner: the past-due wording would be untrue.
+  if (suspended) return { ...base, access: "locked", banner: null };
   if (exempt || status === null) return { ...base, access: "full", banner: null };
 
   switch (status) {

@@ -143,6 +143,7 @@ export function fakeStripe(sub: StripeSubscription = stripeSub()) {
       atEnd ? { ...sub, cancel_at_period_end: true, cancel_at: sub.current_period_end } : { ...sub, status: "canceled" }
     ),
     changePrice: vi.fn(async (_s: string, _i: string, price: string) => ({ ...sub, item: { id: "si_1", price } })),
+    extendTrial: vi.fn(async (_s: string, trialEnd: number) => ({ ...sub, trial_end: trialEnd, current_period_end: trialEnd })),
     createPortalSession: vi.fn(async (customer: string, returnUrl: string) => `https://billing.stripe.test/${customer}?return=${encodeURIComponent(returnUrl)}`),
   } satisfies StripeBillingApi;
   return api;

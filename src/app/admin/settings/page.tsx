@@ -241,22 +241,26 @@ export default async function SettingsPage({
               statusLabel={googleConnected ? "Connected" : "Not connected"}
               href="/admin/settings/google"
             />
-            <ServiceTile
-              logo={<MTNLogo className="w-8 h-8" />}
-              name="MTN Mobile Money"
-              tooltip="Receive guest payment disbursements via MoMo"
-              connected={momoConnected}
-              statusLabel={momoConnected ? "Verified" : hotel.momo_phone ? "Pending verification" : "Not configured"}
-              href="/admin/settings/momo"
-            />
-            <ServiceTile
-              logo={<CreditCard className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
-              name="Card Payments"
-              tooltip="Accept card payments from guests with automatic payouts"
-              connected={paystackConnected}
-              statusLabel={paystackConnected ? "Connected" : "Not configured"}
-              href="/admin/settings/paystack"
-            />
+            {features.payouts && (
+              <>
+              <ServiceTile
+                logo={<MTNLogo className="w-8 h-8" />}
+                name="MTN Mobile Money"
+                tooltip="Receive guest payment disbursements via MoMo"
+                connected={momoConnected}
+                statusLabel={momoConnected ? "Verified" : hotel.momo_phone ? "Pending verification" : "Not configured"}
+                href="/admin/settings/momo"
+              />
+              <ServiceTile
+                logo={<CreditCard className="size-8 text-[#2D4A3E] shrink-0" aria-hidden="true" />}
+                name="Card Payments"
+                tooltip="Accept card payments from guests with automatic payouts"
+                connected={paystackConnected}
+                statusLabel={paystackConnected ? "Connected" : "Not configured"}
+                href="/admin/settings/paystack"
+              />
+              </>
+            )}
             <ServiceTile
               logo={<GoogleBusinessLogo className="w-8 h-8" />}
               name="Google Reviews"

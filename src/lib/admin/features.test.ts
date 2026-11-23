@@ -10,11 +10,11 @@ const connected = { whatsapp_access_token: "t", whatsapp_phone_number_id: "123" 
 
 describe("adminFeatures (L3)", () => {
   it("a new hotel without WhatsApp sees neither Communication, Simulator nor Dev", () => {
-    expect(adminFeatures({ slug: "new-lodge" }, "admin")).toEqual({ communication: false, simulator: false, devTools: false, whatsappSetup: false });
+    expect(adminFeatures({ slug: "new-lodge" }, "admin")).toEqual({ communication: false, simulator: false, devTools: false, whatsappSetup: false, payouts: false });
   });
 
   it("a hotel with its own WhatsApp connected sees Communication, not Simulator or Dev", () => {
-    expect(adminFeatures({ slug: "new-lodge", ...connected }, "admin")).toEqual({ communication: true, simulator: false, devTools: false, whatsappSetup: true });
+    expect(adminFeatures({ slug: "new-lodge", ...connected }, "admin")).toEqual({ communication: true, simulator: false, devTools: false, whatsappSetup: true, payouts: true });
   });
 
   it("a token without a phone number id is not connected", () => {
@@ -23,18 +23,18 @@ describe("adminFeatures (L3)", () => {
 
   it("exempt hotels (aracuya, test-hotel) see everything, even without their own WhatsApp", () => {
     for (const slug of ["aracuya", "test-hotel"]) {
-      expect(adminFeatures({ slug }, "admin")).toEqual({ communication: true, simulator: true, devTools: true, whatsappSetup: true });
+      expect(adminFeatures({ slug }, "admin")).toEqual({ communication: true, simulator: true, devTools: true, whatsappSetup: true, payouts: true });
     }
   });
 
   it("a platform admin gets Simulator and Dev; Communication still follows the hotel", () => {
-    expect(adminFeatures({ slug: "new-lodge" }, "platform_admin")).toEqual({ communication: false, simulator: true, devTools: true, whatsappSetup: true });
+    expect(adminFeatures({ slug: "new-lodge" }, "platform_admin")).toEqual({ communication: false, simulator: true, devTools: true, whatsappSetup: true, payouts: true });
   });
 
   it("loadAdminFeatures never throws: a DB error hides hotel features", async () => {
     getHotelById.mockRejectedValueOnce(new Error("db down"));
     vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await loadAdminFeatures({ hotelId: "h1", role: "admin" })).toEqual({ communication: false, simulator: false, devTools: false, whatsappSetup: false });
+    expect(await loadAdminFeatures({ hotelId: "h1", role: "admin" })).toEqual({ communication: false, simulator: false, devTools: false, whatsappSetup: false, payouts: false });
   });
 
   it("loadAdminFeatures reads the hotel", async () => {

@@ -83,6 +83,8 @@ export interface StripeBillingApi {
   cancelSubscription(id: string, atPeriodEnd: boolean): Promise<StripeSubscription>;
   /** Swap the price from the next invoice on, no proration. */
   changePrice(subscriptionId: string, itemId: string, price: string): Promise<StripeSubscription>;
+  /** Move the trial end (unix seconds), no proration. */
+  extendTrial(subscriptionId: string, trialEnd: number): Promise<StripeSubscription>;
   /** Billing Portal session (card update, cancel) for a customer; returns its URL. */
   createPortalSession(customerId: string, returnUrl: string): Promise<string>;
 }

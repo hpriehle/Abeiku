@@ -8,6 +8,7 @@ import { loadAdminFeatures, NO_FEATURES } from "@/lib/admin/features";
 import { AdminNav } from "./AdminNav";
 import { BillingBanner } from "./BillingBanner";
 import { VerifyEmailBanner } from "./VerifyEmailBanner";
+import { ViewingAsBanner } from "./platform/HotelActions";
 
 export const metadata: Metadata = {
   title: { template: "%s · Abeiku Admin", default: "Abeiku Admin" },
@@ -44,6 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       />
 
       <main className="flex-1 min-w-0 overflow-y-auto">
+        {session?.homeHotelId && <ViewingAsBanner hotelName={session.hotelName} homeHotelName={session.homeHotelName ?? "my hotel"} />}
         {billing?.banner && <BillingBanner banner={billing.banner} />}
         {read.session && read.emailVerified === false && <VerifyEmailBanner email={read.session.email} />}
         {children}

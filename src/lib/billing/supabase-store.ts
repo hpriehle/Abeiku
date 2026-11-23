@@ -2,6 +2,7 @@
 // select billing columns fail with a missing-column error (callers treat the hotel as legacy).
 // past_due_since comes from docs/go-live-l3-billing.sql: until that runs, reads and writes
 // fall back to the columns without it, so billing keeps working (no grace lock yet).
+// suspended_at (docs/go-live-platform-actions.sql) falls back the same way.
 
 import { supabase } from "@/lib/supabase/client";
 import type { BillingStore, BillingHotel, BillingPatch } from "./store";
@@ -10,21 +11,23 @@ import { isMissingColumnError } from "./store";
 const BASE_COLUMNS =
   "id, name, slug, contact_email, billing_exempt, billing_status, billing_provider, billing_currency, billing_tier, " +
   "room_count, trial_ends_at, current_period_end, billing_customer_id, billing_subscription_id, billing_setup_ref, billing_updated_at";
-const COLUMNS = `${BASE_COLUMNS}, past_due_since`;
+/** Tried in order: a later set drops a column whose SQL file may not have run yet. */
+const COLUMN_SETS = [`${BASE_COLUMNS}, past_due_since, suspended_at`, `${BASE_COLUMNS}, past_due_since`, BASE_COLUMNS];
+const OPTIONAL_COLUMN = /past_due_since|suspended_at/;
 
 /** Billing emails share billing_events (primary key provider + event_id) under this provider. */
 const EMAIL_PROVIDER = "email";
 
 type Query<T> = (columns: string) => PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>;
 
-/** Runs the select with past_due_since, and again without it if that column is not there yet. */
+/** Runs the select with the optional columns, dropping them if they are not there yet. */
 async function selectWithFallback<T>(q: Query<T>): Promise<T | null> {
-  let { data, error } = await q(COLUMNS);
-  if (error && isMissingColumnError(error) && /past_due_since/.test(error.message)) {
-    ({ data, error } = await q(BASE_COLUMNS));
+  for (const [i, columns] of COLUMN_SETS.entries()) {
+    const { data, error } = await q(columns);
+    if (!error) return data;
+    if (i === COLUMN_SETS.length - 1 || !isMissingColumnError(error) || !OPTIONAL_COLUMN.test(error.message)) throw error;
   }
-  if (error) throw error;
-  return data;
+  return null;
 }
 
 export const supabaseBillingStore: BillingStore = {
