@@ -78,7 +78,6 @@ describe("Netlify lifecycle function", () => {
 
 describe("Netlify scheduled functions alert on failure (L3)", () => {
   const load = async (name: string) =>
-    // @ts-expect-error -- Netlify functions are .mts files outside the Next tsconfig paths.
     (await import(`../../../../netlify/functions/${name}.mts`)).default as () => Promise<Response>;
 
   it.each(["billing-daily", "arrivals-digest", "lifecycle"])("%s: missing config, HTTP error and network error each alert", async (name) => {

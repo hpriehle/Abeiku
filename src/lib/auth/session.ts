@@ -11,6 +11,8 @@ export type SessionKind = "admin" | "partner";
 const SESSION_TTL = "7d";
 
 function secretKey(): Uint8Array {
+  // A known fallback secret in production would let anyone sign an admin session.
+  if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") throw new Error("JWT_SECRET is not set");
   return new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret-change-me");
 }
 

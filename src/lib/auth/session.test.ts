@@ -128,3 +128,17 @@ describe("middleware", () => {
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 });
+
+describe("JWT_SECRET (gaps #17)", () => {
+  it("refuses to sign or accept sessions in production without JWT_SECRET", async () => {
+    const token = await signSession("admin", { userId: "u1" });
+    vi.stubEnv("JWT_SECRET", "");
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      await expect(signSession("admin", { userId: "u1" })).rejects.toThrow(/JWT_SECRET/);
+      expect(await verifySession(token, "admin")).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
