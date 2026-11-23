@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const hotels = await getAllActiveHotels();
+    const hotels = (await getAllActiveHotels()).filter((h) => !h.suspended_at);
     const allResults: Record<string, {
       checkinReminders: number;
       checkoutReminders: number;

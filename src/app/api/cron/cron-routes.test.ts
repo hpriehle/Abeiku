@@ -5,9 +5,10 @@ const arrivalsDigestFor = vi.fn<(d: string) => Promise<unknown>>(async () => ({ 
 vi.mock("@/lib/alerts", () => ({ arrivalsDigestFor: (d: string) => arrivalsDigestFor(d) }));
 const runLifecycleChecks = vi.fn(async () => ({}));
 vi.mock("@/lib/lifecycle", () => ({ runLifecycleChecks: () => runLifecycleChecks() }));
+let activeHotels: Record<string, unknown>[] = [{ id: "h1", slug: "aracuya" }];
 const opsAlert = vi.fn(async (..._a: unknown[]) => "sent");
 vi.mock("@/lib/ops/alerts", () => ({ opsAlert: (...a: unknown[]) => opsAlert(...a) }));
-vi.mock("@/lib/db", () => ({ getAllActiveHotels: async () => [{ id: "h1", slug: "aracuya" }], getHotelById: async () => null }));
+vi.mock("@/lib/db", () => ({ getAllActiveHotels: async () => activeHotels, getHotelById: async () => null }));
 
 const digest = await import("./arrivals-digest/route");
 const lifecycle = await import("./lifecycle/route");
@@ -59,6 +60,16 @@ describe("/api/cron/lifecycle (guest messages) stays off", () => {
 
     process.env.LIFECYCLE_CRON_ENABLED = "true";
     await lifecycle.GET(req("/api/cron/lifecycle", "Bearer s"));
+    expect(runLifecycleChecks).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips suspended hotels", async () => {
+    process.env.CRON_SECRET = "s";
+    process.env.LIFECYCLE_CRON_ENABLED = "true";
+    activeHotels = [{ id: "h1", slug: "aracuya" }, { id: "h2", slug: "off", suspended_at: "2026-11-20T00:00:00Z" }];
+    const res = await lifecycle.GET(req("/api/cron/lifecycle", "Bearer s"));
+    activeHotels = [{ id: "h1", slug: "aracuya" }];
+    expect(Object.keys((await res.json()).results)).toEqual(["aracuya"]);
     expect(runLifecycleChecks).toHaveBeenCalledTimes(1);
   });
 });

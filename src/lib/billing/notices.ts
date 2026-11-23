@@ -74,7 +74,8 @@ export async function afterBillingChange(deps: NoticeDeps, before: BillingHotel,
     if (to === "past_due") {
       const since = after.past_due_since ?? nowOf(deps).toISOString();
       const lockAt = graceEndsAt(since);
-      await emailOwner(mail, after, `payment_failed:${id}:${since}`, templates.paymentFailed(after, lockAt));
+      // Suspended: already locked, so "pay before the lock date" would be untrue.
+      if (!after.suspended_at) await emailOwner(mail, after, `payment_failed:${id}:${since}`, templates.paymentFailed(after, lockAt));
       await notifyPlatform(
         mail,
         `Payment failed: ${after.name}`,
@@ -101,7 +102,7 @@ export async function afterBillingChange(deps: NoticeDeps, before: BillingHotel,
 
 /** "Trial ends in 3 days" (daily check, and Stripe's trial_will_end). Once per trial end date. */
 export async function sendTrialEnding(deps: NoticeDeps, hotel: BillingHotel): Promise<void> {
-  if (hotel.billing_status !== "trialing" || !hotel.trial_ends_at) return;
+  if (hotel.billing_status !== "trialing" || !hotel.trial_ends_at || hotel.suspended_at) return;
   await emailOwner(
     mailOf(deps),
     hotel,
@@ -148,6 +149,7 @@ export async function runDailyBillingCheck(deps: NoticeDeps): Promise<DailyResul
     try {
       const v = billingView(h, now);
       if (v.status === "trialing" && h.trial_ends_at) {
+        if (v.suspended) continue;
         const left = daysLeft(h.trial_ends_at, now);
         if (left > 0 && left <= TRIAL_REMINDER_DAYS) {
           await sendTrialEnding(deps, h);
