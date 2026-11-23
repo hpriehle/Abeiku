@@ -3,6 +3,7 @@ import { GRAPH_BASE } from "@/lib/whatsapp/graph";
 import { getSession } from "@/lib/admin/auth";
 import { getHotelById, updateHotel, getOAuthToken } from "@/lib/db";
 import { hotelView } from "@/lib/admin/hotel-view";
+import { adminFeatures } from "@/lib/admin/features";
 
 export async function GET() {
   const session = await getSession();
@@ -23,6 +24,7 @@ export async function GET() {
       card_payments: !!hotel.paystack_subaccount_code,
       google_reviews: !!hotel.google_place_id,
     },
+    features: adminFeatures(hotel, session.role),
   });
 }
 

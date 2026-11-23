@@ -5,6 +5,7 @@ import { getSession } from "@/lib/admin/auth";
 import { getHotelById } from "@/lib/db";
 import { WhatsAppForm } from "./WhatsAppForm";
 import { EmbeddedSignup } from "./EmbeddedSignup";
+import { adminFeatures } from "@/lib/admin/features";
 
 export default async function WhatsAppSettingsPage() {
   const session = await getSession();
@@ -12,6 +13,8 @@ export default async function WhatsAppSettingsPage() {
 
   const hotel = await getHotelById(session.hotelId);
   if (!hotel) redirect("/admin/login");
+  // L3: hidden from self-serve hotels until WhatsApp connecting is live.
+  if (!adminFeatures(hotel, session.role).whatsappSetup) redirect("/admin/settings");
 
   const connected = !!hotel.whatsapp_access_token;
 
