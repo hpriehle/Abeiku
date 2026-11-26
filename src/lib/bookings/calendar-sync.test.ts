@@ -30,6 +30,9 @@ describe("rooms count", () => {
     expect(parseRoomsCount("x", { rooms: "9" }, 3)).toBe(3);
     expect(parseRoomsCount("Aracuya · 1 Room · Ama (paid card)", null, 3)).toBe(1);
     expect(parseRoomsCount("2 Rooms - Kofi", null, 3)).toBe(2);
+    expect(parseRoomsCount("1 bedroom 5% discount", null, 3)).toBe(1);
+    expect(parseRoomsCount("2 Bedrooms - Kofi", null, 3)).toBe(2);
+    expect(parseRoomsCount("1 room booked with 5% discount", null, 3)).toBe(1);
     expect(parseRoomsCount("1 room booked", null, 3)).toBe(1);
     expect(parseRoomsCount("Aracuya · Entire House · Ama (paid MoMo)", null, 3)).toBe(3);
     expect(parseRoomsCount("Kofi family", null, 3)).toBe(3);

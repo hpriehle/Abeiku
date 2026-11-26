@@ -110,7 +110,7 @@ function eventNights(e: GoogleEventLike): { check_in: string; check_out: string 
 
 // ── Google Calendar ──────────────────────────────────────────────────────
 
-/** Rooms an event takes: rooms=<n> property, else "N Room(s)" / "Entire House" in the summary, else all. */
+/** Rooms an event takes: rooms=<n> property, else "N Room(s)" or "N Bedroom(s)" / "Entire House" in the summary, else all. */
 export function parseRoomsCount(
   summary: string | null | undefined,
   privateProps: Record<string, string> | null | undefined,
@@ -119,7 +119,7 @@ export function parseRoomsCount(
   const fromProps = Number.parseInt(privateProps?.rooms ?? "", 10);
   if (fromProps >= 1) return Math.min(fromProps, totalRooms);
   if (/\bentire\s+house\b/i.test(summary ?? "")) return totalRooms;
-  const m = (summary ?? "").match(/\b([1-9])\s*rooms?\b/i);
+  const m = (summary ?? "").match(/\b([1-9])\s*(?:bed)?rooms?\b/i);
   if (m) return Math.min(Number(m[1]), totalRooms);
   return totalRooms;
 }
