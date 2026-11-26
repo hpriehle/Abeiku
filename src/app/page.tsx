@@ -147,7 +147,7 @@ export default function Home() {
             <p className="mt-4 text-sm text-gray-200">
               {TRIAL_DAYS} days free. Then from {formatGhs(PLANS[0].ghs)} a month.
             </p>
-            <p className="mt-6 text-sm text-gray-200">Used by Aracuya, a guesthouse in Busua.</p>
+            <p className="mt-6 text-sm text-gray-200">Used by Aracuya, a guesthouse near Nzulezu.</p>
           </div>
         </section>
 
